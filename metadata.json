@@ -1,0 +1,7 @@
+{
+  "name": "Subhamastu Matrimony",
+  "description": "Subhamastu Matrimony (a unit of GRV Services) - Multi-step registration and authentication system with email OTP verification, Shoorveer & Guruvu discount badges, and partner preferences.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
