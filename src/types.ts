@@ -32,11 +32,12 @@ export interface Profile {
   contact_number: string;
   email?: string;               // Candidate email ID for registration and login
   isEmailVerified?: boolean;    // Whether email has been verified via OTP
-  status: "Pending" | "Verified" | "Premium" | "Declined";
+  status: "Pending" | "Verified" | "Active" | "Premium" | "Married" | "Declined";
   gender: "Male" | "Female";
   sub_caste: string;
   height_feet: number;
   profession: string;
+  education?: string;
   photo_url?: string;
   photo_url_2?: string; // Second Photo
   photo_url_3?: string; // Third Photo
@@ -81,6 +82,10 @@ export interface Profile {
   referral_count?: number; // Number of people referred who took subscriptions
   coupon_applied?: string; // Applied coupon code
   is_defence_verified?: boolean; // Manual admin verification status for defence / coupon
+  current_city?: string; // City of residence
+  father_name?: string; // Father's Name
+  mother_name?: string; // Mother's Name
+  payment_received?: boolean; // Automated payment confirmation flag
 }
 
 export interface CalendarReminder {
@@ -110,6 +115,20 @@ export interface AdminSettings {
   subramanyamQr: string;
   subbaReddyUpi: string;
   subbaReddyQr: string;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  mobile: string;
+  password?: string;
+  email?: string;
+  role: "super_admin" | "admin" | "moderator" | "compliance_officer" | "support_admin";
+  designation?: string;
+  createdAt: string;
+  addedBy?: string;
+  status: "active" | "inactive";
+  isRoot?: boolean;
 }
 
 export interface Grievance {
@@ -145,4 +164,96 @@ export interface MarriageRecord {
   brideSubCaste?: string;
   marriedAt: string;
   recordedBy: string;
+}
+
+export type DiscountType = "PERCENTAGE" | "FLAT";
+export type DefenseVerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type ReferralStatus = "REGISTERED" | "QUALIFIED_PAID";
+export type SubscriptionTierStatus = "ACTIVE" | "PENDING_VERIFICATION" | "EXPIRED" | "CANCELLED";
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: DiscountType;
+  discount_val: number;
+  requires_id_upload: boolean;
+  valid_from: string;
+  valid_until: string;
+  max_uses: number;
+  current_uses: number;
+  is_active: boolean;
+  min_order_value?: number;
+  description?: string;
+  created_at?: string;
+}
+
+export interface DefenseVerification {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  user_phone?: string;
+  user_email?: string;
+  coupon_id: string;
+  coupon_code?: string;
+  id_card_image_url: string;
+  verification_status: DefenseVerificationStatus;
+  admin_notes?: string;
+  created_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+}
+
+export interface Referral {
+  id: string;
+  referrer_id: string;
+  referrer_name?: string;
+  referrer_code?: string;
+  referee_id: string;
+  referee_name?: string;
+  referee_phone?: string;
+  referee_email?: string;
+  status: ReferralStatus;
+  order_id?: string;
+  qualified_at?: string;
+  created_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  amount_paid: number;
+  original_price: number;
+  coupon_applied?: string;
+  status: SubscriptionTierStatus;
+  payment_id?: string;
+  created_at: string;
+  expires_at?: string;
+  is_milestone_rate?: boolean;
+}
+
+export interface ReferralRankItem {
+  user_id: string;
+  name: string;
+  phone: string;
+  email: string;
+  referral_code: string;
+  total_invites: number;
+  qualified_paid: number;
+  is_eligible_800_tier: boolean;
+  rank?: number;
+}
+
+export interface CouponApplyResponse {
+  valid: boolean;
+  code?: string;
+  discount_type?: DiscountType;
+  discount_val?: number;
+  discount_amount: number;
+  original_price: number;
+  final_price: number;
+  requires_id_upload: boolean;
+  is_defense_coupon: boolean;
+  is_milestone_applied: boolean;
+  defense_status?: DefenseVerificationStatus | "NOT_SUBMITTED";
+  message: string;
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift } from "lucide-react";
 
 interface HeaderProps {
   currentTab: string;
@@ -16,6 +16,8 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
   const tabsList = [
     { id: "matches", label: "Matched Souls (మ్యాచెస్)", icon: Heart },
     { id: "compact-kebab", label: "Anti-Scroll Kebab UI (జీరో-క్లటర్ వ్యూ)", icon: Sparkles },
+    { id: "checkout", label: "Checkout & Coupons (సభ్యత్వ రుసుము)", icon: Tag },
+    { id: "referrals", label: "Refer & Earn ₹800 (రిఫరల్ హబ్)", icon: Gift },
     { id: "profile", label: "Spiritual Kundali (కుండలి)", icon: Sparkles },
     { id: "preferences", label: "Partner Criteria (అంచనాలు)", icon: User },
     { id: "upload", label: "Sacred Uploads (ఫోటోలు/పత్రాలు)", icon: Settings },

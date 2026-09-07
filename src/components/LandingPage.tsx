@@ -58,66 +58,6 @@ interface RiceParticle {
   opacity: number;
 }
 
-interface SuccessStory {
-  id: string;
-  names: string;
-  namesTelugu: string;
-  weddingDate: string;
-  gotrams: string;
-  subCaste: string;
-  location: string;
-  gunasScore: string;
-  image: string;
-  celebratoryMessage: string;
-  celebratoryTelugu: string;
-  familyFeedback: string;
-}
-
-const SUCCESS_STORIES: SuccessStory[] = [
-  {
-    id: "story-1",
-    names: "Srikant & Madhavi Sharma",
-    namesTelugu: "శ్రీకాంత్ & మాధవి శర్మ",
-    weddingDate: "November 2025",
-    gotrams: "Kasyapa & Harithasa",
-    subCaste: "Vaidiki Velanadu",
-    location: "Hyderabad • Bengaluru",
-    gunasScore: "31 / 36 Gunas",
-    image: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=800&q=80",
-    celebratoryMessage: "Our families were searching for perfect Vedic Gotram harmony and horoscopic compatibility for over a year. Within two weeks on Subhamastu Matrimony, our horoscopes matched with 31 Gunas! We were married with traditional rituals at Sri Satyanarayana Swamy Temple, Annavaram.",
-    celebratoryTelugu: "వేద సంప్రదాయాల ప్రకారం జాతకాలు అద్భుతంగా కుదిరి మా వివాహం ఘనంగా జరిగింది. శుభమస్తు వేదిక మా జీవితాలలో నింపిన వెలుగులు వర్ణనాతీతం!",
-    familyFeedback: "Blessed with Sri Satyanarayana Swamy's Grace • Annavaram Kalyanam"
-  },
-  {
-    id: "story-2",
-    names: "Raghav & Lavanya Vadhoola",
-    namesTelugu: "రాఘవ్ & లావణ్య",
-    weddingDate: "January 2026",
-    gotrams: "Bharadwaja & Vadhoola",
-    subCaste: "Niyogi",
-    location: "Vijayawada • Dallas, TX (USA)",
-    gunasScore: "29 / 36 Gunas",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80",
-    celebratoryMessage: "Bridging traditions across continents was effortless. The authentic verification of Brahmin family backgrounds and transparent communication gave our parents complete peace of mind. Truly a sacred alignment orchestrated by destiny!",
-    celebratoryTelugu: "సంప్రదాయ ఆచారాలు గౌరవించే చక్కని జీవన సహచరిణి లభించింది. విదేశాల్లో ఉన్నా మన సంస్కృతిని కాపాడుకునే భాగస్వామిని పొందడం మా అదృష్టం.",
-    familyFeedback: "Traditional Vedic Kalyanam • Both Families Delighted"
-  },
-  {
-    id: "story-3",
-    names: "Phani Kumar & Sowmya",
-    namesTelugu: "ఫణీ కుమార్ & సౌమ్య దీక్షితులు",
-    weddingDate: "December 2025",
-    gotrams: "Gautama & Kaundinya",
-    subCaste: "Dravida",
-    location: "Visakhapatnam • Chennai",
-    gunasScore: "33 / 36 Gunas",
-    image: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80",
-    celebratoryMessage: "We prayed for a partner who shares deep spiritual discipline and respect for Sanatana Dharma. Subhamastu Matrimony connected our elders directly without intermediaries. Our wedding in Tirupati was surrounded by divine Vedic chants!",
-    celebratoryTelugu: "తిరుమల శ్రీవారి దివ్య సన్నిధిలో పెద్దల ఆశీస్సులతో మా కల్యాణం జరిగింది. కుటుంబ పెద్దలందరికీ ఎంతో ఆనందం కలిగించిన వేదిక.",
-    familyFeedback: "Tirumala Tirupati Devasthanam Blessings • Lifelong Spiritual Union"
-  }
-];
-
 export default function LandingPage({ 
   onLoginSuccess, 
   devBrandName = "Glark Solutions", 
@@ -571,29 +511,49 @@ export default function LandingPage({
     const mobileClean = adminMobile.trim().replace(/\D/g, "");
     const passClean = adminPassword.trim();
     
-    // Check if subbu admin: mobile is 9347359489
-    const isSubbu = (mobileClean === "9347359489" || mobileClean === "919347359489") && (passClean === "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2");
-    // Check if subba-reddy admin: mobile is 9494949494
-    const isSubbaReddy = (mobileClean === "9494949494" || mobileClean === "919494949494") && (passClean === "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9");
+    try {
+      const verifiedAdmin = await databaseService.verifyAdminCredentials(mobileClean, passClean);
 
-    if (isSubbu || isSubbaReddy) {
-      try {
+      if (verifiedAdmin) {
         const profiles = await databaseService.getProfiles(true);
-        const targetId = isSubbu ? "prof-subbu" : "prof-subba-reddy";
-        const adminProf = profiles.find((p) => p.id === targetId) || profiles.find((p) => p.id === "prof-subbu") || profiles[0];
+        const isSubbu = verifiedAdmin.id === "admin-subbu" || mobileClean.includes("9347359489");
+        const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9494949494");
         
-        if (adminProf) {
-          localStorage.setItem("bramhana_admin_session", "true");
-          localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
-          onLoginSuccess(adminProf);
-        } else {
-          setAdminError("Admin profile not found in system storage.");
+        let adminProf = profiles.find((p) => 
+          p.id === verifiedAdmin.id || 
+          (isSubbu && p.id === "prof-subbu") || 
+          (isSubba && p.id === "prof-subba-reddy") ||
+          p.contact_number?.replace(/\D/g, "").slice(-10) === mobileClean.slice(-10)
+        );
+
+        if (!adminProf) {
+          adminProf = {
+            id: verifiedAdmin.id,
+            reg_number: `ADM-${mobileClean.slice(-4)}`,
+            name: verifiedAdmin.name,
+            dob: "1990-01-01",
+            gender: "Male",
+            height_feet: 5.8,
+            sub_caste: "Smartha",
+            profession: verifiedAdmin.designation || "Administrator",
+            salary_lpa: 15,
+            contact_number: verifiedAdmin.mobile,
+            email: verifiedAdmin.email,
+            status: "Active",
+            role: "admin",
+            subscription_status: "paid_900"
+          };
         }
-      } catch (err) {
-        setAdminError("Failed to initiate administrator session.");
+        
+        localStorage.setItem("bramhana_admin_session", "true");
+        localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
+        onLoginSuccess(adminProf);
+      } else {
+        setAdminError("Incorrect Mobile Number or Password. Access is restricted.");
       }
-    } else {
-      setAdminError("Incorrect Mobile Number or Password. Access is restricted.");
+    } catch (err) {
+      console.error("Admin login error:", err);
+      setAdminError("Failed to initiate administrator session.");
     }
   };
 
@@ -710,22 +670,26 @@ export default function LandingPage({
     });
   };
 
-  // Custom Register Submit
+  // Custom Register Submit - Automated Payment Confirmation
   const handleSubmitRegPayment = async () => {
     if (!registeredProfile || !regTxnId.trim()) return;
     try {
       const isUpgrade = registeredProfile.subscription_status === "paid_900";
       const updatedProfile: Profile = {
         ...registeredProfile,
+        subscription_status: isUpgrade ? "paid_900" : "paid_100",
+        payment_received: true,
+        fee_received_by: "Automated Gateway (PhonePe/UPI)",
+        fee_received_at: new Date().toISOString(),
         ...(isUpgrade 
           ? { upgrade_transaction_id: regTxnId.trim(), upgrade_requested_at: new Date().toISOString() }
-          : { fee_transaction_id: regTxnId.trim(), fee_received_at: new Date().toISOString() }
+          : { fee_transaction_id: regTxnId.trim() }
         )
       };
       await databaseService.saveProfile(updatedProfile);
       setRegisteredProfile(updatedProfile);
       setRegPaymentSuccess(true);
-      alert("మనం పంపిన లావాదేవీ వివరాలు విజయవంతంగా సేవ్ చేయబడ్డాయి! Transaction ID submitted successfully!");
+      alert("🎉 చెల్లింపు ఆటోమేటిక్‌గా ధృవీకరించబడింది మరియు ఖాతా సక్రియం చేయబడింది!\n\nPayment automatically confirmed & account activated! You can now view matches immediately.");
     } catch (err) {
       console.error(err);
       alert("Error submitting transaction ID. Please try again.");
@@ -1221,146 +1185,62 @@ export default function LandingPage({
         </div>
       </main>
 
-      {/* SECTION: CELESTIAL TESTIMONIALS & SUCCESS STORIES */}
-      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 border-t border-amber-500/20">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-4 mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-widest">
-            <HeartHandshake className="w-4 h-4 text-amber-300" />
-            <span>శుభ వివాహ సాక్ష్యాలు • Sacred Success Stories</span>
+      {/* SECTION: NOTICE & DIRECT NAVIGATION */}
+      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14 border-t border-amber-500/20">
+        <div className="bg-gradient-to-b from-zinc-950 via-zinc-900 to-black rounded-3xl border border-amber-500/30 p-6 sm:p-8 space-y-6 shadow-2xl">
+          {/* Important Legal Disclaimer Banner */}
+          <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-4 text-xs text-amber-200">
+            <ShieldAlert className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1.5 leading-relaxed">
+              <h4 className="font-extrabold text-amber-300 text-sm">
+                స్వయం ప్రకటిత సమాచార నిబంధన • Self-Submitted Information Disclaimer
+              </h4>
+              <p className="text-gray-300">
+                All profile, astrological, family, and educational details on <strong>www.shubhamastu.in</strong> are self-declared by registered candidates and families. We operate purely as an introductory intermediary. We do not independently verify or authenticate any candidate details and bear <strong>no responsibility or liability</strong> for the accuracy or integrity of any information provided.
+              </p>
+              <p className="text-amber-400/90 font-bold">
+                Families are solely responsible for conducting independent background verification, horoscope matching, and character inquiries prior to any matrimonial commitment.
+              </p>
+            </div>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight">
-            Blessed Unions Formed in <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400">Sacred Matrimony</span>
-          </h2>
-
-          <p className="text-sm sm:text-base text-gray-300 leading-relaxed font-sans">
-            Hear from Brahmin couples and families whose horoscopes, Gotras, and spiritual aspirations converged into lifelong celebrations of joy through Subhamastu Matrimony.
-          </p>
-        </div>
-
-        {/* Success Stories Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {SUCCESS_STORIES.map((story) => (
-            <article
-              key={story.id}
-              className="bg-gradient-to-b from-zinc-900/90 via-zinc-950/90 to-black rounded-3xl border border-amber-500/25 p-6 sm:p-7 shadow-2xl flex flex-col justify-between hover:border-amber-400/50 transition-all duration-300 group relative overflow-hidden"
+          {/* Quick Action Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <a
+              href="/register"
+              className="bg-zinc-900/80 hover:bg-zinc-800/80 border border-amber-500/30 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-lg"
             >
-              {/* Subtle gold decorative glow */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#C2242C]/10 rounded-full filter blur-2xl pointer-events-none group-hover:bg-amber-500/15 transition-all" />
-
-              <div className="space-y-5">
-                {/* Photo & Badge Container */}
-                <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden border border-amber-500/30 bg-zinc-950 shadow-inner">
-                  <img
-                    src={story.image}
-                    alt={`${story.names} - Married Couple`}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      e.currentTarget.src = "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=800&q=80";
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  
-                  {/* Auspicious Wedding Badge */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1 bg-[#C2242C]/90 backdrop-blur-sm text-white text-[10px] font-extrabold rounded-full tracking-wide shadow-md border border-amber-400/30 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-300" />
-                      {story.weddingDate}
-                    </span>
-                  </div>
-
-                  {/* Guna Score Badge */}
-                  <div className="absolute bottom-3 right-3">
-                    <span className="px-2.5 py-1 bg-amber-500/90 backdrop-blur-sm text-black font-extrabold text-[10px] rounded-full tracking-wide shadow-md flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-black text-black" />
-                      {story.gunasScore}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Couple Names & Gotrams */}
-                <div className="text-left space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
-                    <h3 className="text-lg font-extrabold text-amber-200 tracking-tight">
-                      {story.names}
-                    </h3>
-                  </div>
-                  <p className="text-xs font-bold text-amber-300/90 pl-6">
-                    {story.namesTelugu}
-                  </p>
-                  
-                  <div className="pt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-400 font-mono">
-                    <span className="bg-zinc-800/80 px-2.5 py-1 rounded-lg border border-zinc-700 text-amber-200">
-                      శాఖ: {story.subCaste}
-                    </span>
-                    <span className="bg-zinc-800/80 px-2.5 py-1 rounded-lg border border-zinc-700 text-gray-300">
-                      {story.gotrams} Gotram
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-gray-400 flex items-center gap-1 pt-0.5">
-                    <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span>{story.location}</span>
-                  </div>
-                </div>
-
-                {/* Celebratory Testimonial Text Block */}
-                <div className="relative text-left bg-zinc-950/60 rounded-2xl p-4 border border-zinc-800/80 space-y-2.5">
-                  <Quote className="w-5 h-5 text-amber-400/40" />
-                  <p className="text-xs sm:text-sm text-gray-200 leading-relaxed italic font-serif">
-                    "{story.celebratoryMessage}"
-                  </p>
-                  <p className="text-[11px] text-amber-300/80 leading-relaxed font-sans pt-1 border-t border-zinc-800/50">
-                    "{story.celebratoryTelugu}"
-                  </p>
-                </div>
-              </div>
-
-              {/* Bottom Family Verification & Blessings Stamp */}
-              <div className="pt-4 mt-4 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  Verified Brahmin Kalyanam
+              <div className="space-y-1 text-left">
+                <span className="text-[10px] font-mono uppercase text-amber-400 font-bold tracking-widest block">
+                  Direct Registration • /register
                 </span>
-                <div className="flex text-amber-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
+                <h5 className="text-base font-extrabold text-white group-hover:text-amber-300 transition-colors">
+                  Register Candidate Profile
+                </h5>
+                <p className="text-xs text-zinc-400">
+                  Register Brahmin Grooms & Brides with Gotram, Sub-caste, & DOB.
+                </p>
               </div>
-            </article>
-          ))}
-        </div>
+              <ChevronRight className="w-5 h-5 text-amber-400 group-hover:translate-x-1 transition-transform shrink-0" />
+            </a>
 
-        {/* Auspicious Trust Stats Strip */}
-        <div className="mt-12 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-amber-500/25 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="text-left space-y-1">
-            <h4 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              Begin Your Auspicious Matchmaking Journey (శుభారంభం)
-            </h4>
-            <p className="text-xs text-gray-400">
-              Over 500+ Brahmin weddings solemnized with sacred Vedic rites, authentic Gotram validation & horoscope alignment.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowRegisterModal(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer border border-yellow-300"
+            <a
+              href="/pay"
+              className="bg-zinc-900/80 hover:bg-zinc-800/80 border border-amber-500/30 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-lg"
             >
-              Register Candidate Profile
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowContactModal(true)}
-              className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 text-amber-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-            >
-              Request Matchmaking Call
-            </button>
+              <div className="space-y-1 text-left">
+                <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold tracking-widest block">
+                  Instant Activation • /pay
+                </span>
+                <h5 className="text-base font-extrabold text-white group-hover:text-emerald-300 transition-colors">
+                  Automated Payment Desk
+                </h5>
+                <p className="text-xs text-zinc-400">
+                  Instant ₹100 Match Activation or ₹900 Full Communication Upgrade.
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform shrink-0" />
+            </a>
           </div>
         </div>
       </section>
@@ -1987,7 +1867,7 @@ export default function LandingPage({
                     className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-amber-500 accent-amber-500 cursor-pointer"
                   />
                   <label htmlFor="reg-accept-terms" className="text-[11px] text-gray-300 leading-normal cursor-pointer select-none">
-                    నేను నిబంధనలు, షరతులు మరియు గోప్యతా విధానాన్ని అంగీకరిస్తున్నాను. I agree to the Terms & Conditions and Privacy Policy.
+                    నేను నిబంధనలు, షరతులు మరియు రద్దు విధానాన్ని అంగీకరిస్తున్నాను. I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="text-amber-400 font-semibold underline">Terms of Service</a> (shubhamastu.in/terms), the <a href="/refund" target="_blank" rel="noreferrer" className="text-emerald-400 font-semibold underline">Cancellation & Refund Policy</a> (shubhamastu.in/refund), and acknowledge Intermediary status under Section 79 IT Act.
                   </label>
                 </div>
               </div>

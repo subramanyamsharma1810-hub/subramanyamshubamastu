@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import MyProfileForm from "./components/MyProfileForm";
 import PartnerPreferencesForm from "./components/PartnerPreferencesForm";
@@ -14,9 +15,17 @@ import { Profile, PartnerPreferences } from "./types";
 import { databaseService } from "./lib/databaseService";
 import PublicReceiptViewer from "./components/PublicReceiptViewer";
 import CompactKebabCardView from "./components/CompactKebabCardView";
+import TermsPage from "./components/TermsPage";
+import RefundPolicyPage from "./components/RefundPolicyPage";
+import GrievancePage from "./components/GrievancePage";
+import Register from "./components/Register";
+import Payment from "./components/Payment";
+import CheckoutPricing from "./components/CheckoutPricing";
+import ReferralDashboard from "./components/ReferralDashboard";
 import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
 
 export default function App() {
+  const location = useLocation();
   const [currentTab, setCurrentTab] = useState<string>("matches");
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
@@ -133,17 +142,41 @@ export default function App() {
     const mobileClean = adminMobileInput.trim().replace(/\D/g, "");
     const passClean = adminPasswordInput.trim();
     
-    // Check if subbu admin: mobile is 9347359489
-    const isSubbu = (mobileClean === "9347359489" || mobileClean === "919347359489") && (passClean === "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2");
-    // Check if subba-reddy admin: mobile is 9494949494
-    const isSubbaReddy = (mobileClean === "9494949494" || mobileClean === "919494949494") && (passClean === "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9");
+    // Verify via databaseService (supports root admins and any added admins)
+    const verifiedAdmin = await databaseService.verifyAdminCredentials(mobileClean, passClean);
     
-    if (isSubbu || isSubbaReddy) {
+    if (verifiedAdmin) {
       localStorage.setItem("bramhana_admin_session", "true");
       
-      const profiles = await databaseService.getProfiles();
-      const targetId = isSubbu ? "prof-subbu" : "prof-subba-reddy";
-      const adminProf = profiles.find(p => p.id === targetId) || profiles.find(p => p.id === "prof-subbu") || profiles[0];
+      const profiles = await databaseService.getProfiles(true);
+      const isSubbu = verifiedAdmin.id === "admin-subbu" || mobileClean.includes("9347359489");
+      const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9494949494");
+      
+      let adminProf = profiles.find(p => 
+        p.id === verifiedAdmin.id || 
+        (isSubbu && p.id === "prof-subbu") || 
+        (isSubba && p.id === "prof-subba-reddy") ||
+        p.contact_number?.replace(/\D/g, "").slice(-10) === mobileClean.slice(-10)
+      );
+
+      if (!adminProf) {
+        adminProf = {
+          id: verifiedAdmin.id,
+          reg_number: `ADM-${mobileClean.slice(-4)}`,
+          name: verifiedAdmin.name,
+          dob: "1990-01-01",
+          gender: "Male",
+          height_feet: 5.8,
+          sub_caste: "Smartha",
+          profession: verifiedAdmin.designation || "Administrator",
+          salary_lpa: 15,
+          contact_number: verifiedAdmin.mobile,
+          email: verifiedAdmin.email,
+          status: "Active",
+          role: "admin",
+          subscription_status: "paid_900"
+        };
+      }
       
       localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
       setCurrentProfile(adminProf);
@@ -199,6 +232,23 @@ export default function App() {
       console.error("Failed to update profile directly:", err);
     }
   };
+
+  // Top-level standalone routes
+  if (location.pathname === "/terms" || location.pathname === "/terms/") {
+    return <TermsPage />;
+  }
+  if (location.pathname === "/refund" || location.pathname === "/refund/" || location.pathname === "/refund-policy" || location.pathname === "/refund-policy/" || location.pathname === "/cancellation-and-refund") {
+    return <RefundPolicyPage />;
+  }
+  if (location.pathname === "/grievance" || location.pathname === "/grievance/" || location.pathname === "/grievance-redressal") {
+    return <GrievancePage />;
+  }
+  if (location.pathname === "/register" || location.pathname === "/register/") {
+    return <Register />;
+  }
+  if (location.pathname === "/pay" || location.pathname === "/pay/") {
+    return <Payment />;
+  }
 
   if (loading) {
     return (
@@ -274,20 +324,24 @@ export default function App() {
                   <span className="text-sm font-black text-[#362B5A] font-mono tracking-wider">{currentProfile.reg_number || "BVM-Pending"}</span>
                 </div>
 
-                {/* Verification Badge */}
+                {/* Status Badge */}
                 <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1 rounded-full border uppercase tracking-wider font-mono ${
                   currentProfile.status === "Premium"
                     ? "bg-rose-50 border-rose-200 text-[#C2242C]"
-                    : currentProfile.status === "Verified"
+                    : currentProfile.status === "Married"
+                    ? "bg-pink-50 border-pink-200 text-pink-800"
+                    : currentProfile.status === "Active" || currentProfile.status === "Verified"
                     ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                     : "bg-amber-50 border-amber-200 text-amber-800"
                 }`}>
-                  {currentProfile.status === "Verified" ? (
+                  {currentProfile.status === "Married" ? (
+                    <span>💍</span>
+                  ) : currentProfile.status === "Active" || currentProfile.status === "Verified" ? (
                     <Check className="w-3 h-3 text-emerald-600" />
                   ) : (
                     <Sparkles className="w-3 h-3 text-orange-400 fill-orange-400" />
                   )}
-                  <span>{currentProfile.status} status</span>
+                  <span>{currentProfile.status === "Verified" ? "Active" : currentProfile.status} status</span>
                 </span>
               </div>
 
@@ -336,8 +390,8 @@ export default function App() {
                   />
                 ) : (
                   <>
-                    {/* Post-Payment Verified Member Notification Banner */}
-                    {(!isAdmin && (currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.status === "Verified")) && (
+                    {/* Post-Payment Active Member Notification Banner */}
+                    {(!isAdmin && (currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.status === "Verified" || currentProfile.status === "Active")) && (
                       <div className="bg-gradient-to-r from-emerald-50 via-teal-50/20 to-blue-50/40 border-2 border-emerald-200 rounded-3xl p-6 shadow-xs mb-6 relative overflow-hidden text-left animate-in fade-in slide-in-from-top-4 duration-300">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl translate-x-4 -translate-y-4 pointer-events-none" />
                         
@@ -348,18 +402,18 @@ export default function App() {
                             </div>
                             <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="text-base font-extrabold text-[#362B5A] tracking-tight">Verified Member • ధృవీకరించబడిన సభ్యులు</h4>
+                                <h4 className="text-base font-extrabold text-[#362B5A] tracking-tight">Active Member • సక్రియం చేయబడిన సభ్యులు</h4>
                                 <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200">
                                   Active Account
                                 </span>
                               </div>
                               <p className="text-xs text-zinc-600 leading-relaxed max-w-2xl font-medium">
-                                Congratulations! Your account has been authenticated and marked as <strong>Paid</strong> by our admin desk
-                                {currentProfile.fee_received_by ? ` (Verified by ${currentProfile.fee_received_by})` : ""}. 
-                                You are officially a <strong>Verified Member</strong> of the Bramhana Vivaha Veadika.
+                                Congratulations! Your subscription is active on <strong>www.shubhamastu.in</strong>. 
+                                Match recommendations are filtered according to Vedic norms (different Gothras & Groom 1–3 years elder). 
+                                Please note that all candidate details are self-submitted and families are requested to verify credentials independently.
                               </p>
                               <p className="text-[11px] text-emerald-700/90 font-bold italic flex items-center gap-1 mt-1 font-sans">
-                                ✨ Astrological compatibility metrics are fully unlocked. We recommend reviewing your custom shortlisted matches below.
+                                ✨ Candidate matches matching your profile criteria are unlocked below.
                               </p>
                             </div>
                           </div>
@@ -425,6 +479,20 @@ export default function App() {
                         currentProfile={currentProfile}
                         onUpdateProfile={handleUpdateProfileDirectly}
                         allProfiles={allProfiles}
+                      />
+                    )}
+                    {currentTab === "checkout" && (
+                      <CheckoutPricing
+                        currentProfile={currentProfile}
+                        onPaymentSuccess={() => {
+                          setRefreshTrigger((prev) => prev + 1);
+                          setCurrentTab("matches");
+                        }}
+                      />
+                    )}
+                    {currentTab === "referral" && (
+                      <ReferralDashboard
+                        currentProfile={currentProfile}
                       />
                     )}
                   </>

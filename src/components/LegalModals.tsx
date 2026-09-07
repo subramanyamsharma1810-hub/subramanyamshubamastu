@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { Shield, ShieldAlert, FileText, Lock, X, Sparkles } from "lucide-react";
+import { Shield, ShieldAlert, FileText, Lock, X, Sparkles, RefreshCw, CheckCircle2, XCircle, Clock, CreditCard } from "lucide-react";
 
 interface LegalModalsProps {
   darkTheme?: boolean;
 }
 
-export type LegalDocType = "terms" | "privacy" | "grievance" | null;
+export type LegalDocType = "terms" | "privacy" | "grievance" | "refund" | null;
 
 export function LegalFooter({ darkTheme = false }: LegalModalsProps) {
   const [activeDoc, setActiveDoc] = useState<LegalDocType>(null);
@@ -17,30 +17,62 @@ export function LegalFooter({ darkTheme = false }: LegalModalsProps) {
   return (
     <>
       <footer className={`${containerClass} text-center space-y-4 relative z-20`}>
-        <div className="max-w-4xl mx-auto flex flex-wrap justify-center items-center gap-x-6 gap-y-3 text-xs font-bold uppercase tracking-wider">
+        <div className="max-w-5xl mx-auto flex flex-wrap justify-center items-center gap-x-5 gap-y-3 text-xs font-bold uppercase tracking-wider">
+          <a
+            href="/terms"
+            className="hover:text-amber-500 transition-colors flex items-center gap-1 cursor-pointer text-amber-600 dark:text-amber-400"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Terms of Service (/terms)
+          </a>
+          <span className="text-zinc-600 hidden sm:inline">•</span>
+          <a
+            href="/refund-policy"
+            className="hover:text-emerald-500 transition-colors flex items-center gap-1 cursor-pointer text-emerald-600 dark:text-emerald-400"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refund Policy (/refund-policy)
+          </a>
+          <span className="text-zinc-600 hidden sm:inline">•</span>
+          <a
+            href="/grievance"
+            className="hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer text-rose-600 dark:text-rose-400"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            Grievance Redressal (/grievance)
+          </a>
+          <span className="text-zinc-600 hidden sm:inline">•</span>
           <button
             onClick={() => setActiveDoc("terms")}
             className="hover:text-amber-500 transition-colors flex items-center gap-1 cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
-            Terms & Conditions & Privacy Policy
+            Terms Modal
+          </button>
+          <span className="text-zinc-600 hidden sm:inline">•</span>
+          <button
+            onClick={() => setActiveDoc("refund")}
+            className="hover:text-emerald-500 transition-colors flex items-center gap-1 cursor-pointer text-emerald-700 dark:text-emerald-300"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refund Modal
           </button>
           <span className="text-zinc-600 hidden sm:inline">•</span>
           <button
             onClick={() => setActiveDoc("grievance")}
-            className="hover:text-amber-500 transition-colors flex items-center gap-1 cursor-pointer text-[#C2242C] dark:text-[#E85C63]"
+            className="hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer text-rose-700 dark:text-rose-300"
           >
             <Shield className="w-3.5 h-3.5" />
-            Grievance Redressal (IT Rules 2021)
+            Grievance Modal
           </button>
         </div>
 
         <div className="pt-4 border-t border-zinc-800/20 max-w-lg mx-auto text-[10px] space-y-1">
           <p className="font-semibold uppercase tracking-widest text-[#362B5A] dark:text-amber-300/80">
-            BRAMHANA VIVAHA VEDIKA © 2026 • A PRODUCT OF GLARK SOLUTIONS
+            SHUBHAMASTU MATRIMONY • A UNIT OF GLARK SOLUTIONS
           </p>
           <p className="text-gray-400 dark:text-zinc-500 font-sans tracking-normal leading-relaxed">
-            A Product of Glark Solutions. Registered Intermediary platform under Section 2(1)(w) of the Indian IT Act 2000. Astrological profiles and spiritual indexes are subject to self-provided credential verification.
+            Owned & operated by Glark Solutions. Registered Intermediary under Section 2(1)(w) and Section 79 of the Information Technology Act, 2000. All profile data is self-reported by candidates or families.
           </p>
         </div>
 
@@ -53,7 +85,7 @@ export function LegalFooter({ darkTheme = false }: LegalModalsProps) {
 }
 
 interface ModalProps {
-  docType: "terms" | "privacy" | "grievance";
+  docType: "terms" | "privacy" | "grievance" | "refund";
   onClose: () => void;
 }
 
@@ -70,7 +102,11 @@ export function LegalDocumentModal({ docType, onClose }: ModalProps) {
               <span>IT ACT 2021 & STATUTORY COMPLIANCE</span>
             </div>
             <h3 className="text-xl font-black uppercase tracking-tight">
-              {docType === "grievance" ? "Grievance Redressal (ఫిర్యాదుల నివారణ విభాగం)" : "Terms, Conditions & Privacy Policy (నిబంధనలు మరియు గోప్యతా విధానం)"}
+              {docType === "grievance" 
+                ? "Grievance Redressal (ఫిర్యాదుల నివారణ విభాగం)" 
+                : docType === "refund"
+                ? "Cancellation & Refund Policy (రద్దు మరియు వాపసు విధానం)"
+                : "Terms, Conditions & Privacy Policy (నిబంధనలు మరియు గోప్యతా విధానం)"}
             </h3>
           </div>
           <button
@@ -86,142 +122,292 @@ export function LegalDocumentModal({ docType, onClose }: ModalProps) {
           
           {(docType === "terms" || docType === "privacy") && (
             <>
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl space-y-1">
-                <p className="font-extrabold text-amber-800 uppercase tracking-wider text-[10px] font-mono">Supreme Legal & Non-Liability Notice</p>
-                <p className="text-slate-700 font-medium leading-relaxed">
-                  In any circumstance, event, dispute, financial loss, or matrimonial mismatch whatsoever, Bramhana Vivaha Vedika, its founders, and administrators are <strong>strictly not responsible and held harmless</strong>. All users agree to absolute self-responsibility and mandatory pre-marital independent inquiries.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">1. Acceptance of Terms & Privacy Governance</h4>
-                <p>
-                  By accessing, browsing, registering, or subscribing on <strong>Bramhana Vivaha Vedika</strong>, you irrevocably agree to be bound by these unified Terms, Conditions, and Privacy Policy. If you disagree with any clause, you must immediately close the portal.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">2. Intermediary Status & IT Act Compliance</h4>
-                <p>
-                  We operate strictly as an <strong>"Intermediary"</strong> under Section 2(1)(w) of the Information Technology Act, 2000. Our platform facilitates pure Brahmin community profile matchmaking without endorsement or guarantee of user declarations.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">3. Subscription Terms: ₹900 for 28 Days Full Access</h4>
-                <div className="bg-blue-50 border border-blue-200 p-3.5 rounded-xl space-y-1.5">
-                  <p className="font-bold text-blue-900 text-xs">
-                    💳 Premium Subscription Model (₹900 / 28 Days):
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-extrabold text-amber-900 uppercase tracking-wider text-[10px] font-mono">
+                    TERMS AND CONDITIONS OF SERVICE • SEPTEMBER 2026
                   </p>
-                  <p className="text-slate-700 text-xs">
-                    Full unlocking of contact numbers, WhatsApp connections, and sacred matching details is provided under our nominal <strong>₹900 premium plan valid strictly for 28 days</strong> from payment activation. Subscriptions do not auto-renew and require manual renewal. Fees are non-refundable once contact details or full profiles have been accessed.
+                  <a 
+                    href="/terms" 
+                    className="text-[11px] font-bold text-amber-900 underline hover:text-amber-700 flex items-center gap-1"
+                  >
+                    Open Full Page (shubhamastu.in/terms) →
+                  </a>
+                </div>
+                <p className="text-slate-800 font-medium leading-relaxed text-xs">
+                  Welcome to <strong>shubhamastu.in</strong> (the "Platform"), owned and operated by <strong>Glark Solutions</strong> ("Proprietorship", "We", "Us", or "Our"). By accessing, registering, or using our services, you ("User", "You", or "Registrant") agree to be bound by these Terms and Conditions. If you do not agree, please do not use this Platform.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">1</span>
+                  <span>Nature of Service & Intermediary Status</span>
+                </h4>
+                <p>
+                  <strong>Shubhamastu.in is an online matrimonial matchmaking facilitator and preliminary introductory service.</strong>
+                </p>
+                <p className="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  In accordance with <strong>Section 2(1)(w)</strong> and <strong>Section 79 of the Information Technology Act, 2000</strong>, Shubhamastu.in operates strictly as an intermediary. The platform provides a technology medium for users and families to discover matrimonial profiles.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-black text-rose-900 uppercase text-sm border-b border-rose-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-rose-700 text-white text-xs flex items-center justify-center">2</span>
+                  <span>Absolute Disclaimer of Character, Financial, and Personal Verification</span>
+                </h4>
+                <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl space-y-2 text-rose-950">
+                  <p>
+                    <strong>No Background Checks:</strong> Glark Solutions and Shubhamastu.in <strong>DO NOT</strong> perform physical verification, criminal record checks, character assessments, psychological evaluations, matrimonial status audits, or financial/employment background verification of any registered user.
+                  </p>
+                  <p>
+                    <strong>Sole Responsibility of Users/Guardians:</strong> All information displayed is self-reported by users or their family members. Users, prospective brides/grooms, parents, and legal guardians bear the sole and absolute responsibility to conduct thorough, independent, offline background checks, character inquiries, and family investigations prior to solemnizing any alliance or engaging in financial transactions.
+                  </p>
+                  <p>
+                    <strong>No Liability for Misrepresentation:</strong> Under no circumstances shall Glark Solutions, its proprietor, partners, or affiliates be held liable for any deceit, cheating, marital disputes, domestic discord, fraud, bigamy, or physical/emotional harm resulting from interactions initiated via the Platform.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">4. Anti-Dowry Pledge (వరకట్న నిషేధ ప్రమాణం - Dowry Prohibition Act 1961)</h4>
-                <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-1.5">
-                  <p className="font-bold text-amber-900 text-xs">
-                    In strict compliance with the <strong>Dowry Prohibition Act, 1961</strong>, Bramhana Vivaha Vedika explicitly bans the demand, giving, or taking of dowry in any format.
-                  </p>
-                  <p className="text-slate-700 text-xs">
-                    Registering and using this sacred portal constitutes a formal legal and traditional oath that you and your family denounce, reject, and will not support or participate in any dowry practices or commercial matrimonial negotiations.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">5. Mandatory Pre-Marital Independent Due Diligence (వివాహానికి ముందే విచారణ)</h4>
-                <div className="bg-[#FAF9F5] border border-amber-500/20 p-3.5 rounded-xl space-y-1.5">
-                  <p className="font-bold text-amber-950 text-xs">
-                    ⚠️ CRITICAL SAFETY & DUE DILIGENCE MANDATE:
-                  </p>
-                  <p className="text-slate-700 text-xs leading-relaxed">
-                    While platform administrators verify submitted ID proofs and educational degrees for initial listings, we <strong>cannot</strong> certify a candidate’s physical health, personal character, mental stability, work environment, or family reputation. 
-                  </p>
-                  <p className="text-slate-700 text-xs leading-relaxed font-semibold">
-                    The registered candidate’s family holds the absolute and sole legal responsibility to perform complete, independent physical background checks (including address visits, workplace inquiries, and neighborhood reviews) BEFORE finalizing any matrimonial engagement or exchange.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">6. Absolute Non-Liability & Indemnity in Any Case</h4>
-                <p className="font-semibold text-slate-900">
-                  IN ANY CASE, EVENT, DISPUTE, FRAUD, OR GRIEVANCE WHATSOEVER:
-                </p>
-                <p>
-                  Bramhana Vivaha Vedika, its owners, developers, coordinators, and employees shall <strong>NOT be held liable, sued, or held financially accountable</strong> for any direct, indirect, incidental, or consequential damages, mental harassment, emotional distress, financial fraud, dowry disputes, or physical safety issues arising from communication, matching, or marriage unions initiated via this portal. You agree to indemnify and hold our team harmless from any claims or legal proceedings in any court.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">7. Privacy Policy & Secure Encrypted Storage</h4>
-                <p>
-                  We respect the sanctity of your personal data. We do not sell or monetize candidate information. All uploaded identity certificates (Aadhaar, PAN, educational transcripts) are kept in encrypted offline storage strictly for authentication and never exposed in public directories or search engine crawls.
-                </p>
-                <ul className="list-disc pl-5 space-y-1 pt-1">
-                  <li><strong>Data Collected:</strong> Name, sub-caste, gotram, contact number, astrological details, educational & income records.</li>
-                  <li><strong>Visibility:</strong> Phone numbers are strictly protected and only shared with authenticated matching members.</li>
-                  <li><strong>Right to Erasure:</strong> You can request total deletion of your profile and records from Firestore by contacting administrators.</li>
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">3</span>
+                  <span>Eligibility Criteria</span>
+                </h4>
+                <p>By registering or submitting details on Shubhamastu.in, you represent and warrant that:</p>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-700">
+                  <li>
+                    The bride is at least <strong>18 years of age</strong> and the groom is at least <strong>21 years of age</strong> (as mandated under the Prohibition of Child Marriage Act and prevailing Indian marriage laws).
+                  </li>
+                  <li>
+                    You are legally competent to enter into a binding contract under the <strong>Indian Contract Act, 1872</strong>.
+                  </li>
+                  <li>
+                    The registration is made strictly for genuine matrimonial intent and not for casual dating, commercial solicitation, harassment, or unlawful objectives.
+                  </li>
                 </ul>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">8. Grievance Redressal (IT Rules 2021)</h4>
-                <p>
-                  In compliance with Rule 3(11) of the IT Rules 2021, a designated Grievance Redressal Officer has been appointed. Any registered user who encounters cyber-harassment, impersonation, or fake details can file a formal complaint.
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">4</span>
+                  <span>Service Fees and Payment Structure</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl space-y-1">
+                    <p className="font-bold text-amber-900">Registration Fee: ₹100</p>
+                    <p className="text-slate-700">
+                      Match Exploration / Registration Processing Fee: ₹100 (Inclusive of applicable taxes). Governed by our conditional refund policy outlined in Section 5.
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl space-y-1">
+                    <p className="font-bold text-purple-900">Premium Membership: ₹900</p>
+                    <p className="text-slate-700">
+                      Premium Membership / Service Activation Fee: ₹900 (Inclusive of applicable taxes). <strong>Strictly Non-Refundable</strong>.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 italic">
+                  Payments are processed via authorized payment aggregators (e.g., Cashfree Payments India Pvt. Ltd. / UPI).
                 </p>
-                <div className="bg-slate-50 border border-gray-200 p-4 rounded-xl space-y-1 font-sans">
-                  <p className="font-extrabold text-slate-900">Designated Grievance Officer: Sri G.V. Subramanyam</p>
-                  <p><strong>Chief Registrar Phone:</strong> +91 94942 34567</p>
-                  <p><strong>Email Contacts:</strong> subramanyamghadiyaram@gmail.com</p>
-                  <p className="text-[10px] text-gray-500 italic mt-1">We acknowledge formal tickets within 24 hours and resolve investigations within 15 days.</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">5</span>
+                  <span>Code of Conduct & Prohibited Activities</span>
+                </h4>
+                <p>
+                  Under <strong>Rule 3(1)(b) of the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021</strong>, users shall not host, upload, or transmit any content that:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                  <li>Is fraudulent, defamatory, obscene, invasive of another's privacy, or religiously hateful.</li>
+                  <li>Solicits dowry, extortion, or unauthorized money transfers.</li>
+                  <li>Impersonates any other individual or contains fake photographs.</li>
+                </ul>
+                <div className="p-2.5 bg-red-50 border border-red-200 text-red-900 rounded-lg text-xs font-semibold">
+                  Any violation will result in immediate termination of the account and referral to Indian cyber law enforcement authorities.
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">9. User Conduct, Police Consequences & Legal Trials</h4>
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">6</span>
+                  <span>Limitation of Liability</span>
+                </h4>
                 <p>
-                  Users must behave respectfully in line with traditional values. Uploading fake photographs, impersonating public figures, abusive chat, or seeking commercial commissions is strictly prohibited. 
+                  To the maximum extent permitted by applicable Indian laws, Glark Solutions shall not be liable for any indirect, incidental, punitive, or consequential damages arising out of the use of our services. Our total liability for any claim shall not exceed the amount actually paid by you to us (capped at <strong>₹100</strong> or <strong>₹900</strong> as applicable).
                 </p>
-                <div className="bg-red-50 border border-red-200 p-3.5 rounded-xl font-bold text-red-900 text-xs">
-                  "If I do misbehave, harass anyone, or provide fraudulent credentials on Bramhana Vivaha Vedika, I am fully aware and ready to face police consequences, criminal investigation, and legal trials under Indian Law."
-                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">7</span>
+                  <span>Governing Law and Jurisdiction</span>
+                </h4>
+                <p>
+                  These Terms shall be governed by and construed in accordance with the laws of the Republic of India. Any legal disputes arising out of these terms shall be subject to the <strong>exclusive jurisdiction of the competent courts in Andhra Pradesh, India</strong>.
+                </p>
               </div>
             </>
           )}
 
           {docType === "grievance" && (
             <>
-              <div className="bg-[#C2242C]/10 border-l-4 border-[#C2242C] p-4 rounded-r-xl space-y-1">
-                <p className="font-extrabold text-[#C2242C] uppercase tracking-wider text-[10px] font-mono">Grievance Redressal Mechanism</p>
-                <p className="text-slate-700 font-medium leading-relaxed">
-                  In compliance with the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021.
+              <div className="bg-[#362B5A]/10 border-l-4 border-[#362B5A] p-4 rounded-r-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-extrabold text-[#362B5A] uppercase tracking-wider text-[10px] font-mono">
+                    STATUTORY GRIEVANCE REDRESSAL MECHANISM
+                  </p>
+                  <a 
+                    href="/grievance" 
+                    className="text-[11px] font-bold text-[#362B5A] underline hover:text-amber-800 flex items-center gap-1"
+                  >
+                    Open Grievance Desk (/grievance) →
+                  </a>
+                </div>
+                <p className="text-slate-800 font-medium leading-relaxed text-xs">
+                  In strict accordance with <strong>Rule 3(2) of the Information Technology Rules, 2021</strong>, the <strong>Consumer Protection (E-Commerce) Rules, 2020</strong>, and the <strong>Digital Personal Data Protection Act, 2023 (DPDPA)</strong>.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">Grievance Officer Contact Details</h4>
-                <div className="bg-slate-50 border border-gray-200 p-4 rounded-xl space-y-2 font-sans">
-                  <p className="font-extrabold text-slate-900 text-sm">Sri G.V. Subramanyam (Chief Registrar)</p>
-                  <p><strong>Organization:</strong> Bramhana Vivaha Vedika</p>
-                  <p><strong>Phone:</strong> +91 94942 34567</p>
-                  <p><strong>Email:</strong> subramanyamghadiyaram@gmail.com</p>
-                  <p><strong>Working Hours:</strong> Monday to Saturday (10:00 AM – 6:00 PM IST)</p>
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-[#362B5A]" />
+                  <span>Designated Grievance Officer</span>
+                </h4>
+                <div className="bg-slate-50 border border-gray-200 p-4 rounded-xl space-y-2 text-xs font-sans">
+                  <p><strong className="text-slate-900">Name:</strong> Sri G.V. Subramanyam (Proprietor)</p>
+                  <p><strong className="text-slate-900">Designation:</strong> Proprietor & Grievance Officer</p>
+                  <p><strong className="text-slate-900">Entity:</strong> Glark Solutions (G.V. Subramanyam, Proprietor)</p>
+                  <p><strong className="text-slate-900">Operating Address:</strong> Andhra Pradesh, India</p>
+                  <p><strong className="text-slate-900">Official Email:</strong> <a href="mailto:subramanyamghadiyaram@gmail.com" className="text-amber-800 font-bold underline">subramanyamghadiyaram@gmail.com</a></p>
+                  <p><strong className="text-slate-900">Official Phone / WhatsApp:</strong> <a href="https://wa.me/919347359489" target="_blank" rel="noreferrer" className="text-emerald-700 font-bold underline">+91 9347359489</a></p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5">Filing Procedure & Timelines</h4>
-                <p>
-                  Any user or aggrieved person may submit a complaint regarding violation of terms, fake profiles, harassment, or privacy concerns via email or phone. 
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#362B5A]" />
+                  <span>Statutory Response Timelines</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-blue-50/70 border border-blue-200 p-3 rounded-xl space-y-1">
+                    <p className="font-bold text-blue-950 uppercase text-[10px]">Acknowledgment</p>
+                    <p className="font-extrabold text-blue-900 text-sm">Within 24 to 48 hours</p>
+                    <p className="text-blue-800 text-[11px]">Direct confirmation issued to registered email/WhatsApp.</p>
+                  </div>
+                  <div className="bg-purple-50/70 border border-purple-200 p-3 rounded-xl space-y-1">
+                    <p className="font-bold text-purple-950 uppercase text-[10px]">Resolution / Disposal</p>
+                    <p className="font-extrabold text-purple-900 text-sm">Within 15 days</p>
+                    <p className="text-purple-800 text-[11px]">Formal investigation and grievance disposal from date of receipt.</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {docType === "refund" && (
+            <>
+              <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded-r-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-extrabold text-emerald-900 uppercase tracking-wider text-[10px] font-mono">
+                    CANCELLATION AND REFUND POLICY • SEPTEMBER 2026
+                  </p>
+                  <a 
+                    href="/refund" 
+                    className="text-[11px] font-bold text-emerald-900 underline hover:text-emerald-700 flex items-center gap-1"
+                  >
+                    Open Full Page (shubhamastu.in/refund) →
+                  </a>
+                </div>
+                <p className="text-slate-800 font-medium leading-relaxed text-xs">
+                  At <strong>shubhamastu.in</strong> (operated by <strong>Glark Solutions</strong>), we maintain transparency regarding our pricing, matchmaking assistance, and service tiers.
                 </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Acknowledgement:</strong> Within 24 hours of receiving the complaint.</li>
-                  <li><strong>Resolution:</strong> Within 15 days from the date of receipt of the complaint.</li>
-                </ul>
+              </div>
+
+              {/* 1. Fee Structure & Refund Eligibility */}
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">1</span>
+                  <span>Fee Structure & Refund Eligibility</span>
+                </h4>
+                <div className="overflow-x-auto rounded-xl border border-stone-200">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-stone-100 text-stone-800 border-b border-stone-200 font-bold uppercase text-[10px]">
+                        <th className="p-2.5">Fee Type</th>
+                        <th className="p-2.5">Amount</th>
+                        <th className="p-2.5">Refund Status</th>
+                        <th className="p-2.5">Conditions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-200 text-stone-700">
+                      <tr>
+                        <td className="p-2.5 font-bold">Match Search / Registration Fee</td>
+                        <td className="p-2.5 font-mono font-bold text-[#362B5A]">₹100</td>
+                        <td className="p-2.5 text-emerald-800 font-semibold">100% Refundable (Conditional)</td>
+                        <td className="p-2.5">Fully refundable if zero suitable prospective matches matching your basic criteria are delivered within 30 days.</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2.5 font-bold">Premium Membership / Service Activation Fee</td>
+                        <td className="p-2.5 font-mono font-bold text-[#362B5A]">₹900</td>
+                        <td className="p-2.5 text-rose-800 font-semibold">Non-Refundable</td>
+                        <td className="p-2.5">Non-refundable once access is granted, profiles are shared, or contact credentials are unlocked.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 2. ₹100 Conditional Refund Protocol */}
+              <div className="space-y-2">
+                <h4 className="font-black text-emerald-900 uppercase text-sm border-b border-emerald-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white text-xs flex items-center justify-center">2</span>
+                  <span>The ₹100 Conditional Refund Protocol</span>
+                </h4>
+                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl space-y-2 text-emerald-950">
+                  <p>
+                    When a user pays the ₹100 exploration fee, our matchmaking team actively checks database records and partner networks to identify suitable proposals matching the user's community, educational, and astrological/location criteria.
+                  </p>
+                  <p className="font-semibold">
+                    If, after <strong>60 business days</strong>, our team is unable to present at least one viable profile meeting the submitted preferences, the user is entitled to a complete <strong>100% refund of ₹100</strong>.
+                  </p>
+                  <p className="text-[11px] bg-white/70 p-2 rounded-lg border border-emerald-200 text-stone-700">
+                    <strong>Courtesy Letter:</strong> Alongside the refund, an official acknowledgment and apology message will be dispatched directly to your registered WhatsApp phone number.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. ₹900 Non-Refundable Membership Policy */}
+              <div className="space-y-2">
+                <h4 className="font-black text-rose-900 uppercase text-sm border-b border-rose-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-rose-700 text-white text-xs flex items-center justify-center">3</span>
+                  <span>The ₹900 Non-Refundable Membership Policy</span>
+                </h4>
+                <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl space-y-1.5 text-rose-950">
+                  <p>
+                    The ₹900 tier covers manual profile indexing, platform server resources, customer support, and direct exchange of contact information between consenting parties.
+                  </p>
+                  <p className="font-semibold">
+                    Once this tier is paid and activated, no refunds or chargebacks will be issued under any circumstances, regardless of whether marriage is finalized, proposals are declined by the opposite party, or the user changes their mind.
+                  </p>
+                </div>
+              </div>
+
+              {/* 4. Refund Processing Timeline */}
+              <div className="space-y-2">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-gray-100 pb-1.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[#362B5A] text-white text-xs flex items-center justify-center">4</span>
+                  <span>Refund Processing Timeline</span>
+                </h4>
+                <p>
+                  Approved refunds for the ₹100 search fee are processed within <strong>5 to 7 business days</strong>.
+                </p>
+                <p className="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[11px]">
+                  Refunds are credited directly back to the original payment source (UPI account, debit card, or net banking) via our payment gateway partner (Cashfree Payments).
+                </p>
               </div>
             </>
           )}

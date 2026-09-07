@@ -133,54 +133,40 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     return Math.abs(ageDate.getUTCFullYear() - 1970) || 28;
   };
 
-  // Filter profiles based on gender opposite to current user and payment status
+  // Matching algorithm: strictly considers ONLY 2 rules:
+  // 1. Male & Female must have DIFFERENT Gothras (No Sagotra alliance)
+  // 2. Male is 1 to 3 years elder than the woman (1 <= Male Age - Female Age <= 3)
   const filteredMatches = profiles.filter((partner) => {
+    // Exclude married profiles
+    if ((partner.status as string) === "Married") return false;
+
     // 0. If current user has not paid registration fee (subscription_status === 'free'), show no matches
     if (currentProfile.subscription_status === "free") return false;
 
     // 0.5. If partner has not paid registration fee, do not show them as a match to others
     if (partner.subscription_status === "free") return false;
 
-    // 1. Match opposite gender
+    // 1. Must be opposite gender
     const isOppositeGender = partner.gender !== currentProfile.gender;
     if (!isOppositeGender) return false;
 
-    // 2. Sibling Exclusions (Same Gothram or Same Surname are considered siblings - sagotra / sapinda)
+    // RULE 1: Male & Female must have DIFFERENT Gothras
     if (currentProfile.gothram && partner.gothram) {
       if (currentProfile.gothram.trim().toLowerCase() === partner.gothram.trim().toLowerCase()) {
-        return false;
-      }
-    }
-    if (currentProfile.surname && partner.surname) {
-      if (currentProfile.surname.trim().toLowerCase() === partner.surname.trim().toLowerCase()) {
-        return false;
+        return false; // Sagotra strictly not allowed
       }
     }
 
-    // 3. If no preferences are set, return remaining opposite gender
-    if (!preferences) return true;
-
-    // 4. Sub-caste matching filter (if not "Any")
-    if (preferences.preferred_sub_caste !== "Any") {
-      if (partner.sub_caste.toLowerCase() !== preferences.preferred_sub_caste.toLowerCase()) {
-        return false;
-      }
-    }
-
-    // 5. Age gap filter
-    const partnerAge = calculateAge(partner.dob);
+    // RULE 2: Male is 1 to 3 years elder than the woman
     const ownAge = calculateAge(currentProfile.dob);
-    const ageDiff = Math.abs(partnerAge - ownAge);
-    if (ageDiff > preferences.age_gap) {
-      return false;
-    }
+    const partnerAge = calculateAge(partner.dob);
+    const groomAge = currentProfile.gender === "Male" ? ownAge : partnerAge;
+    const brideAge = currentProfile.gender === "Female" ? ownAge : partnerAge;
+    const ageDiff = groomAge - brideAge;
 
-    // 6. Height range filter
-    if (preferences.height_range !== "Any") {
-      const [minH, maxH] = preferences.height_range.split("-").map((h) => parseFloat(h.trim()));
-      if (partner.height_feet < minH || partner.height_feet > maxH) {
-        return false;
-      }
+    // Groom must be 1 to 3 years elder than the Bride
+    if (ageDiff < 1 || ageDiff > 3) {
+      return false;
     }
 
     return true;
@@ -465,8 +451,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 </p>
               </div>
             </div>
-            <div className="bg-white/80 p-3 rounded-xl border border-red-100 text-[10px] text-gray-500 font-sans tracking-wide">
-              ℹ️ <strong>"ID/Document Verified"</strong> badge signifies only that an ID proof copy (such as Aadhaar or Degree) was submitted for basic document verification as of registration date. It does NOT guarantee character integrity, salary correctness, or true personal nature.
+            <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-[11px] text-amber-900 font-sans tracking-wide">
+              ⚠️ <strong>Self-Submitted Information Notice:</strong> We do not verify or certify any candidate details. All information (Gothram, Age, Education, Profession, Family) is strictly self-submitted by users. Bramhana Vivaha Vedika is not responsible for any information provided. Families must independently cross-check all details.
             </div>
           </div>
 
@@ -708,77 +694,46 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                         </div>
                       </div>
 
-                      {/* Horizontal breakdown bars */}
+                      {/* 2-Rule Matching Breakdown */}
                       <div className="space-y-3 pt-3 border-t border-white/10 relative z-10 text-xs">
-                        <p className="text-[10px] font-bold text-blue-200/50 uppercase tracking-widest">Alignment Category Scores</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                        <p className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">Shubhamastu 2-Rule Alignment Criteria</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           
-                          {/* Astro score */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
-                              <span>Astrology (Gana, Nakshatra, Planet)</span>
-                              <span className="font-mono">{scoreDetails.astrologyScore}%</span>
+                          {/* Rule 1: Gothra Separation */}
+                          <div className="bg-white/10 p-3 rounded-2xl border border-white/15 space-y-1.5">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-blue-100">
+                              <span>1. Gothra Separation (గోత్ర భేదం)</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                scoreDetails.differentGothra ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-red-500/20 text-red-300 border border-red-500/30"
+                              }`}>
+                                {scoreDetails.differentGothra ? "✓ Different Gotras" : "✕ Sagotra Alliance"}
+                              </span>
                             </div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-orange-400 h-full rounded-full" style={{ width: `${scoreDetails.astrologyScore}%` }} />
-                            </div>
+                            <p className="text-[10px] text-blue-200/80">
+                              Vedic marriage mandates different gothras between bride and groom.
+                            </p>
                           </div>
 
-                          {/* Caste match */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
-                              <span>Sub-Caste Matching</span>
-                              <span className="font-mono">{scoreDetails.casteScore}%</span>
+                          {/* Rule 2: Age Alignment */}
+                          <div className="bg-white/10 p-3 rounded-2xl border border-white/15 space-y-1.5">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-blue-100">
+                              <span>2. Age Alignment (వయో భేదం)</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                scoreDetails.ageGapValid ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-red-500/20 text-red-300 border border-red-500/30"
+                              }`}>
+                                {scoreDetails.ageGapValid ? "✓ Groom 1–3 Yrs Elder" : "✕ Age Mismatch"}
+                              </span>
                             </div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-indigo-400 h-full rounded-full" style={{ width: `${scoreDetails.casteScore}%` }} />
-                            </div>
+                            <p className="text-[10px] text-blue-200/80">
+                              Groom: {scoreDetails.groomAge} yrs, Bride: {scoreDetails.brideAge} yrs (Diff: {scoreDetails.ageDiff} yrs).
+                            </p>
                           </div>
 
-                          {/* Profession match */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
-                              <span>Profession & Social Standing</span>
-                              <span className="font-mono">{scoreDetails.professionScore}%</span>
-                            </div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${scoreDetails.professionScore}%` }} />
-                            </div>
-                          </div>
+                        </div>
 
-                          {/* Height match */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
-                              <span>Height Match compatibility</span>
-                              <span className="font-mono">{scoreDetails.heightScore}%</span>
-                            </div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-pink-400 h-full rounded-full" style={{ width: `${scoreDetails.heightScore}%` }} />
-                            </div>
-                          </div>
-
-                          {/* Age match */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
-                              <span>Age Alignment compatibility</span>
-                              <span className="font-mono">{scoreDetails.ageScore}%</span>
-                            </div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-amber-400 h-full rounded-full" style={{ width: `${scoreDetails.ageScore}%` }} />
-                            </div>
-                          </div>
-
-                          {/* Verification match */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
-                              <span>Profile Quality & Credentials</span>
-                              <span className="font-mono">{scoreDetails.verificationScore}%</span>
-                            </div>
-                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-teal-400 h-full rounded-full" style={{ width: `${scoreDetails.verificationScore}%` }} />
-                            </div>
-                          </div>
-
+                        {/* Milan Analysis */}
+                        <div className="p-3 bg-amber-500/10 border border-amber-400/20 rounded-2xl text-[11px] text-amber-200">
+                          {scoreDetails.milanAnalysis}
                         </div>
                       </div>
 

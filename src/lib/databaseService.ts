@@ -1,7 +1,34 @@
 import { db } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query } from "firebase/firestore";
-import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord } from "../types";
+import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser } from "../types";
 import { calculateMatchScore } from "./matchEngine";
+
+export const ROOT_ADMINS: AdminUser[] = [
+  {
+    id: "admin-subbu",
+    name: "Sri G.V. Subramanyam",
+    mobile: "9347359489",
+    password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
+    email: "subramanyamghadiyaram@gmail.com",
+    role: "super_admin",
+    designation: "Founder, Managing Director & Proprietor",
+    createdAt: "2026-07-01T10:00:00Z",
+    status: "active",
+    isRoot: true
+  },
+  {
+    id: "admin-subba-reddy",
+    name: "Sri P.V. Subba Reddy",
+    mobile: "9494949494",
+    password: "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9",
+    email: "subbareddy@gmail.com",
+    role: "admin",
+    designation: "CEO & Co-Founder",
+    createdAt: "2026-07-07T16:00:00Z",
+    status: "active",
+    isRoot: true
+  }
+];
 
 export function generateRandomPassword(): string {
   const letters = "abcdefghijklmnopqrstuvwxyz";
@@ -36,12 +63,12 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     id: "prof-subbu",
     reg_number: "BVM-1001",
     password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
-    name: "GV Subramanyam (Founder & Managing Director)",
+    name: "Sri G.V. Subramanyam (Founder, Managing Director & Proprietor)",
     dob: "1995-08-15",
     gender: "Male",
     height_feet: 5.9,
     sub_caste: "Smartha",
-    profession: "Founder & Managing Director",
+    profession: "Founder, Managing Director & Proprietor",
     salary_lpa: 14.5,
     contact_number: "9347359489",
     status: "Verified",
@@ -306,7 +333,7 @@ export const databaseService = {
       return rawProfiles.filter((p) => {
         const isSubbu = p.id === "prof-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
         const isSubbaReddy = p.id === "prof-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9494949494");
-        return !isSubbu && !isSubbaReddy;
+        return !isSubbu && !isSubbaReddy && p.role !== "admin";
       });
     }
 
@@ -839,5 +866,153 @@ export const databaseService = {
       return true;
     }
     return false;
+  },
+
+  // Admin Management Methods
+  async getAdmins(): Promise<AdminUser[]> {
+    let list: AdminUser[] = [...ROOT_ADMINS];
+    try {
+      const q = query(collection(db, "admins"));
+      const snapshot = await getDocs(q);
+      const fetched: AdminUser[] = [];
+      snapshot.forEach((docSnap) => {
+        fetched.push(docSnap.data() as AdminUser);
+      });
+
+      // Merge fetched admins, ensuring root admins take precedence
+      for (const item of fetched) {
+        const rootMatch = list.find((r) => r.mobile === item.mobile || r.id === item.id);
+        if (!rootMatch) {
+          list.push(item);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching admins from Firestore, using local fallback:", err);
+    }
+
+    // Merge with localStorage
+    const local = localStorage.getItem("matrimonial_admins");
+    if (local) {
+      try {
+        const localList: AdminUser[] = JSON.parse(local);
+        for (const la of localList) {
+          if (!list.some((a) => a.id === la.id || a.mobile.replace(/\D/g, "") === la.mobile.replace(/\D/g, ""))) {
+            list.push(la);
+          }
+        }
+      } catch (e) {
+        console.error("Error reading local admins:", e);
+      }
+    }
+
+    // Ensure root admins are always present and up-to-date
+    for (const r of ROOT_ADMINS) {
+      const idx = list.findIndex((a) => a.id === r.id || a.mobile === r.mobile);
+      if (idx > -1) {
+        list[idx] = { ...list[idx], ...r };
+      } else {
+        list.unshift(r);
+      }
+    }
+
+    localStorage.setItem("matrimonial_admins", JSON.stringify(list));
+    return list;
+  },
+
+  async saveAdmin(adminData: AdminUser): Promise<AdminUser> {
+    const admin: AdminUser = {
+      ...adminData,
+      id: adminData.id || `admin-${Date.now()}`,
+      createdAt: adminData.createdAt || new Date().toISOString(),
+      status: adminData.status || "active"
+    };
+
+    try {
+      await setDoc(doc(db, "admins", admin.id), admin);
+    } catch (err) {
+      console.error("Failed to save admin to Firestore:", err);
+    }
+
+    // Update local storage
+    const currentAdmins = await this.getAdmins();
+    const idx = currentAdmins.findIndex((a) => a.id === admin.id || a.mobile.replace(/\D/g, "") === admin.mobile.replace(/\D/g, ""));
+    if (idx > -1) {
+      currentAdmins[idx] = admin;
+    } else {
+      currentAdmins.push(admin);
+    }
+    localStorage.setItem("matrimonial_admins", JSON.stringify(currentAdmins));
+
+    // Also synchronize a companion Profile entry with role: "admin"
+    try {
+      const cleanPhone = admin.mobile.replace(/\D/g, "");
+      const adminProfileId = `prof-adm-${cleanPhone.slice(-10)}`;
+      const companionProfile: Profile = {
+        id: adminProfileId,
+        reg_number: `ADM-${cleanPhone.slice(-4)}`,
+        name: admin.name,
+        contact_number: cleanPhone,
+        email: admin.email || `${cleanPhone}@shubhamastu.in`,
+        password: admin.password,
+        role: "admin",
+        status: "Active",
+        subscription_status: "paid_900",
+        dob: "1990-01-01",
+        gender: "Male",
+        height_feet: 5.8,
+        sub_caste: "Smartha",
+        profession: admin.designation || "Administrator",
+        salary_lpa: 15,
+        created_at: admin.createdAt
+      };
+      await setDoc(doc(db, "profiles", adminProfileId), companionProfile);
+    } catch (profErr) {
+      console.error("Could not sync admin profile record:", profErr);
+    }
+
+    return admin;
+  },
+
+  async deleteAdmin(id: string): Promise<boolean> {
+    // Prevent deleting root admins
+    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "prof-subbu" || id === "prof-subba-reddy") {
+      console.warn("Root administrators cannot be removed.");
+      return false;
+    }
+
+    try {
+      await deleteDoc(doc(db, "admins", id));
+    } catch (err) {
+      console.error("Failed to delete admin from Firestore:", err);
+    }
+
+    const local = localStorage.getItem("matrimonial_admins");
+    if (local) {
+      const current: AdminUser[] = JSON.parse(local);
+      const filtered = current.filter((a) => a.id !== id && !a.isRoot);
+      localStorage.setItem("matrimonial_admins", JSON.stringify(filtered));
+    }
+    return true;
+  },
+
+  async verifyAdminCredentials(mobileInput: string, passwordInput: string): Promise<AdminUser | null> {
+    const cleanInputMobile = mobileInput.trim().replace(/\D/g, "");
+    const cleanInputPass = passwordInput.trim();
+
+    if (!cleanInputMobile || !cleanInputPass) return null;
+
+    const admins = await this.getAdmins();
+    for (const a of admins) {
+      const adminMobileClean = a.mobile.replace(/\D/g, "");
+      // Match last 10 digits or exact match
+      const mobileMatch = 
+        adminMobileClean === cleanInputMobile ||
+        adminMobileClean.slice(-10) === cleanInputMobile.slice(-10);
+      
+      if (mobileMatch && a.password === cleanInputPass && a.status === "active") {
+        return a;
+      }
+    }
+    return null;
   }
 };

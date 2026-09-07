@@ -126,11 +126,11 @@ export default function GrievanceCell({ currentProfile }: GrievanceCellProps) {
             <div className="border-t border-gray-100 pt-3 space-y-2 text-xs">
               <div className="flex items-center gap-2 text-gray-600 font-semibold">
                 <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                <span>support@bramhanavivaha.com</span>
+                <span>subramanyamghadiyaram@gmail.com</span>
               </div>
               <div className="flex items-center gap-2 text-gray-600 font-semibold">
                 <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-                <span>+91 94942 34567</span>
+                <span>+91 9347359489</span>
               </div>
             </div>
 

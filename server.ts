@@ -5,12 +5,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { calculatePanchangam } from "./src/lib/panchangam";
 
+import multer from "multer";
+import { referralCouponEngine } from "./src/server/referralCouponEngine";
+
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+// Configure body parsers for base64 ID uploads and webhook payloads
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+
+// Configure multer storage for ID proof upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
+});
 
 // Dedicated Health check route
 app.get("/api/health", (req, res) => {
@@ -311,6 +322,257 @@ app.post("/api/send-password-reset", async (req, res) => {
   } catch (err: any) {
     console.error("Resend API password reset failed:", err);
     return res.status(500).json({ success: false, error: err.message || "Failed to dispatch password reset email" });
+  }
+});
+
+// ==============================================================================
+// REFERRAL ENGINE & CONDITIONAL COUPON SYSTEM API ENDPOINTS
+// ==============================================================================
+
+// 1. POST /api/coupons/apply
+// Validates code expiry, usage limit, checks if user already qualified for the 6-referral ₹800 tier,
+// and checks if an ID card upload is required.
+app.post("/api/coupons/apply", (req, res) => {
+  try {
+    const { code, userId, orderAmount } = req.body;
+    if (!userId) {
+      return res.status(400).json({ valid: false, message: "User ID is required to evaluate coupon eligibility." });
+    }
+    const result = referralCouponEngine.applyCoupon(code, userId, Number(orderAmount) || 1500);
+    return res.json(result);
+  } catch (err: any) {
+    console.error("Error applying coupon:", err);
+    return res.status(500).json({ valid: false, message: err.message || "Failed to validate coupon." });
+  }
+});
+
+// 2. POST /api/coupons/upload-id
+// Handles file upload (multipart/form-data via multer or JSON base64 data URI) for Military/Agniveer ID proof
+app.post("/api/coupons/upload-id", upload.single("idCard"), (req, res) => {
+  try {
+    const userId = req.body.userId || req.headers["x-user-id"];
+    const couponCode = req.body.couponCode || "AGNIVEERFLAT50";
+    const userName = req.body.userName;
+    const userPhone = req.body.userPhone;
+    const userEmail = req.body.userEmail;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required for Defense ID upload." });
+    }
+
+    let imageUrl = req.body.id_card_image_url || req.body.imageUrl;
+
+    // If uploaded via multipart/form-data
+    if (req.file) {
+      const base64 = req.file.buffer.toString("base64");
+      const mime = req.file.mimetype || "image/jpeg";
+      imageUrl = `data:${mime};base64,${base64}`;
+    }
+
+    if (!imageUrl) {
+      return res.status(400).json({ success: false, message: "Please select an ID card image file to upload." });
+    }
+
+    const verificationRecord = referralCouponEngine.uploadDefenseId(
+      userId as string,
+      couponCode as string,
+      imageUrl,
+      { name: userName, phone: userPhone, email: userEmail }
+    );
+
+    return res.json({
+      success: true,
+      verificationId: verificationRecord.id,
+      status: verificationRecord.verification_status,
+      imageUrl: verificationRecord.id_card_image_url,
+      message: "Armed Forces / Agniveer ID uploaded successfully and submitted for Admin verification."
+    });
+  } catch (err: any) {
+    console.error("Error uploading defense ID:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to process defense ID upload." });
+  }
+});
+
+// 3. POST /api/webhooks/payment-success
+// Cashfree/Razorpay webhook handler.
+// When a referred user pays, automatically marks referrals.status = 'QUALIFIED_PAID',
+// increments referrer's qualified count, and unlocks the ₹800 pricing tier if count >= 6.
+app.post("/api/webhooks/payment-success", (req, res) => {
+  try {
+    const body = req.body;
+    console.log("Received payment success webhook payload:", body);
+
+    // Extract fields compatible with Cashfree, Razorpay, or direct gateway payloads
+    let order_id = body.order_id || body.orderId || body.data?.order?.order_id || body.payload?.payment?.entity?.order_id || `CF_ORD_${Date.now()}`;
+    let payment_id = body.payment_id || body.paymentId || body.data?.payment?.payment_id || body.payload?.payment?.entity?.id || `PAY_${Date.now()}`;
+    let user_id = body.user_id || body.userId || body.customer_id || body.customer_details?.customer_id;
+    let amount = Number(body.amount || body.order_amount || body.data?.payment?.payment_amount || body.payload?.payment?.entity?.amount / 100 || 1500);
+    let coupon_applied = body.coupon_applied || body.couponCode || body.data?.order?.order_tags?.coupon;
+    let referee_name = body.customer_name || body.name || body.customer_details?.customer_name;
+    let referee_phone = body.customer_phone || body.phone || body.customer_details?.customer_phone;
+    let referee_email = body.customer_email || body.email || body.customer_details?.customer_email;
+
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: "Missing user_id in payment payload." });
+    }
+
+    const result = referralCouponEngine.handlePaymentSuccessWebhook({
+      order_id,
+      payment_id,
+      user_id,
+      amount,
+      coupon_applied,
+      referee_name,
+      referee_phone,
+      referee_email
+    });
+
+    return res.json(result);
+  } catch (err: any) {
+    console.error("Error processing payment webhook:", err);
+    return res.status(500).json({ success: false, message: err.message || "Webhook processing error." });
+  }
+});
+
+// 4. USER REFERRAL ENDPOINTS
+// GET /api/referrals/stats/:userId - User referral stats, count, milestone status, and WhatsApp share URL
+app.get("/api/referrals/stats/:userId", (req, res) => {
+  try {
+    const { userId } = req.params;
+    const userName = req.query.userName as string | undefined;
+    const stats = referralCouponEngine.getUserReferralStats(userId, userName);
+    return res.json({ success: true, ...stats });
+  } catch (err: any) {
+    console.error("Error fetching referral stats:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch referral stats." });
+  }
+});
+
+// POST /api/referrals/register - Register referee with referrer's code
+app.post("/api/referrals/register", (req, res) => {
+  try {
+    const { referrerCode, refereeId, name, phone, email } = req.body;
+    if (!referrerCode || !refereeId) {
+      return res.status(400).json({ success: false, message: "Referrer code and referee ID are required." });
+    }
+    const result = referralCouponEngine.registerReferral(referrerCode, refereeId, {
+      name: name || "New Member",
+      phone: phone || "",
+      email: email || ""
+    });
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    console.error("Error registering referral:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to register referral." });
+  }
+});
+
+// 5. ADMIN CONSOLE ROUTES
+
+// GET /api/admin/coupons - List all coupons
+app.get("/api/admin/coupons", (req, res) => {
+  try {
+    const coupons = referralCouponEngine.getAllCoupons();
+    return res.json({ success: true, coupons });
+  } catch (err: any) {
+    console.error("Error getting coupons:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch coupons." });
+  }
+});
+
+// POST /api/admin/coupons - Create new coupon
+app.post("/api/admin/coupons", (req, res) => {
+  try {
+    const coupon = referralCouponEngine.createCoupon(req.body);
+    return res.json({ success: true, coupon, message: `Coupon "${coupon.code}" created successfully.` });
+  } catch (err: any) {
+    console.error("Error creating coupon:", err);
+    return res.status(400).json({ success: false, message: err.message || "Failed to create coupon." });
+  }
+});
+
+// PATCH /api/admin/coupons/:id - Update coupon validity, active state, or usage limits
+app.patch("/api/admin/coupons/:id", (req, res) => {
+  try {
+    const updated = referralCouponEngine.updateCoupon(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Coupon not found." });
+    }
+    return res.json({ success: true, coupon: updated, message: `Coupon "${updated.code}" updated successfully.` });
+  } catch (err: any) {
+    console.error("Error updating coupon:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to update coupon." });
+  }
+});
+
+// DELETE /api/admin/coupons/:id - Delete coupon
+app.delete("/api/admin/coupons/:id", (req, res) => {
+  try {
+    const success = referralCouponEngine.deleteCoupon(req.params.id);
+    if (!success) {
+      return res.status(404).json({ success: false, message: "Coupon not found." });
+    }
+    return res.json({ success: true, message: "Coupon deleted successfully." });
+  } catch (err: any) {
+    console.error("Error deleting coupon:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to delete coupon." });
+  }
+});
+
+// GET /api/admin/verifications - List defense ID verification requests
+app.get("/api/admin/verifications", (req, res) => {
+  try {
+    const status = req.query.status as string | undefined;
+    const verifications = referralCouponEngine.getDefenseVerifications(status);
+    return res.json({ success: true, verifications });
+  } catch (err: any) {
+    console.error("Error fetching defense verifications:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch verifications." });
+  }
+});
+
+// POST /api/admin/verifications/:id/review - Approve or reject Defense ID
+app.post("/api/admin/verifications/:id/review", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes, reviewerName } = req.body;
+    if (!status || !["APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Status must be either 'APPROVED' or 'REJECTED'." });
+    }
+
+    const reviewed = referralCouponEngine.reviewDefenseVerification(
+      id,
+      status,
+      adminNotes || (status === "APPROVED" ? "Approved by Admin verification team." : "ID documentation could not be verified."),
+      reviewerName || "Sri P.V. Subba Reddy"
+    );
+
+    if (!reviewed) {
+      return res.status(404).json({ success: false, message: "Verification record not found." });
+    }
+
+    return res.json({
+      success: true,
+      verification: reviewed,
+      message: `Defense verification marked as ${status}. Candidate defense discount status updated.`
+    });
+  } catch (err: any) {
+    console.error("Error reviewing defense verification:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to review verification." });
+  }
+});
+
+// GET /api/admin/referrals/rankings - Real-time leaderboard of user referral rankings
+app.get("/api/admin/referrals/rankings", (req, res) => {
+  try {
+    const rankings = referralCouponEngine.getReferralRankings();
+    return res.json({ success: true, rankings });
+  } catch (err: any) {
+    console.error("Error fetching referral rankings:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch rankings." });
   }
 });
 

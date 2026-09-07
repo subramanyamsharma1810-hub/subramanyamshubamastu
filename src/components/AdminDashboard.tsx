@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord } from "../types";
+import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser } from "../types";
 import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
+import AdminManagementTab from "./AdminManagementTab";
+import AdminCouponManager from "./AdminCouponManager";
 import { calculatePanchangam } from "../lib/panchangam";
 import { KundaliChart } from "./KundaliChart";
 import { getGenderLabel } from "../lib/genderHelper";
 import SearchableSelect from "./SearchableSelect";
 import { BRAHMIN_SUB_CASTES, BRAHMIN_GOTRAMS } from "../lib/brahminMetadata";
 import ExecutiveAnalyticsDashboard from "./ExecutiveAnalyticsDashboard";
-import { MapPin, Heart, Eye, EyeOff, ShieldAlert } from "lucide-react";
+import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle } from "lucide-react";
 import {
   ShieldCheck,
   Search,
@@ -67,7 +69,8 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const registeringRef = React.useRef(false);
 
   // Tabs
-  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages">("registrations");
+  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals">("registrations");
+  const [adminCount, setAdminCount] = useState<number>(2);
   const [marriageRecords, setMarriageRecords] = useState<MarriageRecord[]>([]);
   const [marriagesLoading, setMarriagesLoading] = useState(false);
   const [isRecordMarriageModalOpen, setIsRecordMarriageModalOpen] = useState(false);
@@ -194,15 +197,62 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       };
 
       await databaseService.saveMarriage(newMarriage);
-      setUpdateMsg(`💍 Marriage successfully recorded between Groom (${groom.name}) & Bride (${bride.name})!`);
+
+      // Update both Groom and Bride status to Married so they are removed from active matchmaking navigation
+      await databaseService.updateProfileStatus(groom.id, "Married");
+      await databaseService.updateProfileStatus(bride.id, "Married");
+
+      setUpdateMsg(`💍 Marriage successfully recorded between Groom (${groom.name}) & Bride (${bride.name})! Profiles marked as Married and removed from active navigation.`);
       setIsRecordMarriageModalOpen(false);
       setGroomCandidateId("");
       setBrideCandidateId("");
       fetchMarriagesData();
+      fetchProfilesData();
       setTimeout(() => setUpdateMsg(""), 4000);
     } catch (err) {
       console.error("Failed to save marriage record:", err);
       alert("Error saving marriage record.");
+    }
+  };
+
+  const handleMarkMarriageDone = async (candidate: Profile) => {
+    const partnerName = prompt(`Enter Married Spouse / Partner Name for ${candidate.name}:`, "Brahmin Partner");
+    if (partnerName === null) return;
+
+    try {
+      // 1. Mark candidate status as Married
+      await databaseService.updateProfileStatus(candidate.id, "Married");
+
+      // 2. Create marriage record without keeping photos for privacy protection
+      const adminName = marriageRecordingAdmin === "subramanyam" ? "GV Subramanyam" : "PV Subba Reddy";
+      const newMarriage: MarriageRecord = {
+        id: `MR-${Date.now().toString().slice(-6)}`,
+        groomId: candidate.gender === "Male" ? candidate.id : "EXTERNAL",
+        groomName: candidate.gender === "Male" ? candidate.name : partnerName,
+        groomRegNumber: candidate.gender === "Male" ? (candidate.reg_number || "EXT") : "EXTERNAL",
+        groomMobile: candidate.gender === "Male" ? candidate.contact_number : "Protected",
+        groomGotram: candidate.gender === "Male" ? (candidate.gothram || "Brahmin") : "Brahmin",
+        groomSubCaste: candidate.gender === "Male" ? (candidate.sub_caste || "Brahmin") : "Brahmin",
+        brideId: candidate.gender === "Female" ? candidate.id : "EXTERNAL",
+        brideName: candidate.gender === "Female" ? candidate.name : partnerName,
+        brideRegNumber: candidate.gender === "Female" ? (candidate.reg_number || "EXT") : "EXTERNAL",
+        brideMobile: candidate.gender === "Female" ? candidate.contact_number : "Protected",
+        brideGotram: candidate.gender === "Female" ? (candidate.gothram || "Brahmin") : "Brahmin",
+        brideSubCaste: candidate.gender === "Female" ? (candidate.sub_caste || "Brahmin") : "Brahmin",
+        marriedAt: new Date().toISOString(),
+        recordedBy: adminName
+      };
+
+      await databaseService.saveMarriage(newMarriage);
+      setUpdateMsg(`💍 Marriage successfully marked as Done for ${candidate.name}! Candidate marked as Married and removed from active navigation.`);
+      setProfiles((prev) =>
+        prev.map((item) => (item.id === candidate.id ? { ...item, status: "Married" } : item))
+      );
+      fetchMarriagesData();
+      setTimeout(() => setUpdateMsg(""), 4000);
+    } catch (err) {
+      console.error("Failed to mark marriage done:", err);
+      alert("Error marking marriage done.");
     }
   };
 
@@ -1825,7 +1875,9 @@ Ph: ${adminPhone}`;
       ? true
       : statusFilter === "Mercy"
         ? p.is_mercy_granted === true
-        : p.status === statusFilter;
+        : statusFilter === "Active"
+          ? (p.status === "Active" || p.status === "Verified")
+          : p.status === statusFilter;
     const matchesGender = genderFilter === "All" || p.gender === genderFilter;
 
     // Agent Calling Segments:
@@ -1849,8 +1901,9 @@ Ph: ${adminPhone}`;
 
   // Calculations for Stats
   const totalProfiles = profiles.length;
-  const verifiedCount = profiles.filter((p) => p.status === "Verified").length;
+  const activeProfilesCount = profiles.filter((p) => p.status === "Verified" || p.status === "Active").length;
   const premiumCount = profiles.filter((p) => p.status === "Premium").length;
+  const marriedCount = profiles.filter((p) => p.status === "Married").length;
   const pendingCount = profiles.filter((p) => p.status === "Pending").length;
 
   const calculateAge = (dobString: string): number => {
@@ -2495,6 +2548,18 @@ Ph: ${adminPhone}`;
 
           <button
             type="button"
+            onClick={() => setActiveAdminTab("coupons_referrals")}
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              activeAdminTab === "coupons_referrals"
+                ? "bg-[#362B5A] text-white"
+                : "bg-amber-100/80 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold"
+            }`}
+          >
+            <span>🎟️ Coupons & Defense IDs</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleDownloadCandidatesPasswordsCSV}
             className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
             title="Download Excel Sheet with Candidates and Passwords"
@@ -2624,8 +2689,8 @@ Ph: ${adminPhone}`;
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[
             { label: "Total Candidates", value: totalProfiles, sub: "Registered Souls", color: "text-[#362B5A] bg-[#EBF6FF] border-blue-100" },
-            { label: "Pending Verification", value: pendingCount, sub: "Awaiting Kundali Check", color: "text-amber-700 bg-amber-50 border-amber-100" },
-            { label: "Verified Souls", value: verifiedCount, sub: "Astrologically Authenticated", color: "text-emerald-700 bg-emerald-50 border-emerald-100" },
+            { label: "Active Profiles", value: activeProfilesCount, sub: "Self-Declared Brahmin Registry", color: "text-emerald-700 bg-emerald-50 border-emerald-100" },
+            { label: "Marriages Done", value: marriedCount || marriageRecords.length, sub: "💍 Completed Weddings", color: "text-pink-700 bg-pink-50 border-pink-100" },
             { label: "Premium Matches", value: premiumCount, sub: "Full Access Members", color: "text-rose-700 bg-rose-50 border-rose-100" },
           ].map((stat, idx) => (
             <div key={idx} className={`p-5 sm:p-6 rounded-3xl border shadow-sm space-y-1.5 transition-all hover:scale-[1.01] ${stat.color}`}>
@@ -3182,6 +3247,18 @@ Ph: ${adminPhone}`;
           <Heart className="w-4 h-4 text-rose-600" />
           Successful Marriages ({marriageRecords.length})
         </button>
+        <button
+          id="admin-management-tab-button"
+          onClick={() => setActiveAdminTab("admins")}
+          className={`py-3 px-6 font-extrabold text-sm uppercase tracking-wider border-b-4 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+            activeAdminTab === "admins"
+              ? "border-[#C2242C] text-[#362B5A]"
+              : "border-transparent text-gray-500 hover:text-[#362B5A]"
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-amber-500" />
+          Admin Management ({adminCount})
+        </button>
       </div>
 
       {/* Quick message banner */}
@@ -3195,6 +3272,14 @@ Ph: ${adminPhone}`;
       {/* Tab CONTENT 1: Registrations Manager */}
       {activeAdminTab === "registrations" && (
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-5">
+          {/* Intermediary / Self-Submitted Data Legal Disclaimer */}
+          <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-left">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-amber-900 leading-relaxed">
+              <strong className="font-extrabold text-amber-950">నిరాకరణ / Disclaimer:</strong> bramhana vivaha vedika (<strong>www.shubhamastu.in</strong>) operates purely as an intermediary matrimonial community directory. We do not independently verify or certify candidate backgrounds, salaries, gotrams, or horoscopes. All data is strictly self-submitted by candidates/parents, and we bear no responsibility for any information provided. Parents and guardians must conduct their own independent background verifications before marriage finalization.
+            </div>
+          </div>
+
           <div className="space-y-4">
             {/* Search Box & Controls Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -3243,8 +3328,9 @@ Ph: ${adminPhone}`;
                   >
                     <option value="All">All Statuses</option>
                     <option value="Pending">Pending</option>
-                    <option value="Verified">Verified</option>
+                    <option value="Active">Active Profile</option>
                     <option value="Premium">Premium</option>
+                    <option value="Married">💍 Marriage Done</option>
                     <option value="Declined">Declined</option>
                     <option value="Mercy">🤝 Mercy / Changed Punishment</option>
                   </select>
@@ -3773,7 +3859,9 @@ Ph: ${adminPhone}`;
                             className={`text-xs font-bold px-2 py-1.5 rounded-xl border focus:outline-none cursor-pointer transition-all ${
                               p.status === "Premium"
                                 ? "bg-rose-50 border-rose-200 text-rose-700"
-                                : p.status === "Verified"
+                                : p.status === "Married"
+                                ? "bg-pink-50 border-pink-200 text-pink-800"
+                                : p.status === "Active" || p.status === "Verified"
                                 ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                                 : p.status === "Pending"
                                 ? "bg-amber-50 border-amber-200 text-amber-700"
@@ -3781,8 +3869,9 @@ Ph: ${adminPhone}`;
                             }`}
                           >
                             <option value="Pending">🕒 Pending</option>
-                            <option value="Verified">✓ Verified</option>
+                            <option value="Active">✓ Active Profile</option>
                             <option value="Premium">✦ Premium</option>
+                            <option value="Married">💍 Marriage Done</option>
                             <option value="Declined">✕ Declined</option>
                           </select>
                         </td>
@@ -3806,9 +3895,22 @@ Ph: ${adminPhone}`;
                           </select>
                         </td>
 
-                        {/* Actions (Edit / Delete) */}
+                        {/* Actions (Marriage Done / Edit / Delete) */}
                         <td className="px-4 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-1.5">
+                            {p.status !== "Married" ? (
+                              <button
+                                onClick={() => handleMarkMarriageDone(p)}
+                                className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[11px] font-bold border border-rose-200 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                                title="Mark Marriage Done and remove candidate from active navigation"
+                              >
+                                <span>💍 Marriage Done</span>
+                              </button>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-pink-100 text-pink-800 rounded-full text-[10px] font-extrabold">
+                                💍 Married
+                              </span>
+                            )}
                             <button
                               onClick={() => openEditModal(p)}
                               className="p-1.5 bg-indigo-50 text-[#362B5A] hover:bg-indigo-100 hover:text-indigo-900 rounded-lg transition-all cursor-pointer"
@@ -4880,6 +4982,13 @@ Ph: ${adminPhone}`;
       )}
     </div>
   )}
+
+      {/* Tab CONTENT 4: Coupons, Defense Verification & Referrals */}
+      {activeAdminTab === "coupons_referrals" && (
+        <div className="space-y-6">
+          <AdminCouponManager />
+        </div>
+      )}
 
       {/* GRIEVANCE RESOLUTION VERDICT MODAL */}
       {verifyingGrievance && (
@@ -7831,6 +7940,11 @@ Ph: ${adminPhone}`;
         </div>
       )}
 
+      {/* Tab CONTENT 5: Administrator Access & Management */}
+      {activeAdminTab === "admins" && (
+        <AdminManagementTab onAdminCountChange={(count) => setAdminCount(count)} />
+      )}
+
       {/* RECORD MARRIAGE MODAL */}
       {isRecordMarriageModalOpen && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -7946,12 +8060,12 @@ Ph: ${adminPhone}`;
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-[#362B5A] text-sm">Sri G.V. Subramanyam</span>
-                    <span className="text-[9px] bg-amber-500 text-black px-2 py-0.5 rounded-full font-black uppercase">Lead Registrar & Founder</span>
+                    <span className="text-[9px] bg-amber-500 text-black px-2 py-0.5 rounded-full font-black uppercase">Proprietor & Founder</span>
                   </div>
-                  <p className="text-xs text-gray-600 font-mono">Contact: +91 94943 01555</p>
-                  <p className="text-[10px] text-gray-500 font-mono">UPI: bramhanavedika@ybl</p>
+                  <p className="text-xs text-gray-600 font-mono">Mobile: +91 9347359489</p>
+                  <p className="text-[11px] text-gray-500 font-mono">Email: subramanyamghadiyaram@gmail.com</p>
                 </div>
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl">Active Principal</span>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl">Active Proprietor</span>
               </div>
 
               {/* Admin 2 */}
@@ -7961,7 +8075,7 @@ Ph: ${adminPhone}`;
                     <span className="font-extrabold text-[#362B5A] text-sm">Sri P.V. Subba Reddy</span>
                     <span className="text-[9px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black uppercase">Co-Founder & Director</span>
                   </div>
-                  <p className="text-xs text-gray-600 font-mono">Contact: +91 98480 12345</p>
+                  <p className="text-xs text-gray-600 font-mono">Contact: +91 9494949494</p>
                   <p className="text-[10px] text-gray-500 font-mono">UPI: pvsubbareddy@okaxis</p>
                 </div>
                 <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl">Active Director</span>
@@ -7971,20 +8085,32 @@ Ph: ${adminPhone}`;
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-[#362B5A] text-sm">Aesthetic Grievance & Safety Cell</span>
-                    <span className="text-[9px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-bold uppercase">Automated Desk</span>
+                    <span className="font-extrabold text-[#362B5A] text-sm">Grievance & Redressal Cell</span>
+                    <span className="text-[9px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full font-bold uppercase">Statutory Desk</span>
                   </div>
-                  <p className="text-xs text-gray-600">IT Act 2021 & Compliance Redressal Unit</p>
+                  <p className="text-xs text-gray-600">Email: subramanyamghadiyaram@gmail.com</p>
                 </div>
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-xl">24/7 Active</span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-gray-100 flex justify-end">
+            <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdminListModalOpen(false);
+                  setActiveAdminTab("admins");
+                }}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Manage & Add Admins</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsAdminListModalOpen(false)}
-                className="px-6 py-2.5 bg-[#362B5A] hover:bg-[#2b2247] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
+                className="px-5 py-2.5 bg-[#362B5A] hover:bg-[#2b2247] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
               >
                 Close Directory
               </button>
