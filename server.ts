@@ -246,48 +246,143 @@ Return the response strictly as JSON with keys: "spiritualAnalysis", "compatibil
   }
 });
 
-// Email OTP Dispatch Endpoint via Resend API
+// ==============================================================================
+// ZOHO ZEPTOMAIL OFFICIAL SDK & RESEND EMAIL GATEWAY
+// ==============================================================================
+import { sendVerificationOtp, sendPasswordResetEmail, client as zeptoMailClient } from "./src/server/zeptoMailService";
 import { Resend } from "resend";
+
+const RAW_ZOHO_KEY =
+  process.env.ZEPTOMAIL_API_TOKEN ||
+  process.env.ZOHO_ZEPTOMAIL_API_KEY ||
+  "PHtE6r1bEL/uimYpoxMJsaLuFsXwZ40u/+luLAUR4opFCPJVHU0Ar919kDKz+BwqUPAXRaSfz4g7tLmf57mAJD25M2kdDmqyqK3sx/VYSPOZsbq6x00btF8ecUXeUoTtctBs1ibeu9rfNA==";
+
+const ZOHO_SENDER_EMAIL = process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in";
+const ZOHO_SENDER_NAME = process.env.ZOHO_SENDER_NAME || "Shubhamastu.in";
 
 const resendApiKey = process.env.RESEND_API_KEY || "re_Mms7R7Li_AZjN3gmW2FdcH5oFi5fWvRza";
 const resend = new Resend(resendApiKey);
-const senderEmail = "onboarding@resend.dev";
+const resendSenderEmail = "onboarding@resend.dev";
 
+// Check Email Gateway Status
+app.get("/api/email-gateway-status", (req, res) => {
+  res.json({
+    activeProvider: "zeptomail_sdk",
+    senderEmail: ZOHO_SENDER_EMAIL,
+    senderName: ZOHO_SENDER_NAME,
+    hasZohoKey: Boolean(RAW_ZOHO_KEY),
+    fallbackProvider: "resend",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test Email Dispatch via Zoho ZeptoMail SDK
+app.post("/api/test-zoho-email", async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ success: false, error: "Valid email address is required" });
+  }
+
+  const testResult = await sendVerificationOtp(email, "789123");
+  if (testResult.success) {
+    return res.json({
+      success: true,
+      provider: "zeptomail_sdk",
+      details: testResult.data
+    });
+  } else {
+    return res.status(500).json({
+      success: false,
+      provider: "zeptomail_sdk",
+      error: testResult.error
+    });
+  }
+});
+
+// In-memory rate limiting map for OTP dispatches to enforce a strict 2-minute (120s) cooldown
+const emailOtpCooldowns = new Map<string, number>();
+const OTP_COOLDOWN_MS = 2 * 60 * 1000; // 120 seconds
+
+// Email OTP Dispatch Endpoint via ZeptoMail SDK (with Resend fallback & 2-min cooldown)
 app.post("/api/send-email-otp", async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
     return res.status(400).json({ success: false, error: "Email and OTP are required" });
   }
 
+  const cleanEmail = String(email).trim().toLowerCase();
+  const now = Date.now();
+  const lastSent = emailOtpCooldowns.get(cleanEmail);
+
+  // Enforce 2-minute cooldown: prevent multiple submissions within 120 seconds
+  if (lastSent && now - lastSent < OTP_COOLDOWN_MS) {
+    const remainingSeconds = Math.ceil((OTP_COOLDOWN_MS - (now - lastSent)) / 1000);
+    return res.status(429).json({
+      success: false,
+      cooldownActive: true,
+      remainingSeconds,
+      error: `Please wait ${remainingSeconds} seconds before requesting a new OTP. (దయచేసి మరో ${remainingSeconds} సెకన్లు వేచి ఉండండి)`
+    });
+  }
+
   try {
-    const result = await resend.emails.send({
-      from: `Bramhana Vivaha Vedika <${senderEmail}>`,
-      to: [email],
-      subject: "🔐 Your 7-Digit Verification OTP - Bramhana Vivaha Vedika (శ్రీ బ్రాహ్మణ వివాహ వేదిక)",
+    // 1. Primary: Use official ZeptoMail SDK
+    const response = await sendVerificationOtp(cleanEmail, otp);
+    if (response.success) {
+      emailOtpCooldowns.set(cleanEmail, now);
+      console.log(`Verification OTP successfully sent via ZeptoMail SDK to ${cleanEmail}:`, response.data);
+      return res.json({
+        success: true,
+        otp,
+        provider: "zeptomail_sdk",
+        cooldownSeconds: 120,
+        message: `${otp} is your Shubhamastu.in verification code`
+      });
+    }
+
+    console.warn("ZeptoMail SDK dispatch failed, attempting Resend fallback:", response.error);
+    // 2. Secondary fallback: Resend
+    const fallbackResult = await resend.emails.send({
+      from: `${ZOHO_SENDER_NAME} <${resendSenderEmail}>`,
+      to: [cleanEmail],
+      subject: `${otp} is your Shubhamastu.in verification code`,
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #fffbeb; border: 2px solid #f59e0b; border-radius: 16px; max-width: 600px; margin: auto;">
-          <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">శ్రీ బ్రాహ్మణ వివాహ వేదిక</h2>
-          <h3 style="color: #78350f; text-align: center; margin-top: 0;">Bramhana Vivaha Vedika</h3>
-          <p style="font-size: 16px; color: #1f2937;">Namaskaram 🙏</p>
-          <p style="font-size: 15px; color: #374151;">Your 7-Digit One-Time Password (OTP) for email verification and registration is:</p>
-          <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 2px dashed #f59e0b; font-size: 32px; font-weight: 900; color: #b45309; letter-spacing: 6px; text-align: center; margin: 24px 0;">
-            ${otp}
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px;">
+          <h2 style="color: #b45309; text-align: center;">Shubhamastu.in</h2>
+          <p>Namaste,</p>
+          <p>Please use the following One-Time Password (OTP) to complete your verification:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1f2937; background-color: #fef3c7; padding: 8px 18px; border-radius: 6px; display: inline-block;">
+              ${otp}
+            </span>
           </div>
-          <p style="font-size: 14px; color: #4b5563;">Please enter this 7-digit code in the registration form to verify your email and complete your registration.</p>
-          <p style="color: #9ca3af; font-size: 11px; margin-top: 30px; text-align: center; border-top: 1px solid #fde68a; padding-top: 12px;">Sent securely from ${senderEmail} | Bramhana Vivaha Vedika</p>
+          <p style="font-size: 13px; color: #6b7280;">This code will expire in 10 minutes. Do not share this OTP with anyone.</p>
         </div>
-      `,
+      `
     });
 
-    console.log(`Email OTP successfully sent via Resend API to ${email}:`, result);
-    return res.json({ success: true, otp, message: `7-Digit OTP sent successfully via Resend` });
+    emailOtpCooldowns.set(cleanEmail, now);
+    return res.json({
+      success: true,
+      otp,
+      provider: "resend_fallback",
+      cooldownSeconds: 120,
+      message: `OTP sent via fallback service`
+    });
   } catch (err: any) {
-    console.error("Resend API send failed:", err);
-    return res.json({ success: true, otp, fallback: true, message: `OTP generated successfully.` });
+    console.error("All email OTP providers failed:", err);
+    emailOtpCooldowns.set(cleanEmail, now);
+    return res.json({
+      success: true,
+      otp,
+      fallback: true,
+      cooldownSeconds: 120,
+      message: `OTP generated: ${otp}`
+    });
   }
 });
 
-// Password Reset Link Dispatch Endpoint via Resend API
+// Password Reset Link Dispatch Endpoint via ZeptoMail SDK (with Resend fallback)
 app.post("/api/send-password-reset", async (req, res) => {
   const { email, resetLink, candidateName } = req.body;
   if (!email || !resetLink) {
@@ -295,33 +390,46 @@ app.post("/api/send-password-reset", async (req, res) => {
   }
 
   try {
-    const result = await resend.emails.send({
-      from: `Bramhana Vivaha Vedika <${senderEmail}>`,
+    const result = await sendPasswordResetEmail(email, resetLink, candidateName);
+    if (result.success) {
+      return res.json({
+        success: true,
+        provider: "zeptomail_sdk",
+        message: "Password reset link sent successfully via ZeptoMail"
+      });
+    }
+
+    // Fallback to Resend
+    await resend.emails.send({
+      from: `${ZOHO_SENDER_NAME} <${resendSenderEmail}>`,
       to: [email],
-      subject: "🔐 Password Reset Request - Bramhana Vivaha Vedika (శ్రీ బ్రాహ్మణ వివాహ వేదిక)",
+      subject: "Password Reset Request - Shubhamastu.in",
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #fffbeb; border: 2px solid #f59e0b; border-radius: 16px; max-width: 600px; margin: auto;">
-          <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">శ్రీ బ్రాహ్మణ వివాహ వేదిక</h2>
-          <h3 style="color: #78350f; text-align: center; margin-top: 0;">Bramhana Vivaha Vedika</h3>
-          <p style="font-size: 16px; color: #1f2937;">Namaskaram ${candidateName || "Candidate"} 🙏,</p>
-          <p style="font-size: 15px; color: #374151;">We received a request to reset the password for your account associated with <b>${email}</b>.</p>
-          <p style="font-size: 14px; color: #4b5563;">Click the secure button below to set a new password. This link is valid for 1 hour:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetLink}" style="background: linear-gradient(to right, #f59e0b, #d97706); color: #000; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-              Reset Your Password (పాస్‌వర్డ్ మార్చుకోండి)
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px;">
+          <h2 style="color: #b45309; text-align: center;">Shubhamastu.in</h2>
+          <p>Namaste ${candidateName || "Member"},</p>
+          <p>We received a request to reset the password for your account associated with <b>${email}</b>.</p>
+          <p>Click the secure button below to set a new password. This link is valid for 1 hour:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${resetLink}" style="background-color: #b45309; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
+              Reset Password (పాస్‌వర్డ్ మార్చుకోండి)
             </a>
           </div>
-          <p style="color: #4b5563; font-size: 13px;">If you did not request a password reset, please ignore this email. Your password will remain unchanged.</p>
-          <p style="color: #9ca3af; font-size: 11px; margin-top: 30px; text-align: center; border-top: 1px solid #fde68a; padding-top: 12px;">Sent securely from ${senderEmail} | Bramhana Vivaha Vedika</p>
+          <p style="font-size: 13px; color: #6b7280;">If you did not request this, you can safely ignore this email.</p>
         </div>
-      `,
+      `
     });
 
-    console.log(`Password reset email successfully sent via Resend API to ${email}:`, result);
-    return res.json({ success: true, message: `Password reset link sent successfully via Resend` });
+    return res.json({
+      success: true,
+      provider: "resend_fallback",
+      message: "Password reset link sent successfully via fallback"
+    });
   } catch (err: any) {
-    console.error("Resend API password reset failed:", err);
-    return res.status(500).json({ success: false, error: err.message || "Failed to dispatch password reset email" });
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to dispatch password reset email"
+    });
   }
 });
 

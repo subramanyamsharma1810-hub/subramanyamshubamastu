@@ -1,6 +1,6 @@
 import { db } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query } from "firebase/firestore";
-import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser } from "../types";
+import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo } from "../types";
 import { calculateMatchScore } from "./matchEngine";
 
 export const ROOT_ADMINS: AdminUser[] = [
@@ -11,7 +11,8 @@ export const ROOT_ADMINS: AdminUser[] = [
     password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
     email: "subramanyamghadiyaram@gmail.com",
     role: "super_admin",
-    designation: "Founder, Managing Director & Proprietor",
+    stage: 1,
+    designation: "Founder, Managing Director & Proprietor (Stage 1 Super Admin)",
     createdAt: "2026-07-01T10:00:00Z",
     status: "active",
     isRoot: true
@@ -22,11 +23,38 @@ export const ROOT_ADMINS: AdminUser[] = [
     mobile: "9494949494",
     password: "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9",
     email: "subbareddy@gmail.com",
-    role: "admin",
-    designation: "CEO & Co-Founder",
+    role: "revenue_admin",
+    stage: 2,
+    designation: "CEO & Co-Founder (Stage 2 Revenue & Operations Admin)",
     createdAt: "2026-07-07T16:00:00Z",
     status: "active",
     isRoot: true
+  },
+  {
+    id: "admin-coordinator",
+    name: "Sri K. Ramanuja Chary",
+    mobile: "9876543210",
+    password: "coordinator123",
+    email: "coordinator@shubhamastu.in",
+    role: "candidate_admin",
+    stage: 3,
+    designation: "Field Coordinator & Matchmaker (Stage 3 Candidate Admin)",
+    createdAt: "2026-08-01T10:00:00Z",
+    status: "active",
+    isRoot: false
+  },
+  {
+    id: "admin-grievance",
+    name: "Smt. M. Gayatri Devi",
+    mobile: "9123456780",
+    password: "grievance123",
+    email: "grievance@shubhamastu.in",
+    role: "grievance_admin",
+    stage: 4,
+    designation: "Grievance Redressal Officer (Stage 4 Grievance Admin)",
+    createdAt: "2026-08-15T10:00:00Z",
+    status: "active",
+    isRoot: false
   }
 ];
 
@@ -920,9 +948,11 @@ export const databaseService = {
   },
 
   async saveAdmin(adminData: AdminUser): Promise<AdminUser> {
+    const stageInfo = getAdminStageInfo(adminData.role, adminData.stage);
     const admin: AdminUser = {
       ...adminData,
       id: adminData.id || `admin-${Date.now()}`,
+      stage: stageInfo.stage,
       createdAt: adminData.createdAt || new Date().toISOString(),
       status: adminData.status || "active"
     };
@@ -1010,7 +1040,11 @@ export const databaseService = {
         adminMobileClean.slice(-10) === cleanInputMobile.slice(-10);
       
       if (mobileMatch && a.password === cleanInputPass && a.status === "active") {
-        return a;
+        const stageInfo = getAdminStageInfo(a.role, a.stage);
+        return {
+          ...a,
+          stage: stageInfo.stage
+        };
       }
     }
     return null;

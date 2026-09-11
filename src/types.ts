@@ -62,6 +62,7 @@ export interface Profile {
   nakshatram?: string;         // Nakshatram (నక్షత్రం / Star)
   created_at?: string;  // For statistics
   registered_by?: string;      // e.g., "GV Subramanyam", "PV Subba Reddy", or "Self-Registered"
+  registered_by_admin_id?: string; // ID of the admin who created/registered this profile
   registered_at_time?: string;  // Date/Time of registration
   fee_received_by?: string;    // Admin who marked ₹100 fee as received
   fee_transaction_id?: string; // ₹100 transaction ID
@@ -117,13 +118,84 @@ export interface AdminSettings {
   subbaReddyQr: string;
 }
 
+export type AdminRole =
+  | "super_admin"       // Stage 1: Can add or remove admins, full revenue, full candidates, grievance cell
+  | "revenue_admin"     // Stage 2: Can see all revenue & candidates, grievance cell, but CANNOT add/remove admins
+  | "candidate_admin"   // Stage 3: Can see ONLY candidates registered by him, grievance cell, cannot see org revenue, cannot add/remove admins
+  | "grievance_admin"   // Stage 4: Grievance Officer, grievance cell access, cannot see revenue, cannot add/remove admins
+  | "admin"             // Maps to Stage 2
+  | "moderator"         // Maps to Stage 4
+  | "compliance_officer"// Maps to Stage 4
+  | "support_admin";    // Maps to Stage 4
+
+export interface AdminStageInfo {
+  stage: 1 | 2 | 3 | 4;
+  stageName: string;
+  stageNameTelugu: string;
+  badgeColor: string;
+  canManageAdmins: boolean;       // Add or remove administrators
+  canViewAllRevenue: boolean;     // View financial dashboards and executive revenue
+  canViewAllCandidates: boolean;  // View all candidates across portal
+  canAccessGrievanceCell: boolean;// Access grievance cell redressal (All 4 stages can view grievance cell)
+}
+
+export function getAdminStageInfo(role?: string, explicitStage?: number): AdminStageInfo {
+  if (explicitStage === 1 || role === "super_admin") {
+    return {
+      stage: 1,
+      stageName: "Stage 1: Super Admin",
+      stageNameTelugu: "సర్వోన్నత నిర్వాహకుడు",
+      badgeColor: "bg-purple-100 text-purple-900 border-purple-300",
+      canManageAdmins: true,
+      canViewAllRevenue: true,
+      canViewAllCandidates: true,
+      canAccessGrievanceCell: true,
+    };
+  }
+  if (explicitStage === 2 || role === "revenue_admin" || role === "admin") {
+    return {
+      stage: 2,
+      stageName: "Stage 2: Revenue & Operations Admin",
+      stageNameTelugu: "రెవెన్యూ & కార్యనిర్వాహక అడ్మిన్",
+      badgeColor: "bg-emerald-100 text-emerald-900 border-emerald-300",
+      canManageAdmins: false,
+      canViewAllRevenue: true,
+      canViewAllCandidates: true,
+      canAccessGrievanceCell: true,
+    };
+  }
+  if (explicitStage === 3 || role === "candidate_admin") {
+    return {
+      stage: 3,
+      stageName: "Stage 3: Candidate Coordinator Admin",
+      stageNameTelugu: "అభ్యర్థుల రిజిస్ట్రేషన్ కోఆర్డినేటర్",
+      badgeColor: "bg-blue-100 text-blue-900 border-blue-300",
+      canManageAdmins: false,
+      canViewAllRevenue: false,
+      canViewAllCandidates: false, // Only his registered candidates!
+      canAccessGrievanceCell: true,
+    };
+  }
+  return {
+    stage: 4,
+    stageName: "Stage 4: Grievance Officer & Support",
+    stageNameTelugu: "సమస్యల పరిష్కార అధికారి",
+    badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+    canManageAdmins: false,
+    canViewAllRevenue: false,
+    canViewAllCandidates: false,
+    canAccessGrievanceCell: true,
+  };
+}
+
 export interface AdminUser {
   id: string;
   name: string;
   mobile: string;
   password?: string;
   email?: string;
-  role: "super_admin" | "admin" | "moderator" | "compliance_officer" | "support_admin";
+  role: AdminRole;
+  stage?: 1 | 2 | 3 | 4;
   designation?: string;
   createdAt: string;
   addedBy?: string;

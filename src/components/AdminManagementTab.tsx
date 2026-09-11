@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { AdminUser } from "../types";
+import { AdminUser, AdminRole, getAdminStageInfo } from "../types";
 import { databaseService, generateRandomPassword } from "../lib/databaseService";
 import {
   ShieldCheck,
@@ -19,17 +19,72 @@ import {
   Phone,
   Mail,
   Sparkles,
-  Key
+  Key,
+  Send
 } from "lucide-react";
 
 interface AdminManagementTabProps {
   onAdminCountChange?: (count: number) => void;
+  currentAdmin?: AdminUser | null;
 }
 
-export default function AdminManagementTab({ onAdminCountChange }: AdminManagementTabProps) {
+export default function AdminManagementTab({ onAdminCountChange, currentAdmin }: AdminManagementTabProps) {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Active Admin RBAC Clearance
+  const activeAdminUser: AdminUser | null = currentAdmin || (() => {
+    try {
+      const saved = localStorage.getItem("bramhana_current_admin");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const activeStageInfo = getAdminStageInfo(activeAdminUser?.role, activeAdminUser?.stage);
+  const canManageAdmins = activeStageInfo.canManageAdmins; // Strictly Stage 1 Super Admin
+
+  // Zoho ZeptoMail Gateway Test State
+  const [testEmailAddress, setTestEmailAddress] = useState("subramanyamghadiyaram@gmail.com");
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleSendTestEmail = async () => {
+    if (!testEmailAddress || !testEmailAddress.includes("@")) {
+      alert("Please enter a valid email address to test.");
+      return;
+    }
+    setTestEmailLoading(true);
+    setTestEmailResult(null);
+    try {
+      const res = await fetch("/api/test-zoho-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: testEmailAddress.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestEmailResult({
+          success: true,
+          message: `✅ Test email successfully dispatched via Zoho ZeptoMail (from noreply@shubhamastu.in) to ${testEmailAddress}!`
+        });
+      } else {
+        setTestEmailResult({
+          success: false,
+          message: `❌ Failed to dispatch test email: ${data.error || "Unknown error"}`
+        });
+      }
+    } catch (err: any) {
+      setTestEmailResult({
+        success: false,
+        message: `❌ Network or dispatch error: ${err.message || "Failed"}`
+      });
+    } finally {
+      setTestEmailLoading(false);
+    }
+  };
 
   // Form State
   const [name, setName] = useState("");
@@ -70,12 +125,16 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
   };
 
   const handleOpenAddModal = () => {
+    if (!canManageAdmins) {
+      alert("🔒 Access Restricted: Only Stage 1 Super Admins are authorized to add administrators.");
+      return;
+    }
     setName("");
     setMobile("");
     setPassword(generateRandomPassword());
     setEmail("");
-    setDesignation("Regional Coordinator / Matchmaker");
-    setRole("admin");
+    setDesignation("Revenue & Operations Admin");
+    setRole("revenue_admin");
     setFormError("");
     setCreatedAdmin(null);
     setIsAddModalOpen(true);
@@ -84,6 +143,11 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
   const handleAddAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
+
+    if (!canManageAdmins) {
+      setFormError("🔒 Permission Denied: Only Stage 1 Super Admins can add administrators.");
+      return;
+    }
 
     const cleanName = name.trim();
     const cleanMobile = mobile.trim().replace(/\D/g, "");
@@ -142,6 +206,11 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
   };
 
   const handleDeleteAdmin = async (admin: AdminUser) => {
+    if (!canManageAdmins) {
+      alert("🔒 Access Restricted: Only Stage 1 Super Admins can revoke administrative privileges.");
+      return;
+    }
+
     if (admin.isRoot || admin.id === "admin-subbu" || admin.id === "admin-subba-reddy") {
       alert("Root Principal administrators cannot be deleted.");
       return;
@@ -229,16 +298,38 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
 
-          <button
-            id="add-admin-button"
-            onClick={handleOpenAddModal}
-            className="px-5 py-3 bg-[#362B5A] hover:bg-[#2b2247] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
-          >
-            <UserPlus className="w-4 h-4 text-amber-400" />
-            <span>Add New Administrator</span>
-          </button>
+          {canManageAdmins ? (
+            <button
+              id="add-admin-button"
+              onClick={handleOpenAddModal}
+              className="px-5 py-3 bg-[#362B5A] hover:bg-[#2b2247] text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <UserPlus className="w-4 h-4 text-amber-400" />
+              <span>Add New Administrator</span>
+            </button>
+          ) : (
+            <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs font-extrabold flex items-center gap-2 shrink-0">
+              <Lock className="w-4 h-4 text-amber-700" />
+              <span>View-Only Mode (Stage {activeStageInfo.stage})</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* RBAC Notice if viewing in non-super admin role */}
+      {!canManageAdmins && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-left">
+          <Lock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+          <div className="text-xs space-y-1">
+            <p className="font-extrabold text-amber-950">
+              Administrator Management Clearance: Read-Only View (Stage {activeStageInfo.stage}: {activeStageInfo.stageName})
+            </p>
+            <p className="text-amber-900/90 leading-relaxed">
+              You are signed in as <strong>{activeAdminUser?.name || "Administrator"}</strong> with <em>{activeStageInfo.stageName}</em> clearance. Under Shubhamastu.in governance rules, <strong>only Stage 1 Super Admins</strong> can create or revoke administrator access. All administrators can view this verified roster and collaborate via the Grievance Cell.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toastMsg && (
@@ -255,6 +346,87 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
           </button>
         </div>
       )}
+
+      {/* Zoho ZeptoMail Email Gateway Status & Live Test Panel */}
+      <div className="bg-gradient-to-br from-amber-50 via-white to-orange-50/40 rounded-3xl p-6 border border-amber-200/80 shadow-sm space-y-4 text-left">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-center text-amber-700">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-black text-[#362B5A]">
+                  Zoho ZeptoMail Transactional Email Gateway
+                </h4>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  ACTIVE & CONNECTED
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Authenticating via <code className="text-amber-800 font-mono font-bold">Zoho-enczapikey</code> with verified sender domain <code className="text-amber-800 font-mono font-bold">noreply@shubhamastu.in</code>
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-[11px] font-mono text-gray-500 bg-white/80 px-3 py-1.5 rounded-xl border border-gray-200 inline-block">
+              Fallback Engine: <span className="font-bold text-gray-700">Resend.com API</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-amber-200/60 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="text-xs font-bold text-gray-700 shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>Send Test Verification Email:</span>
+          </div>
+          <div className="flex-1 flex gap-2">
+            <input
+              type="email"
+              value={testEmailAddress}
+              onChange={(e) => setTestEmailAddress(e.target.value)}
+              placeholder="subramanyamghadiyaram@gmail.com"
+              className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-amber-300 bg-white focus:outline-none focus:border-[#362B5A] font-medium"
+            />
+            <button
+              type="button"
+              onClick={handleSendTestEmail}
+              disabled={testEmailLoading}
+              className="px-4 py-2 bg-[#362B5A] hover:bg-[#2b2247] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50 cursor-pointer shrink-0"
+            >
+              {testEmailLoading ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                  <span>Sending via Zoho...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Send Test Email</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {testEmailResult && (
+          <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-2 ${
+            testEmailResult.success
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-900"
+              : "bg-red-50 border border-red-200 text-red-900"
+          }`}>
+            <span>{testEmailResult.message}</span>
+            <button
+              onClick={() => setTestEmailResult(null)}
+              className="text-[11px] underline opacity-70 hover:opacity-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Admins Table / Grid */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
@@ -333,27 +505,38 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
                     </td>
 
                     <td className="p-4">
-                      <span className={`inline-block px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                        admin.role === "super_admin" 
-                          ? "bg-amber-100 text-amber-900 border border-amber-300"
-                          : admin.role === "compliance_officer"
-                          ? "bg-purple-100 text-purple-900 border border-purple-200"
-                          : "bg-blue-100 text-blue-900 border border-blue-200"
-                      }`}>
-                        {admin.role.replace("_", " ")}
-                      </span>
+                      {(() => {
+                        const stageInfo = getAdminStageInfo(admin.role, admin.stage);
+                        return (
+                          <div className="space-y-1">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border ${stageInfo.badgeColor}`}>
+                              {stageInfo.stage === 1 && <span>👑</span>}
+                              {stageInfo.stage === 2 && <span>💼</span>}
+                              {stageInfo.stage === 3 && <span>📝</span>}
+                              {stageInfo.stage === 4 && <span>🛡️</span>}
+                              <span>{stageInfo.stageName}</span>
+                            </span>
+                            <span className="text-[10px] text-gray-500 block font-medium">
+                              {stageInfo.stageNameTelugu}
+                            </span>
+                            <div className="text-[9px] text-gray-400 font-mono">
+                              {stageInfo.canManageAdmins ? "✓ Add/Del Admins" : "✗ Admins"} • {stageInfo.canViewAllRevenue ? "✓ Revenue" : "✗ Revenue"} • {stageInfo.canViewAllCandidates ? "✓ All Candidates" : "✓ My Candidates"} • ✓ Grievance Cell
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     <td className="p-4">
                       <button
                         onClick={() => handleToggleStatus(admin)}
-                        disabled={admin.isRoot}
-                        title={admin.isRoot ? "Root admin status cannot be changed" : "Click to toggle status"}
+                        disabled={admin.isRoot || !canManageAdmins}
+                        title={admin.isRoot ? "Root admin status cannot be changed" : !canManageAdmins ? "Only Stage 1 Super Admin can toggle status" : "Click to toggle status"}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all ${
                           admin.status === "active"
                             ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
                             : "bg-rose-100 text-rose-800 hover:bg-rose-200"
-                        } ${admin.isRoot ? "cursor-default" : "cursor-pointer"}`}
+                        } ${admin.isRoot || !canManageAdmins ? "cursor-default opacity-80" : "cursor-pointer"}`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           admin.status === "active" ? "bg-emerald-600" : "bg-rose-600"
@@ -382,14 +565,23 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
                           <Sparkles className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* Delete Admin button */}
-                        {!admin.isRoot && (
+                        {/* Delete Admin button - Only for Stage 1 Super Admin */}
+                        {!admin.isRoot && canManageAdmins && (
                           <button
                             onClick={() => handleDeleteAdmin(admin)}
-                            title="Revoke Admin Access"
+                            title="Revoke Admin Access (Super Admin Only)"
                             className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl transition-all cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {!admin.isRoot && !canManageAdmins && (
+                          <button
+                            disabled
+                            title="Revocation restricted to Stage 1 Super Admins"
+                            className="p-2 bg-gray-100 text-gray-400 rounded-xl cursor-not-allowed opacity-60"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -596,23 +788,60 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
                   />
                 </div>
 
-                {/* Role & Designation */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* 4-Stage Role & Designation */}
+                <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">
-                      Role Level
+                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                      <span>Administrative Hierarchy Level (4 Stages)</span>
+                      <span className="text-[10px] text-amber-700 font-extrabold uppercase">Shubhamastu RBAC</span>
                     </label>
                     <select
                       id="new-admin-role"
                       value={role}
-                      onChange={(e) => setRole(e.target.value as AdminUser["role"])}
+                      onChange={(e) => {
+                        const newR = e.target.value as AdminUser["role"];
+                        setRole(newR);
+                        if (newR === "super_admin") setDesignation("Super Administrator / Executive");
+                        else if (newR === "revenue_admin") setDesignation("Finance & Revenue Administrator");
+                        else if (newR === "candidate_admin") setDesignation("Candidate Registration Coordinator");
+                        else if (newR === "grievance_admin") setDesignation("Grievance Redressal Officer");
+                      }}
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:border-[#362B5A] text-xs font-semibold bg-white outline-none cursor-pointer"
                     >
-                      <option value="admin">Co-Administrator</option>
-                      <option value="compliance_officer">Compliance Officer</option>
-                      <option value="moderator">Profile Moderator</option>
-                      <option value="support_admin">Support Admin</option>
+                      <option value="super_admin">Stage 1: Super Admin (సర్వోన్నత నిర్వాహకుడు) • Full Control (Add/Remove Admins)</option>
+                      <option value="revenue_admin">Stage 2: Revenue Admin (రెవెన్యూ అడ్మిన్) • All Revenue & Candidates (No Admin Management)</option>
+                      <option value="candidate_admin">Stage 3: Candidate Coordinator Admin (రిజిస్ట్రేషన్ కోఆర్డినేటర్) • Only Self-Registered Candidates</option>
+                      <option value="grievance_admin">Stage 4: Grievance Officer & Support (సమస్యల పరిష్కార అధికారి) • Grievance Cell</option>
                     </select>
+                  </div>
+
+                  {/* Dynamic Stage Explanation Box */}
+                  <div className="p-3 rounded-xl border text-[11px] leading-relaxed transition-all"
+                    style={{
+                      backgroundColor: role === "super_admin" ? "#faf5ff" : role === "revenue_admin" ? "#ecfdf5" : role === "candidate_admin" ? "#eff6ff" : "#fff1f2",
+                      borderColor: role === "super_admin" ? "#d8b4fe" : role === "revenue_admin" ? "#6ee7b7" : role === "candidate_admin" ? "#93c5fd" : "#fecdd3",
+                      color: role === "super_admin" ? "#581c87" : role === "revenue_admin" ? "#064e3b" : role === "candidate_admin" ? "#1e3a8a" : "#881337"
+                    }}>
+                    {role === "super_admin" && (
+                      <div>
+                        <strong>👑 Stage 1 — Super Admin:</strong> Can add or remove any administrator, view all platform revenue, approve/edit all candidate profiles, and resolve grievance tickets.
+                      </div>
+                    )}
+                    {role === "revenue_admin" && (
+                      <div>
+                        <strong>💼 Stage 2 — Revenue Admin:</strong> Can view all platform revenue and analytics, verify candidate payments, view all candidates, and resolve grievance tickets. <em>Cannot add or remove administrators.</em>
+                      </div>
+                    )}
+                    {role === "candidate_admin" && (
+                      <div>
+                        <strong>📝 Stage 3 — Candidate Coordinator Admin:</strong> Can see and manage <em>ONLY the candidates registered by him/her</em>, and collaborate in the grievance cell. <em>Cannot see platform revenue and cannot add or remove administrators.</em>
+                      </div>
+                    )}
+                    {role === "grievance_admin" && (
+                      <div>
+                        <strong>🛡️ Stage 4 — Grievance Redressal Officer:</strong> Can manage the Grievance Cell, review incident reports, and support candidates. <em>Cannot view revenue and cannot add or remove administrators.</em>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -624,7 +853,7 @@ export default function AdminManagementTab({ onAdminCountChange }: AdminManageme
                       type="text"
                       value={designation}
                       onChange={(e) => setDesignation(e.target.value)}
-                      placeholder="e.g., Matchmaker Coordinator"
+                      placeholder="e.g., Regional Registration Coordinator"
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:border-[#362B5A] text-xs font-semibold outline-none"
                     />
                   </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser } from "../types";
+import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, AdminRole } from "../types";
 import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
 import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
@@ -9,7 +9,7 @@ import { getGenderLabel } from "../lib/genderHelper";
 import SearchableSelect from "./SearchableSelect";
 import { BRAHMIN_SUB_CASTES, BRAHMIN_GOTRAMS } from "../lib/brahminMetadata";
 import ExecutiveAnalyticsDashboard from "./ExecutiveAnalyticsDashboard";
-import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle } from "lucide-react";
+import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle, Lock } from "lucide-react";
 import {
   ShieldCheck,
   Search,
@@ -71,6 +71,44 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   // Tabs
   const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals">("registrations");
   const [adminCount, setAdminCount] = useState<number>(2);
+
+  // Active Admin RBAC Clearance (4 Stages)
+  const currentAdmin: AdminUser | null = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("bramhana_current_admin");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    const loggedInId = localStorage.getItem("bramhana_logged_in_user_id");
+    if (loggedInId === "prof-subbu" || loggedInId === "admin-subbu") {
+      return {
+        id: "admin-subbu",
+        name: "Sri G.V. Subramanyam",
+        mobile: "9347359489",
+        role: "super_admin",
+        stage: 1,
+        isRoot: true,
+        designation: "Proprietor & Chief Patron"
+      };
+    }
+    if (loggedInId === "prof-subba-reddy" || loggedInId === "admin-subba-reddy") {
+      return {
+        id: "admin-subba-reddy",
+        name: "Sri P.V. Subba Reddy",
+        mobile: "9494949494",
+        role: "super_admin",
+        stage: 1,
+        isRoot: true,
+        designation: "Managing Trustee & Executive Co-Admin"
+      };
+    }
+    return null;
+  }, []);
+
+  const stageInfo = useMemo(() => {
+    return getAdminStageInfo(currentAdmin?.role, currentAdmin?.stage);
+  }, [currentAdmin]);
   const [marriageRecords, setMarriageRecords] = useState<MarriageRecord[]>([]);
   const [marriagesLoading, setMarriagesLoading] = useState(false);
   const [isRecordMarriageModalOpen, setIsRecordMarriageModalOpen] = useState(false);
@@ -1758,6 +1796,7 @@ Ph: ${adminPhone}`;
         partner_lpa_pref: newProfile.partner_lpa_pref,
         partner_shift_pref: newProfile.partner_shift_pref,
         registered_by: registeredBy,
+        registered_by_admin_id: currentAdmin?.id || (adminId ? String(adminId) : "admin"),
         registered_at_time: new Date().toLocaleString("en-US", { hour: "numeric", minute: "2-digit", day: "2-digit", month: "short", year: "numeric", hour12: true }),
         nakshatram: calculatedAstrology.nakshatra,
         astrology: calculatedAstrology,
@@ -1858,8 +1897,31 @@ Ph: ${adminPhone}`;
     }
   };
 
-  // Filter profiles for Registrations tab
-  const filteredProfiles = profiles.filter((p) => {
+  // Candidate Access Control per 4-Stage RBAC:
+  // Stage 1 (Super Admin) & Stage 2 (Revenue Admin): Full visibility of all registered profiles
+  // Stage 3 (Candidate Coordinator Admin): Can ONLY see profiles registered by this admin
+  // Stage 4 (Grievance Admin): Restricted visibility
+  const accessibleProfiles = useMemo(() => {
+    if (stageInfo.canViewAllCandidates) return profiles;
+    
+    const adminId = (currentAdmin?.id || "").toLowerCase().trim();
+    const adminMobile = currentAdmin?.mobile ? currentAdmin.mobile.replace(/\D/g, "").slice(-10) : "";
+    const adminName = (currentAdmin?.name || "").toLowerCase().trim();
+    
+    return profiles.filter((p) => {
+      const regAdminId = (p.registered_by_admin_id || "").toLowerCase().trim();
+      const regBy = (p.registered_by || "").toLowerCase().trim();
+      
+      const matchesId = adminId && regAdminId === adminId;
+      const matchesMobile = adminMobile && (regAdminId.includes(adminMobile) || (p.contact_number && p.contact_number.includes(adminMobile)));
+      const matchesName = adminName && regBy.includes(adminName);
+      
+      return Boolean(matchesId || matchesMobile || matchesName);
+    });
+  }, [profiles, stageInfo.canViewAllCandidates, currentAdmin]);
+
+  // Filter profiles for Registrations tab (applied to accessibleProfiles)
+  const filteredProfiles = accessibleProfiles.filter((p) => {
     const query = searchQuery.trim().toLowerCase();
     const matchesSearch = !query ||
                           p.name.toLowerCase().includes(query) ||
@@ -1881,10 +1943,6 @@ Ph: ${adminPhone}`;
     const matchesGender = genderFilter === "All" || p.gender === genderFilter;
 
     // Agent Calling Segments:
-    // "no_100_fee" -> ₹100 Registration Fee NOT Paid
-    // "paid_100_no_matches" -> ₹100 Paid, but No Matches Found Yet
-    // "has_matches_no_900" -> Matches Found, but NOT Paid ₹900 Premium
-    // "paid_900" -> ₹900 Premium Fully Paid
     let matchesCallingSegment = true;
     if (callingSegmentFilter === "no_100_fee") {
       matchesCallingSegment = p.subscription_status === "free" || !p.subscription_status;
@@ -1899,12 +1957,12 @@ Ph: ${adminPhone}`;
     return matchesSearch && matchesStatus && matchesGender && matchesCallingSegment;
   });
 
-  // Calculations for Stats
-  const totalProfiles = profiles.length;
-  const activeProfilesCount = profiles.filter((p) => p.status === "Verified" || p.status === "Active").length;
-  const premiumCount = profiles.filter((p) => p.status === "Premium").length;
-  const marriedCount = profiles.filter((p) => p.status === "Married").length;
-  const pendingCount = profiles.filter((p) => p.status === "Pending").length;
+  // Calculations for Stats (Scoped to accessible profiles)
+  const totalProfiles = accessibleProfiles.length;
+  const activeProfilesCount = accessibleProfiles.filter((p) => p.status === "Verified" || p.status === "Active").length;
+  const premiumCount = accessibleProfiles.filter((p) => p.status === "Premium").length;
+  const marriedCount = accessibleProfiles.filter((p) => p.status === "Married").length;
+  const pendingCount = accessibleProfiles.filter((p) => p.status === "Pending").length;
 
   const calculateAge = (dobString: string): number => {
     if (!dobString) return 28;
@@ -2461,19 +2519,36 @@ Ph: ${adminPhone}`;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
-      {/* Dashboard Banner */}
+      {/* Dashboard Banner with 4-Stage Hierarchy Clearance */}
       <div className="bg-[#362B5A] text-white p-8 rounded-3xl shadow-xl border border-orange-500/10 relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div className="absolute top-0 right-0 transform translate-x-12 -translate-y-12 opacity-10">
           <ShieldCheck className="w-64 h-64 text-orange-400" />
         </div>
         <div className="relative z-10 space-y-2">
-          <div className="flex items-center gap-1.5 bg-[#C2242C]/20 border border-red-500/20 text-orange-300 w-fit px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase">
-            <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
-            <span>Spiritual Ingress Gatekeeper</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-[#C2242C]/20 border border-red-500/20 text-orange-300 w-fit px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase">
+              <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
+              <span>Spiritual Ingress Gatekeeper</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/30 text-amber-200 px-3 py-1 rounded-full text-xs font-bold">
+              <span>{stageInfo.stageBadge}</span>
+              <span>Stage {stageInfo.stage}: {stageInfo.stageName}</span>
+            </div>
+            {currentAdmin && (
+              <span className="text-xs font-medium text-amber-100/90 bg-white/10 px-2.5 py-1 rounded-full border border-white/15">
+                👤 {currentAdmin.name} ({currentAdmin.mobile})
+              </span>
+            )}
           </div>
           <h2 className="text-3xl font-bold tracking-tight">Admin Sanctuary Dashboard</h2>
           <p className="text-blue-100 max-w-xl leading-relaxed text-sm">
-            Review applicant profiles, authenticate sacred astrological credentials, run the match engine, and manage membership or subscription status securely.
+            {stageInfo.stage === 1
+              ? "Full Supreme Authority: Candidate management, administrative controls, financial auditing, and grievance resolution."
+              : stageInfo.stage === 2
+                ? "Revenue & Financial Administration: Comprehensive revenue reporting, candidate verification, and grievance resolution."
+                : stageInfo.stage === 3
+                  ? "Candidate Coordinator Authority: Manage candidates registered by you, astrological credentials, and grievance collaboration."
+                  : "Grievance Officer: Community redressal, member investigations, and safety compliance."}
           </p>
         </div>
 
@@ -2484,6 +2559,9 @@ Ph: ${adminPhone}`;
             <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
             <span>Database Live & Synced</span>
           </p>
+          <span className="text-[10px] text-amber-200/80 font-mono mt-1 block">
+            Stage {stageInfo.stage} • {stageInfo.canManageAdmins ? "Admin Controller" : "Protected Scope"}
+          </span>
         </div>
       </div>
 
@@ -2501,19 +2579,29 @@ Ph: ${adminPhone}`;
               activeAdminTab === "registrations" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
-            <span>👥 Registrations ({totalProfiles})</span>
+            <span>👥 {stageInfo.stage === 3 ? "My Candidates" : "Registrations"} ({totalProfiles})</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveAdminTab("registrations");
-              window.scrollTo({ top: 350, behavior: "smooth" });
-            }}
-            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 shadow-xs"
-          >
-            <span>📊 Revenue: ₹{revenueStats.total.total.toLocaleString()}</span>
-          </button>
+          {stageInfo.canViewAllRevenue ? (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveAdminTab("registrations");
+                window.scrollTo({ top: 350, behavior: "smooth" });
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 shadow-xs"
+            >
+              <span>📊 Revenue: ₹{revenueStats.total.total.toLocaleString()}</span>
+            </button>
+          ) : (
+            <div
+              className="px-3 py-2 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 flex items-center gap-1.5"
+              title="Revenue metrics restricted to Stage 1 & Stage 2 Admins"
+            >
+              <Lock className="w-3.5 h-3.5 text-gray-400" />
+              <span>Revenue: Restricted (Stage {stageInfo.stage})</span>
+            </div>
+          )}
 
           <button
             type="button"
@@ -2675,8 +2763,10 @@ Ph: ${adminPhone}`;
         </div>
       </div>
 
-      {/* Executive Visual Analytics Suite (Waves, Area Graphs, Donut & Pie Charts, Hourly Heat Waves) */}
-      <ExecutiveAnalyticsDashboard profiles={profiles} revenueStats={revenueStats} />
+      {/* Executive Visual Analytics Suite (Waves, Area Graphs, Donut & Pie Charts, Hourly Heat Waves) - Stage 1 & 2 Admins */}
+      {stageInfo.canViewAllRevenue && (
+        <ExecutiveAnalyticsDashboard profiles={accessibleProfiles} revenueStats={revenueStats} />
+      )}
 
       {/* Advanced Bento Statistics Panel */}
       <div className="space-y-6">
@@ -2983,223 +3073,259 @@ Ph: ${adminPhone}`;
         </div>
       </div>
 
-      {/* SECTION: ADMIN REVENUE & TRUST AUDIT LEDGER */}
-      <div className="bg-gradient-to-br from-[#FCFCFA] via-white to-[#FDF9F7] rounded-3xl p-6 sm:p-8 border-2 border-amber-100 shadow-lg space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-amber-100 pb-4 gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-[10px] text-amber-800 font-extrabold tracking-widest uppercase block">
-                Financial Accounts & Verification Audit
-              </span>
-            </div>
-            <h3 className="text-xl font-black text-[#362B5A]">
-              Revenue Ledger (ఆదాయం & ఆడిట్ రికార్డు)
-            </h3>
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              Dynamically aggregated from Brahmin candidate payments. Verified by 
-              Lead Admins <strong className="text-amber-800 font-bold">GV Subramanyam</strong> and <strong className="text-[#362B5A] font-bold">PV Subba Reddy</strong>.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-200">
-            <div className="p-1.5 bg-[#C2242C]/10 text-[#C2242C] rounded-lg">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <div>
-              <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-wider block">Auditing Engine</span>
-              <span className="text-xs font-black text-amber-800">Veda Ledger 2.1</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Financial Bento Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Main Card: Total Accumulation */}
-          <div className="bg-gradient-to-br from-[#362B5A] to-[#1D1737] text-white p-6 rounded-2xl border border-purple-500/15 shadow-md flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] uppercase font-black tracking-widest text-orange-300">
-                  Total Collected Revenue
-                </span>
-                <span className="bg-[#C2242C]/40 border border-red-500/20 text-white text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase">
-                  Audited
+      {/* SECTION: ADMIN REVENUE & TRUST AUDIT LEDGER - Restricted to Stage 1 & Stage 2 Admins */}
+      {stageInfo.canViewAllRevenue ? (
+        <div className="bg-gradient-to-br from-[#FCFCFA] via-white to-[#FDF9F7] rounded-3xl p-6 sm:p-8 border-2 border-amber-100 shadow-lg space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-amber-100 pb-4 gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-[10px] text-amber-800 font-extrabold tracking-widest uppercase block">
+                  Financial Accounts & Verification Audit
                 </span>
               </div>
-              <div className="space-y-1">
-                <p className="text-4xl font-black font-sans text-amber-400 leading-none">
-                  ₹{(revenueStats.total.total).toLocaleString("en-IN")}
-                </p>
-                <p className="text-[10px] text-zinc-300 font-medium">
-                  Sum of Registration and Premium upgrades
-                </p>
-              </div>
+              <h3 className="text-xl font-black text-[#362B5A]">
+                Revenue Ledger (ఆదాయం & ఆడిట్ రికార్డు)
+              </h3>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Dynamically aggregated from Brahmin candidate payments. Verified by 
+                Lead Admins <strong className="text-amber-800 font-bold">GV Subramanyam</strong> and <strong className="text-[#362B5A] font-bold">PV Subba Reddy</strong>.
+              </p>
             </div>
-
-            <div className="border-t border-white/10 pt-4 mt-6 grid grid-cols-2 gap-4 text-xs font-mono">
-              <div>
-                <span className="text-[9px] text-zinc-400 block font-bold uppercase">Reg Fees (₹100)</span>
-                <span className="text-sm font-black text-white">₹{revenueStats.total.reg.toLocaleString("en-IN")}</span>
+            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-200">
+              <div className="p-1.5 bg-[#C2242C]/10 text-[#C2242C] rounded-lg">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
               </div>
               <div>
-                <span className="text-[9px] text-zinc-400 block font-bold uppercase">Prem Upgrades (₹900)</span>
-                <span className="text-sm font-black text-[#25D366]">₹{revenueStats.total.prem.toLocaleString("en-IN")}</span>
+                <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-wider block">Auditing Engine</span>
+                <span className="text-xs font-black text-amber-800">Veda Ledger 2.1</span>
               </div>
             </div>
           </div>
 
-          {/* Admin 1: GV Subramanyam */}
-          <div className="bg-white rounded-2xl p-6 border-2 border-amber-100 shadow-sm flex flex-col justify-between hover:border-amber-300 transition-all">
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-300/30 text-amber-800 text-[9px] px-2 py-0.5 rounded-md font-extrabold uppercase">
-                    👑 Founder
+          {/* Financial Bento Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Main Card: Total Accumulation */}
+            <div className="bg-gradient-to-br from-[#362B5A] to-[#1D1737] text-white p-6 rounded-2xl border border-purple-500/15 shadow-md flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-orange-300">
+                    Total Collected Revenue
                   </span>
-                  <h4 className="text-base font-black text-[#362B5A] mt-1.5">GV Subramanyam</h4>
+                  <span className="bg-[#C2242C]/40 border border-red-500/20 text-white text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase">
+                    Audited
+                  </span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100 text-amber-700 font-black text-sm">
-                  GVS
+                <div className="space-y-1">
+                  <p className="text-4xl font-black font-sans text-amber-400 leading-none">
+                    ₹{(revenueStats.total.total).toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[10px] text-zinc-300 font-medium">
+                    Sum of Registration and Premium upgrades
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 pt-3">
+              <div className="border-t border-white/10 pt-4 mt-6 grid grid-cols-2 gap-4 text-xs font-mono">
                 <div>
-                  <span className="text-[9px] text-zinc-500 block font-bold uppercase">REG (₹100) Collected</span>
-                  <span className="text-sm font-black text-zinc-800">₹{revenueStats.subramanyam.reg.toLocaleString("en-IN")}</span>
+                  <span className="text-[9px] text-zinc-400 block font-bold uppercase">Reg Fees (₹100)</span>
+                  <span className="text-sm font-black text-white">₹{revenueStats.total.reg.toLocaleString("en-IN")}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-zinc-500 block font-bold uppercase">PREM (₹900) Collected</span>
-                  <span className="text-sm font-black text-amber-700">₹{revenueStats.subramanyam.prem.toLocaleString("en-IN")}</span>
+                  <span className="text-[9px] text-zinc-400 block font-bold uppercase">Prem Upgrades (₹900)</span>
+                  <span className="text-sm font-black text-[#25D366]">₹{revenueStats.total.prem.toLocaleString("en-IN")}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-amber-500/5 p-3 rounded-xl border border-amber-100/50 mt-4">
-              <div className="flex justify-between text-xs">
-                <span className="font-bold text-zinc-500 uppercase">Sub-Total Revenue:</span>
-                <span className="font-black text-amber-800 font-mono">₹{revenueStats.subramanyam.total.toLocaleString("en-IN")}</span>
+            {/* Admin 1: GV Subramanyam */}
+            <div className="bg-white rounded-2xl p-6 border-2 border-amber-100 shadow-sm flex flex-col justify-between hover:border-amber-300 transition-all">
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-300/30 text-amber-800 text-[9px] px-2 py-0.5 rounded-md font-extrabold uppercase">
+                      👑 Founder
+                    </span>
+                    <h4 className="text-base font-black text-[#362B5A] mt-1.5">GV Subramanyam</h4>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100 text-amber-700 font-black text-sm">
+                    GVS
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 pt-3">
+                  <div>
+                    <span className="text-[9px] text-zinc-500 block font-bold uppercase">REG (₹100) Collected</span>
+                    <span className="text-sm font-black text-zinc-800">₹{revenueStats.subramanyam.reg.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-zinc-500 block font-bold uppercase">PREM (₹900) Collected</span>
+                    <span className="text-sm font-black text-amber-700">₹{revenueStats.subramanyam.prem.toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
               </div>
-              <span className="text-[8.5px] text-zinc-400 block mt-1 font-semibold italic text-center">
-                * All transactions approved & registered by GV Subramanyam
+
+              <div className="bg-amber-500/5 p-3 rounded-xl border border-amber-100/50 mt-4">
+                <div className="flex justify-between text-xs">
+                  <span className="font-bold text-zinc-500 uppercase">Sub-Total Revenue:</span>
+                  <span className="font-black text-amber-800 font-mono">₹{revenueStats.subramanyam.total.toLocaleString("en-IN")}</span>
+                </div>
+                <span className="text-[8.5px] text-zinc-400 block mt-1 font-semibold italic text-center">
+                  * All transactions approved & registered by GV Subramanyam
+                </span>
+              </div>
+            </div>
+
+            {/* Admin 2: PV Subba Reddy */}
+            <div className="bg-white rounded-2xl p-6 border-2 border-purple-100 shadow-sm flex flex-col justify-between hover:border-purple-300 transition-all">
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-300/30 text-purple-800 text-[9px] px-2 py-0.5 rounded-md font-extrabold uppercase">
+                      👑 Co-Founder
+                    </span>
+                    <h4 className="text-base font-black text-[#362B5A] mt-1.5">PV Subba Reddy</h4>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center border border-purple-100 text-purple-700 font-black text-sm">
+                    PVS
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 pt-3">
+                  <div>
+                    <span className="text-[9px] text-zinc-500 block font-bold uppercase">REG (₹100) Collected</span>
+                    <span className="text-sm font-black text-zinc-800">₹{revenueStats.subbaReddy.reg.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-zinc-500 block font-bold uppercase">PREM (₹900) Collected</span>
+                    <span className="text-sm font-black text-purple-700">₹{revenueStats.subbaReddy.prem.toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-purple-500/5 p-3 rounded-xl border border-purple-100/50 mt-4">
+                <div className="flex justify-between text-xs">
+                  <span className="font-bold text-zinc-500 uppercase">Sub-Total Revenue:</span>
+                  <span className="font-black text-[#362B5A] font-mono">₹{revenueStats.subbaReddy.total.toLocaleString("en-IN")}</span>
+                </div>
+                <span className="text-[8.5px] text-zinc-400 block mt-1 font-semibold italic text-center">
+                  * All transactions approved & registered by PV Subba Reddy
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Table of paid members and audit trails */}
+          <div className="bg-white/60 rounded-2xl border border-amber-100/60 overflow-hidden">
+            <div className="bg-amber-500/5 px-4 py-3 border-b border-amber-100/60 flex items-center justify-between">
+              <span className="text-[10px] font-extrabold text-[#362B5A] uppercase tracking-wider block">
+                Recent Verified Transactions & Auditor Trail
+              </span>
+              <span className="text-[9px] text-zinc-500 font-bold">
+                Showing active financial records
               </span>
             </div>
-          </div>
-
-          {/* Admin 2: PV Subba Reddy */}
-          <div className="bg-white rounded-2xl p-6 border-2 border-purple-100 shadow-sm flex flex-col justify-between hover:border-purple-300 transition-all">
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-300/30 text-purple-800 text-[9px] px-2 py-0.5 rounded-md font-extrabold uppercase">
-                    👑 Co-Founder
-                  </span>
-                  <h4 className="text-base font-black text-[#362B5A] mt-1.5">PV Subba Reddy</h4>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center border border-purple-100 text-purple-700 font-black text-sm">
-                  PVS
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 pt-3">
-                <div>
-                  <span className="text-[9px] text-zinc-500 block font-bold uppercase">REG (₹100) Collected</span>
-                  <span className="text-sm font-black text-zinc-800">₹{revenueStats.subbaReddy.reg.toLocaleString("en-IN")}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-zinc-500 block font-bold uppercase">PREM (₹900) Collected</span>
-                  <span className="text-sm font-black text-purple-700">₹{revenueStats.subbaReddy.prem.toLocaleString("en-IN")}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-purple-500/5 p-3 rounded-xl border border-purple-100/50 mt-4">
-              <div className="flex justify-between text-xs">
-                <span className="font-bold text-zinc-500 uppercase">Sub-Total Revenue:</span>
-                <span className="font-black text-[#362B5A] font-mono">₹{revenueStats.subbaReddy.total.toLocaleString("en-IN")}</span>
-              </div>
-              <span className="text-[8.5px] text-zinc-400 block mt-1 font-semibold italic text-center">
-                * All transactions approved & registered by PV Subba Reddy
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Table of paid members and audit trails */}
-        <div className="bg-white/60 rounded-2xl border border-amber-100/60 overflow-hidden">
-          <div className="bg-amber-500/5 px-4 py-3 border-b border-amber-100/60 flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-[#362B5A] uppercase tracking-wider block">
-              Recent Verified Transactions & Auditor Trail
-            </span>
-            <span className="text-[9px] text-zinc-500 font-bold">
-              Showing active financial records
-            </span>
-          </div>
-          <div className="overflow-x-auto text-[11px]">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-zinc-50/50 text-zinc-500 uppercase font-bold tracking-wider border-b border-zinc-100 text-[9px]">
-                  <th className="py-2.5 px-4">Candidate ID / Reg #</th>
-                  <th className="py-2.5 px-4">Candidate Name</th>
-                  <th className="py-2.5 px-4">Receipt Status</th>
-                  <th className="py-2.5 px-4">Paid Fees</th>
-                  <th className="py-2.5 px-4">Verified By Admin</th>
-                  <th className="py-2.5 px-4">Audited Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50 font-medium">
-                {profiles.filter(p => p.subscription_status === "paid_100" || p.subscription_status === "paid_900").slice(0, 5).map((p) => {
-                  const verifiedBy = p.fee_received_by || p.registered_by || "GV Subramanyam";
-                  const feesPaid = p.subscription_status === "paid_900" ? "₹1000 Total (₹100 Reg + ₹900 Prem)" : "₹100 (Reg Fee Only)";
-                  
-                  return (
-                    <tr key={p.id} className="hover:bg-zinc-50/30 transition-colors">
-                      <td className="py-2 px-4 font-mono font-bold text-[#362B5A]">
-                        {p.reg_number || `BVM-${p.id.slice(0, 4).toUpperCase()}`}
-                      </td>
-                      <td className="py-2 px-4">
-                        {p.surname ? `${p.surname} ` : ""}{p.name}
-                      </td>
-                      <td className="py-2 px-4">
-                        {p.subscription_status === "paid_900" ? (
-                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border border-emerald-100">
-                            👑 paid_900
+            <div className="overflow-x-auto text-[11px]">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-zinc-50/50 text-zinc-500 uppercase font-bold tracking-wider border-b border-zinc-100 text-[9px]">
+                    <th className="py-2.5 px-4">Candidate ID / Reg #</th>
+                    <th className="py-2.5 px-4">Candidate Name</th>
+                    <th className="py-2.5 px-4">Receipt Status</th>
+                    <th className="py-2.5 px-4">Paid Fees</th>
+                    <th className="py-2.5 px-4">Verified By Admin</th>
+                    <th className="py-2.5 px-4">Audited Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50 font-medium">
+                  {profiles.filter(p => p.subscription_status === "paid_100" || p.subscription_status === "paid_900").slice(0, 5).map((p) => {
+                    const verifiedBy = p.fee_received_by || p.registered_by || "GV Subramanyam";
+                    const feesPaid = p.subscription_status === "paid_900" ? "₹1000 Total (₹100 Reg + ₹900 Prem)" : "₹100 (Reg Fee Only)";
+                    
+                    return (
+                      <tr key={p.id} className="hover:bg-zinc-50/30 transition-colors">
+                        <td className="py-2 px-4 font-mono font-bold text-[#362B5A]">
+                          {p.reg_number || `BVM-${p.id.slice(0, 4).toUpperCase()}`}
+                        </td>
+                        <td className="py-2 px-4">
+                          {p.surname ? `${p.surname} ` : ""}{p.name}
+                        </td>
+                        <td className="py-2 px-4">
+                          {p.subscription_status === "paid_900" ? (
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border border-emerald-100">
+                              👑 paid_900
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border border-amber-100">
+                              💳 paid_100
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-4 font-black text-zinc-700">
+                          {feesPaid}
+                        </td>
+                        <td className="py-2 px-4">
+                          <span className={`px-2 py-0.5 rounded font-black uppercase text-[8.5px] ${
+                            verifiedBy.includes("Subramanyam") ? "bg-amber-100 text-amber-800" : "bg-purple-100 text-purple-800"
+                          }`}>
+                            {verifiedBy}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border border-amber-100">
-                            💳 paid_100
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-4 font-black text-zinc-700">
-                        {feesPaid}
-                      </td>
-                      <td className="py-2 px-4">
-                        <span className={`px-2 py-0.5 rounded font-black uppercase text-[8.5px] ${
-                          verifiedBy.includes("Subramanyam") ? "bg-amber-100 text-amber-800" : "bg-purple-100 text-purple-800"
-                        }`}>
-                          {verifiedBy}
-                        </span>
-                      </td>
-                      <td className="py-2 px-4 text-zinc-500 font-mono text-[10px]">
-                        {p.fee_received_at || p.registered_at_time || "Recent Transaction"}
+                        </td>
+                        <td className="py-2 px-4 text-zinc-500 font-mono text-[10px]">
+                          {p.fee_received_at || p.registered_at_time || "Recent Transaction"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {profiles.filter(p => p.subscription_status === "paid_100" || p.subscription_status === "paid_900").length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-zinc-400 font-bold">
+                        No verified transactions found. Set subscription levels to paid_100 or paid_900 to record.
                       </td>
                     </tr>
-                  );
-                })}
-                {profiles.filter(p => p.subscription_status === "paid_100" || p.subscription_status === "paid_900").length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-6 text-center text-zinc-400 font-bold">
-                      No verified transactions found. Set subscription levels to paid_100 or paid_900 to record.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Stage 3 & 4 Confidentiality Shield */
+        <div className="bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-blue-50/80 p-6 sm:p-8 rounded-3xl border border-indigo-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5 text-left">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#362B5A] text-amber-300 flex items-center justify-center font-bold shrink-0 shadow-md">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-indigo-100 text-indigo-900 font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Stage {stageInfo.stage} RBAC Clearance: {stageInfo.stageName}
+                </span>
+              </div>
+              <h4 className="text-base font-extrabold text-[#362B5A]">
+                {stageInfo.stage === 3 ? "Candidate Management Workspace" : "Dispute Redressal Workspace"}
+              </h4>
+              <p className="text-xs text-indigo-950/70 max-w-2xl leading-relaxed">
+                {stageInfo.stage === 3
+                  ? "Organizational financial ledgers, fee collections, and revenue totals are restricted to Stage 1 & Stage 2 Admins. You have complete operational authority to register new candidates, manage candidate profiles registered by you, and resolve cases in the Grievance Cell."
+                  : "Organizational financial metrics are restricted to Stage 1 & Stage 2 Admins. You have complete access to manage complaints and inquiries in the Grievance Cell."}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab("grievances")}
+              className="px-4 py-2.5 bg-[#362B5A] hover:bg-[#282043] text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <ShieldAlert className="w-4 h-4 text-amber-400" />
+              <span>Grievance Cell</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Tabs for Admin Portal */}
       <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap scrollbar-thin">
@@ -3212,7 +3338,7 @@ Ph: ${adminPhone}`;
           }`}
         >
           <UserCheck className="w-4 h-4" />
-          Registrations Manager
+          {stageInfo.stage === 3 ? `My Candidates (${accessibleProfiles.length})` : `Registrations Manager (${totalProfiles})`}
         </button>
         <button
           onClick={() => setActiveAdminTab("matchEngine")}
@@ -3257,7 +3383,7 @@ Ph: ${adminPhone}`;
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-amber-500" />
-          Admin Management ({adminCount})
+          Admin Management ({adminCount}) {stageInfo.stage > 1 && <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">View</span>}
         </button>
       </div>
 
@@ -7942,7 +8068,7 @@ Ph: ${adminPhone}`;
 
       {/* Tab CONTENT 5: Administrator Access & Management */}
       {activeAdminTab === "admins" && (
-        <AdminManagementTab onAdminCountChange={(count) => setAdminCount(count)} />
+        <AdminManagementTab onAdminCountChange={(count) => setAdminCount(count)} currentAdmin={currentAdmin} />
       )}
 
       {/* RECORD MARRIAGE MODAL */}

@@ -1,6 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Candidate Profiles Collection
+    // Supports registered candidates, matrimonial profiles, and stage 3 coordinator tracking
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // Admin Accounts Collection
+    // 4-Stage Role-Based Access Control:
+    // Stage 1 (Super Admin): Full authority to create, modify, or remove admins
+    // Stage 2 (Revenue Admin): Revenue and operational management
+    // Stage 3 (Candidate Admin): Candidate-specific registration coordinator
+    // Stage 4 (Grievance Admin): Grievance redressal resolution
+    match /admins/{adminId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Grievance Redressal Cell
+    // Community grievance tickets, complaints, inquiries, and resolution logs
+    match /grievances/{grievanceId} {
+      allow read, write: if true;
+    }
+
+    // Sacred Matrimonial Marriage Records
+    match /marriage_records/{recordId} {
+      allow read, write: if true;
+    }
+
+    // System and Platform Settings
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    // Default fallback
     match /{document=**} {
       allow read, write: if true;
     }

@@ -32,6 +32,7 @@ import {
   ChevronRight,
   ShieldAlert,
   Clock,
+  RefreshCw,
   Eye,
   EyeOff,
   Quote,
@@ -120,6 +121,23 @@ export default function LandingPage({
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState<number>(0);
+  const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
+
+  // 2-minute (120 seconds) countdown timer for OTP resend
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
+  const formatCooldownTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  };
 
   // Multi-step registration wizard states
   const [regStep, setRegStep] = useState<number>(1);
@@ -193,10 +211,12 @@ export default function LandingPage({
   };
 
   const handleSendEmailOtp = async () => {
+    if (otpCooldown > 0 || isSendingOtp) return;
     if (!regEmail || !regEmail.includes("@")) {
       alert("దయచేసి సరైన ఈమెయిల్ చిరునామాను నమోదు చేయండి.\nPlease enter a valid email address first.");
       return;
     }
+    setIsSendingOtp(true);
     const code = Math.floor(1000000 + Math.random() * 9000000).toString();
     setGeneratedOtp(code);
 
@@ -204,12 +224,16 @@ export default function LandingPage({
       const res = await fetch("/api/send-email-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, otp: code })
+        body: JSON.stringify({ email: regEmail.trim(), otp: code })
       });
       const data = await res.json();
       if (data.success) {
         setIsOtpSent(true);
-        alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.`);
+        setOtpCooldown(120); // 2 minutes cooldown
+        alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.\n\nYou can request a new OTP after 2 minutes (2 నిమిషాల విరామం).`);
+      } else if (data.cooldownActive && data.remainingSeconds) {
+        setOtpCooldown(data.remainingSeconds);
+        alert(data.error || "Please wait before resending OTP.");
       } else {
         alert("Failed to send email OTP: " + (data.error || "Unknown error"));
       }
@@ -217,7 +241,10 @@ export default function LandingPage({
       console.error("Error sending email OTP:", err);
       // Fallback local dispatch
       setIsOtpSent(true);
+      setOtpCooldown(120);
       alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.`);
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
@@ -547,7 +574,11 @@ export default function LandingPage({
         
         localStorage.setItem("bramhana_admin_session", "true");
         localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
-        onLoginSuccess(adminProf);
+        localStorage.setItem("bramhana_current_admin", JSON.stringify(verifiedAdmin));
+        onLoginSuccess({
+          ...adminProf,
+          role: (verifiedAdmin.role as any) || adminProf.role || "admin"
+        });
       } else {
         setAdminError("Incorrect Mobile Number or Password. Access is restricted.");
       }
@@ -1475,13 +1506,44 @@ export default function LandingPage({
                     {!isEmailVerified && (
                       <button
                         type="button"
+                        disabled={otpCooldown > 0 || isSendingOtp}
                         onClick={handleSendEmailOtp}
-                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-black text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-md"
+                        className={`px-4 py-2.5 font-black text-xs rounded-xl transition-all whitespace-nowrap shadow-md flex items-center gap-1.5 ${
+                          otpCooldown > 0 || isSendingOtp
+                            ? "bg-zinc-800 text-zinc-400 border border-zinc-700 cursor-not-allowed opacity-85"
+                            : isOtpSent
+                            ? "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+                            : "bg-amber-500 hover:bg-amber-600 text-black cursor-pointer"
+                        }`}
                       >
-                        {isOtpSent ? "Resend OTP" : "Send OTP"}
+                        {isSendingOtp ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Sending...</span>
+                          </>
+                        ) : otpCooldown > 0 ? (
+                          <>
+                            <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                            <span>Resend in {formatCooldownTime(otpCooldown)}</span>
+                          </>
+                        ) : isOtpSent ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>Resend OTP (మళ్లీ పంపండి)</span>
+                          </>
+                        ) : (
+                          <span>Send OTP (OTP పంపండి)</span>
+                        )}
                       </button>
                     )}
                   </div>
+
+                  {otpCooldown > 0 && !isEmailVerified && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
+                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>OTP sent to email. You can resend after the 2-minute timer: <strong>{formatCooldownTime(otpCooldown)}</strong> remaining.</span>
+                    </div>
+                  )}
 
                   {isOtpSent && !isEmailVerified && (
                     <div className="p-3 bg-zinc-900 rounded-xl border border-amber-500/30 flex items-center gap-3 mt-2">

@@ -179,7 +179,11 @@ export default function App() {
       }
       
       localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
-      setCurrentProfile(adminProf);
+      localStorage.setItem("bramhana_current_admin", JSON.stringify(verifiedAdmin));
+      setCurrentProfile({
+        ...adminProf,
+        role: (verifiedAdmin.role as any) || adminProf.role || "admin"
+      });
       setIsAdmin(true);
       setShowAdminLoginModal(false);
       setAdminPasswordInput("");
@@ -192,6 +196,7 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem("bramhana_logged_in_user_id");
     localStorage.removeItem("bramhana_admin_session");
+    localStorage.removeItem("bramhana_current_admin");
     setCurrentProfile(null);
     setIsAdmin(false);
   };
