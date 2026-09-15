@@ -17,6 +17,23 @@ const PORT = 3000;
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// Custom Domain & Subdomain Mapping Middleware
+app.use((req, res, next) => {
+  const host = req.headers.host || "";
+  if (host.includes("shubhamastu.in") && !host.includes("localhost")) {
+    // Subdomain routing inspection
+    const parts = host.split(".");
+    if (parts.length > 2) {
+      const subdomain = parts[0].toLowerCase();
+      // If someone accesses registration.shubhamastu.in or otp.shubhamastu.in, we ensure it serves the app
+      if (["registration", "otp", "login", "matches", "profile", "admin"].includes(subdomain)) {
+        console.log(`Subdomain request intercepted: ${subdomain}.shubhamastu.in -> path: ${req.path}`);
+      }
+    }
+  }
+  next();
+});
+
 // Configure multer storage for ID proof upload
 const upload = multer({
   storage: multer.memoryStorage(),

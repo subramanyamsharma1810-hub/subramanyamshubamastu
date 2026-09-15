@@ -8,7 +8,9 @@ interface BrowserToolbarProps {
 
 export function BrowserToolbar({ currentPath }: BrowserToolbarProps) {
   const [copied, setCopied] = useState(false);
-  const fullUrl = `https://www.shubhamastu.in${currentPath.startsWith("/") ? currentPath : `/${currentPath}`}`;
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "www.shubhamastu.in";
+  const displayDomain = hostname.includes("shubhamastu.in") ? hostname : "www.shubhamastu.in";
+  const fullUrl = `https://${displayDomain}${currentPath.startsWith("/") ? currentPath : `/${currentPath}`}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(fullUrl);
@@ -42,9 +44,9 @@ export function BrowserToolbar({ currentPath }: BrowserToolbarProps) {
       <div className="flex-1 max-w-2xl bg-[#121215] border border-zinc-700/80 rounded-xl px-3 py-1.5 flex items-center gap-2 text-zinc-200 shadow-inner group focus-within:border-amber-400/80 transition-all">
         <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
         <span className="text-zinc-500 shrink-0 select-none">https://</span>
-        <span className="font-bold text-white tracking-wide shrink-0">www.shubhamastu.in</span>
+        <span className="font-bold text-white tracking-wide shrink-0">{displayDomain}</span>
         <span className="text-amber-400/90 font-bold truncate">
-          {currentPath.startsWith("/") ? currentPath : `/${currentPath}`}
+          {currentPath === "/" ? "" : (currentPath.startsWith("/") ? currentPath : `/${currentPath}`)}
         </span>
       </div>
 

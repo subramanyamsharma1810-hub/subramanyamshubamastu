@@ -1050,7 +1050,9 @@ export default function LandingPage({
         <div className="bg-black/80 border-b border-white/10 px-4 py-1.5 text-[11px] font-mono text-amber-300 flex items-center justify-between shadow-inner">
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
             <span className="text-emerald-400 font-bold flex items-center gap-1">🔒 <span className="hidden xs:inline">https://</span></span>
-            <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">shubhamastu.in</span>
+            <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">
+              {typeof window !== "undefined" && window.location.hostname.includes("shubhamastu.in") ? window.location.hostname : "shubhamastu.in"}
+            </span>
             <span className="text-amber-300 font-bold">/registration/mobile/otpverification</span>
           </div>
           <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">Active Subdomain Route</span>
