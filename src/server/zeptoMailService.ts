@@ -15,6 +15,31 @@ const token = rawToken.toLowerCase().startsWith("zoho-enczapikey ")
 
 export const client = new SendMailClient({ url, token });
 
+export interface EmailLogEntry {
+  id: string;
+  timestamp: string;
+  recipient: string;
+  subject: string;
+  type: "OTP" | "PasswordReset" | "Test";
+  provider: string;
+  success: boolean;
+  error?: any;
+  details?: any;
+}
+
+export const emailLogs: EmailLogEntry[] = [];
+
+export function recordEmailLog(entry: Omit<EmailLogEntry, "id" | "timestamp">) {
+  emailLogs.unshift({
+    id: Math.random().toString(36).substring(2, 9),
+    timestamp: new Date().toISOString(),
+    ...entry,
+  });
+  if (emailLogs.length > 50) {
+    emailLogs.pop();
+  }
+}
+
 /**
  * Robust direct fetch helper for Zoho ZeptoMail API v1.1
  */
@@ -94,6 +119,14 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
   });
 
   if (fetchResult.success) {
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "OTP",
+      provider: "zeptomail_fetch",
+      success: true,
+      details: fetchResult.data,
+    });
     return fetchResult;
   }
 
@@ -115,10 +148,27 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
       subject,
       htmlbody,
     });
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "OTP",
+      provider: "zeptomail_sdk",
+      success: true,
+      details: response,
+    });
     return { success: true, data: response };
   } catch (error: any) {
-    console.error("ZeptoMail OTP Send Error:", error);
-    return { success: false, error: error?.message || error, fetchError: fetchResult.error };
+    const errObj = error?.message || error;
+    console.error("ZeptoMail OTP Send Error:", errObj);
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "OTP",
+      provider: "zeptomail_failed",
+      success: false,
+      error: { fetchError: fetchResult.error, sdkError: errObj },
+    });
+    return { success: false, error: errObj, fetchError: fetchResult.error };
   }
 }
 
@@ -157,6 +207,14 @@ export async function sendPasswordResetEmail(
   });
 
   if (fetchResult.success) {
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "PasswordReset",
+      provider: "zeptomail_fetch",
+      success: true,
+      details: fetchResult.data,
+    });
     return fetchResult;
   }
 
@@ -177,9 +235,27 @@ export async function sendPasswordResetEmail(
       subject,
       htmlbody,
     });
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "PasswordReset",
+      provider: "zeptomail_sdk",
+      success: true,
+      details: response,
+    });
     return { success: true, data: response };
   } catch (error: any) {
-    console.error("ZeptoMail Password Reset Error:", error);
-    return { success: false, error: error?.message || error, fetchError: fetchResult.error };
+    const errObj = error?.message || error;
+    console.error("ZeptoMail Password Reset Error:", errObj);
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "PasswordReset",
+      provider: "zeptomail_failed",
+      success: false,
+      error: { fetchError: fetchResult.error, sdkError: errObj },
+    });
+    return { success: false, error: errObj, fetchError: fetchResult.error };
   }
 }
+

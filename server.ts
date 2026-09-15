@@ -249,7 +249,7 @@ Return the response strictly as JSON with keys: "spiritualAnalysis", "compatibil
 // ==============================================================================
 // ZOHO ZEPTOMAIL OFFICIAL SDK & RESEND EMAIL GATEWAY
 // ==============================================================================
-import { sendVerificationOtp, sendPasswordResetEmail, client as zeptoMailClient } from "./src/server/zeptoMailService";
+import { sendVerificationOtp, sendPasswordResetEmail, client as zeptoMailClient, emailLogs } from "./src/server/zeptoMailService";
 import { Resend } from "resend";
 
 const RAW_ZOHO_KEY =
@@ -272,6 +272,16 @@ app.get("/api/email-gateway-status", (req, res) => {
     senderName: ZOHO_SENDER_NAME,
     hasZohoKey: Boolean(RAW_ZOHO_KEY),
     fallbackProvider: "resend",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Get last 10 transactional email logs for admin diagnostics
+app.get("/api/admin/email-logs", (req, res) => {
+  res.json({
+    success: true,
+    logs: emailLogs.slice(0, 10),
+    totalCount: emailLogs.length,
     timestamp: new Date().toISOString()
   });
 });
