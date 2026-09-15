@@ -1514,47 +1514,62 @@ export default function LandingPage({
                     )}
                   </div>
 
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="e.g. subramanyam@gmail.com"
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      disabled={isEmailVerified}
-                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none font-bold disabled:opacity-60"
-                    />
-                    {!isEmailVerified && (
-                      <button
-                        type="button"
-                        disabled={otpCooldown > 0 || isSendingOtp}
-                        onClick={handleSendEmailOtp}
-                        className={`px-4 py-2.5 font-black text-xs rounded-xl transition-all whitespace-nowrap shadow-md flex items-center gap-1.5 ${
-                          otpCooldown > 0 || isSendingOtp
-                            ? "bg-zinc-800 text-zinc-400 border border-zinc-700 cursor-not-allowed opacity-85"
-                            : isOtpSent
-                            ? "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
-                            : "bg-amber-500 hover:bg-amber-600 text-black cursor-pointer"
-                        }`}
-                      >
-                        {isSendingOtp ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>Sending...</span>
-                          </>
-                        ) : otpCooldown > 0 ? (
-                          <>
-                            <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                            <span>Resend in {formatCooldownTime(otpCooldown)}</span>
-                          </>
-                        ) : isOtpSent ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5" />
-                            <span>Resend OTP (మళ్లీ పంపండి)</span>
-                          </>
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        placeholder="e.g. subramanyam@gmail.com"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        disabled={isEmailVerified}
+                        className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none font-bold disabled:opacity-60"
+                      />
+                      {!isEmailVerified && (
+                        <button
+                          type="button"
+                          disabled={otpCooldown > 0 || isSendingOtp}
+                          onClick={handleSendEmailOtp}
+                          className={`px-4 py-2.5 font-black text-xs rounded-xl transition-all whitespace-nowrap shadow-md flex items-center gap-1.5 ${
+                            otpCooldown > 0 || isSendingOtp
+                              ? "bg-zinc-800 text-zinc-400 border border-zinc-700 cursor-not-allowed opacity-85"
+                              : isOtpSent
+                              ? "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+                              : "bg-amber-500 hover:bg-amber-600 text-black cursor-pointer"
+                          }`}
+                        >
+                          {isSendingOtp ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Sending...</span>
+                            </>
+                          ) : otpCooldown > 0 ? (
+                            <>
+                              <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                              <span>Resend in {formatCooldownTime(otpCooldown)}</span>
+                            </>
+                          ) : isOtpSent ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Resend OTP (మళ్లీ పంపండి)</span>
+                            </>
+                          ) : (
+                            <span>Send OTP (OTP పంపండి)</span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    {regEmail.trim().length > 0 && !isEmailVerified && (
+                      <div className="text-[11px] font-bold px-1">
+                        {!regEmail.includes("@") ? (
+                          <span className="text-red-400">⚠️ Email must include '@' symbol (e.g. user@domain.com)</span>
+                        ) : !regEmail.includes(".") || regEmail.indexOf(".") < regEmail.indexOf("@") ? (
+                          <span className="text-amber-300">⚠️ Incomplete email domain (e.g. missing .com, .in, .edu.in)</span>
+                        ) : regEmail.toLowerCase().includes("@gmil.") || regEmail.toLowerCase().includes("@gmai.") ? (
+                          <span className="text-amber-300">⚠️ Typo detected? Did you mean @gmail.com?</span>
                         ) : (
-                          <span>Send OTP (OTP పంపండి)</span>
+                          <span className="text-emerald-400">✓ Valid email format ready for OTP dispatch</span>
                         )}
-                      </button>
+                      </div>
                     )}
                   </div>
 

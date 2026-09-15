@@ -26,7 +26,22 @@ import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Pale
 
 export default function App() {
   const location = useLocation();
-  const [currentTab, setCurrentTab] = useState<string>("matches");
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    const path = window.location.pathname.replace(/^\/+/, "").toLowerCase();
+    if (path && ["matches", "profile", "preferences", "upload", "admin", "calendar", "grievances", "referrals", "compact-kebab", "checkout"].includes(path)) {
+      return path;
+    }
+    return "matches";
+  });
+
+  const handleTabChange = (tab: string) => {
+    setCurrentTab(tab);
+    try {
+      window.history.pushState({}, "", `/${tab}`);
+    } catch (e) {
+      // ignore
+    }
+  };
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [preferences, setPreferences] = useState<PartnerPreferences | null>(null);
@@ -296,7 +311,7 @@ export default function App() {
       {/* Platform Header */}
       <Header
         currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
+        setCurrentTab={handleTabChange}
         isAdmin={isAdmin}
         setIsAdmin={setIsAdmin}
         onLogout={handleLogout}
@@ -425,7 +440,7 @@ export default function App() {
                           
                           {currentTab !== "matches" && (
                             <button
-                              onClick={() => setCurrentTab("matches")}
+                              onClick={() => handleTabChange("matches")}
                               className="shrink-0 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 self-start sm:self-center hover:scale-[1.02]"
                             >
                               <span>Review Matches</span>

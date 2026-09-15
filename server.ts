@@ -14,8 +14,8 @@ const app = express();
 const PORT = 3000;
 
 // Configure body parsers for base64 ID uploads and webhook payloads
-app.use(express.json({ limit: "25mb" }));
-app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Configure multer storage for ID proof upload
 const upload = multer({
