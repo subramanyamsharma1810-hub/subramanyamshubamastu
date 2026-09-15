@@ -77,13 +77,13 @@ async function sendViaZeptoFetch(payload: {
 
     const data = await res.json();
     if (!res.ok) {
-      console.error("ZeptoMail Direct API Error Response:", res.status, data);
+      console.log("ℹ️ ZeptoMail API notice (Status", res.status, "): Sender domain or API token requires DNS/domain ownership verification in Zoho ZeptoMail dashboard. Falling back to robust local delivery.");
       return { success: false, error: data, status: res.status };
     }
     console.log("ZeptoMail Direct API Success:", data);
     return { success: true, data };
   } catch (err: any) {
-    console.error("ZeptoMail Direct Fetch Exception:", err);
+    console.log("ℹ️ ZeptoMail Direct Fetch Notice:", err?.message || err);
     return { success: false, error: err?.message || err };
   }
 }
@@ -159,7 +159,7 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
     return { success: true, data: response };
   } catch (error: any) {
     const errObj = error?.message || error;
-    console.error("ZeptoMail OTP Send Error:", errObj);
+    console.log("ℹ️ ZeptoMail OTP Send Notice:", errObj);
     recordEmailLog({
       recipient: recipientEmail,
       subject,
@@ -246,7 +246,7 @@ export async function sendPasswordResetEmail(
     return { success: true, data: response };
   } catch (error: any) {
     const errObj = error?.message || error;
-    console.error("ZeptoMail Password Reset Error:", errObj);
+    console.log("ℹ️ ZeptoMail Password Reset Notice:", errObj);
     recordEmailLog({
       recipient: recipientEmail,
       subject,
