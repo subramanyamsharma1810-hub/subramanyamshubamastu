@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, BookOpen } from "lucide-react";
+import { PandithConsultationModal } from "./PandithConsultationModal";
 
 interface HeaderProps {
   currentTab: string;
@@ -12,6 +13,7 @@ interface HeaderProps {
 
 export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin, onLogout, isLoggedInUserAdmin }: HeaderProps) {
   const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [showPandithModal, setShowPandithModal] = useState(false);
 
   const getSubdomainForTab = (tab: string) => {
     const t = tab.toLowerCase();
@@ -87,6 +89,16 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
                 <span className="hidden sm:inline">{isAdmin ? "User Portal View" : "Admin Sanctuary"}</span>
               </button>
             )}
+
+            {/* Consult Pandith Button */}
+            <button
+              onClick={() => setShowPandithModal(true)}
+              className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 font-extrabold text-xs border border-amber-300"
+              title="Consult Vedic Pandith for Jataka Matching"
+            >
+              <Sparkles className="w-4 h-4 text-black animate-pulse" />
+              <span className="hidden md:inline">Consult Pandith (జాతకం)</span>
+            </button>
 
             {/* 3 Dots Menu Button */}
             <button
@@ -230,6 +242,22 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
                 </button>
               )}
             </div>
+
+            <button
+              onClick={() => {
+                setShowQuickMenu(false);
+                setShowPandithModal(true);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-2xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all cursor-pointer shadow-md uppercase tracking-wider"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-black/10 text-slate-950">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span>🏛️ Consult Vedic Pandith (జాతక పరిశీలన)</span>
+              </div>
+            </button>
+
             <button
               onClick={() => setShowQuickMenu(false)}
               className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer"
@@ -239,6 +267,9 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
           </div>
         </div>
       )}
+
+      {/* Pandith Consultation Modal */}
+      <PandithConsultationModal isOpen={showPandithModal} onClose={() => setShowPandithModal(false)} />
     </header>
   );
 }

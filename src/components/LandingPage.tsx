@@ -1044,21 +1044,6 @@ export default function LandingPage({
 
       {/* Top Header Bar */}
       <header className="relative z-30 w-full bg-black/60 backdrop-blur-md border-b border-amber-500/15">
-        {/* Subdomain & URL Address Bar Badge */}
-        <div className="bg-black/80 border-b border-white/10 px-4 py-1.5 text-[11px] font-mono text-amber-300 flex items-center justify-between shadow-inner">
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-            <span className="text-emerald-400 font-bold flex items-center gap-1">🔒 <span className="hidden xs:inline">https://</span></span>
-            <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">
-              {typeof window !== "undefined" && window.location.hostname.includes("shubhamastu.in") && window.location.hostname !== "shubhamastu.in" && window.location.hostname !== "www.shubhamastu.in"
-                ? window.location.hostname
-                : (showLoginModal ? "login.shubhamastu.in" : (showOtpScreen || step > 0 || isRegistering ? "registration.shubhamastu.in" : "www.shubhamastu.in"))}
-            </span>
-            <span className="text-amber-300 font-bold">
-              {showLoginModal ? "/login" : (showOtpScreen || step > 0 || isRegistering ? "/registration/mobile/otpverification" : "/")}
-            </span>
-          </div>
-          <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">Active Subdomain Route</span>
-        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
