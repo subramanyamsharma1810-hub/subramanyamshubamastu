@@ -16,14 +16,93 @@ const token = rawToken.toLowerCase().startsWith("zoho-enczapikey ")
 export const client = new SendMailClient({ url, token });
 
 /**
- * Dispatches a 6/7-digit verification OTP to the recipient email using ZeptoMail
+ * Robust direct fetch helper for Zoho ZeptoMail API v1.1
+ */
+async function sendViaZeptoFetch(payload: {
+  toEmail: string;
+  toName?: string;
+  subject: string;
+  htmlbody: string;
+}) {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": token,
+      },
+      body: JSON.stringify({
+        from: {
+          address: process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in",
+          name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
+        },
+        to: [
+          {
+            email_address: {
+              address: payload.toEmail,
+              name: payload.toName || "Valued Member",
+            },
+          },
+        ],
+        subject: payload.subject,
+        htmlbody: payload.htmlbody,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("ZeptoMail Direct API Error Response:", res.status, data);
+      return { success: false, error: data, status: res.status };
+    }
+    console.log("ZeptoMail Direct API Success:", data);
+    return { success: true, data };
+  } catch (err: any) {
+    console.error("ZeptoMail Direct Fetch Exception:", err);
+    return { success: false, error: err?.message || err };
+  }
+}
+
+/**
+ * Dispatches a verification OTP to the recipient email using ZeptoMail
  */
 export async function sendVerificationOtp(recipientEmail: string, otpCode: string | number) {
+  const subject = `${otpCode} is your Shubhamastu.in verification code`;
+  const htmlbody = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px; background-color: #fffdf9;">
+      <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">Bramhana Vivaha Vedika</h2>
+      <p style="text-align: center; font-size: 14px; color: #78350f; margin-top: 0;">శ్రీరామ జయం • వివాహ వేదిక</p>
+      <hr style="border: 0; border-top: 1px solid #f3e8ff; margin: 16px 0;" />
+      <p>Namaste,</p>
+      <p>Please use the following One-Time Password (OTP) to complete your verification / login:</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1f2937; background-color: #fef3c7; padding: 10px 22px; border-radius: 8px; display: inline-block; border: 1px dashed #d97706;">
+          ${otpCode}
+        </span>
+      </div>
+      <p style="font-size: 13px; color: #6b7280;">This code will expire in 10 minutes. Do not share this OTP with anyone.</p>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; text-align: center;">© Bramhana Vivaha Vedika • Powered by Zoho ZeptoMail</p>
+    </div>
+  `;
+
+  // 1. Try direct fetch first
+  const fetchResult = await sendViaZeptoFetch({
+    toEmail: recipientEmail,
+    toName: "Valued Member",
+    subject,
+    htmlbody,
+  });
+
+  if (fetchResult.success) {
+    return fetchResult;
+  }
+
+  // 2. Fallback to official SDK
   try {
     const response = await client.sendMail({
       from: {
-        address: "noreply@shubhamastu.in",
-        name: "Shubhamastu.in",
+        address: process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in",
+        name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
       },
       to: [
         {
@@ -33,25 +112,13 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
           },
         },
       ],
-      subject: `${otpCode} is your Shubhamastu.in verification code`,
-      htmlbody: `
-        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px;">
-          <h2 style="color: #b45309; text-align: center;">Shubhamastu.in</h2>
-          <p>Namaste,</p>
-          <p>Please use the following One-Time Password (OTP) to complete your verification:</p>
-          <div style="text-align: center; margin: 24px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1f2937; background-color: #fef3c7; padding: 8px 18px; border-radius: 6px; display: inline-block;">
-              ${otpCode}
-            </span>
-          </div>
-          <p style="font-size: 13px; color: #6b7280;">This code will expire in 10 minutes. Do not share this OTP with anyone.</p>
-        </div>
-      `,
+      subject,
+      htmlbody,
     });
     return { success: true, data: response };
-  } catch (error) {
+  } catch (error: any) {
     console.error("ZeptoMail OTP Send Error:", error);
-    return { success: false, error };
+    return { success: false, error: error?.message || error, fetchError: fetchResult.error };
   }
 }
 
@@ -63,11 +130,41 @@ export async function sendPasswordResetEmail(
   resetLink: string,
   candidateName?: string
 ) {
+  const subject = "Password Reset Request - Bramhana Vivaha Vedika";
+  const htmlbody = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px; background-color: #fffdf9;">
+      <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">Bramhana Vivaha Vedika</h2>
+      <p style="text-align: center; font-size: 14px; color: #78350f; margin-top: 0;">శ్రీరామ జయం • వివాహ వేదిక</p>
+      <hr style="border: 0; border-top: 1px solid #f3e8ff; margin: 16px 0;" />
+      <p>Namaste ${candidateName || "Member"},</p>
+      <p>We received a request to reset the password for your account associated with <b>${recipientEmail}</b>.</p>
+      <p>Click the secure button below to set a new password. This link is valid for 1 hour:</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${resetLink}" style="background-color: #b45309; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
+          Reset Password (పాస్‌వర్డ్ మార్చుకోండి)
+        </a>
+      </div>
+      <p style="font-size: 13px; color: #6b7280;">If you did not request this, you can safely ignore this email. Your password will remain unchanged.</p>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; text-align: center;">© Bramhana Vivaha Vedika • Powered by Zoho ZeptoMail</p>
+    </div>
+  `;
+
+  const fetchResult = await sendViaZeptoFetch({
+    toEmail: recipientEmail,
+    toName: candidateName || "Member",
+    subject,
+    htmlbody,
+  });
+
+  if (fetchResult.success) {
+    return fetchResult;
+  }
+
   try {
     const response = await client.sendMail({
       from: {
-        address: "noreply@shubhamastu.in",
-        name: "Shubhamastu.in",
+        address: process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in",
+        name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
       },
       to: [
         {
@@ -77,25 +174,12 @@ export async function sendPasswordResetEmail(
           },
         },
       ],
-      subject: "Password Reset Request - Shubhamastu.in",
-      htmlbody: `
-        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px;">
-          <h2 style="color: #b45309; text-align: center;">Shubhamastu.in</h2>
-          <p>Namaste ${candidateName || "Member"},</p>
-          <p>We received a request to reset the password for your account associated with <b>${recipientEmail}</b>.</p>
-          <p>Click the secure button below to set a new password. This link is valid for 1 hour:</p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${resetLink}" style="background-color: #b45309; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
-              Reset Password (పాస్‌వర్డ్ మార్చుకోండి)
-            </a>
-          </div>
-          <p style="font-size: 13px; color: #6b7280;">If you did not request this, you can safely ignore this email. Your password will remain unchanged.</p>
-        </div>
-      `,
+      subject,
+      htmlbody,
     });
     return { success: true, data: response };
-  } catch (error) {
+  } catch (error: any) {
     console.error("ZeptoMail Password Reset Error:", error);
-    return { success: false, error };
+    return { success: false, error: error?.message || error, fetchError: fetchResult.error };
   }
 }
