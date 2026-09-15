@@ -15,6 +15,7 @@ import {
   GENERAL_GOTRAMS 
 } from "../lib/brahminMetadata";
 import SearchableSelect from "./SearchableSelect";
+import { BrowserToolbar } from "./BrowserToolbar";
 import { LegalFooter, LegalDocumentModal } from "./LegalModals";
 import { 
   Heart, 
@@ -1031,6 +1032,7 @@ export default function LandingPage({
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden flex flex-col font-sans select-none">
+      <BrowserToolbar currentPath="/registration/mobile/otpverification" />
       
       {/* Falling Akshintalu Canvas Particles */}
       <canvas 
@@ -1043,7 +1045,17 @@ export default function LandingPage({
       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-4xl h-48 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-amber-500/10 via-amber-700/5 to-transparent pointer-events-none z-0" />
 
       {/* Top Header Bar */}
-      <header className="relative z-30 w-full bg-black/40 backdrop-blur-md border-b border-amber-500/15">
+      <header className="relative z-30 w-full bg-black/60 backdrop-blur-md border-b border-amber-500/15">
+        {/* Subdomain & URL Address Bar Badge */}
+        <div className="bg-black/80 border-b border-white/10 px-4 py-1.5 text-[11px] font-mono text-amber-300 flex items-center justify-between shadow-inner">
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+            <span className="text-emerald-400 font-bold flex items-center gap-1">🔒 <span className="hidden xs:inline">https://</span></span>
+            <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">shubhamastu.in</span>
+            <span className="text-amber-300 font-bold">/registration/mobile/otpverification</span>
+          </div>
+          <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">Active Subdomain Route</span>
+        </div>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
           {/* Webpage Name */}

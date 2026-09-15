@@ -22,6 +22,7 @@ import Register from "./components/Register";
 import Payment from "./components/Payment";
 import CheckoutPricing from "./components/CheckoutPricing";
 import ReferralDashboard from "./components/ReferralDashboard";
+import { BrowserToolbar } from "./components/BrowserToolbar";
 import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
 
 export default function App() {
@@ -308,6 +309,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#EBF6FF] text-[#362B5A] font-sans flex flex-col">
+      <BrowserToolbar currentPath={`/${currentTab}`} />
       {/* Platform Header */}
       <Header
         currentTab={currentTab}

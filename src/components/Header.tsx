@@ -27,6 +27,16 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
 
   return (
     <header className="bg-[#362B5A] text-white shadow-lg border-b border-orange-500/25 sticky top-0 z-50">
+      {/* Subdomain & URL Address Bar Badge */}
+      <div className="bg-black/60 border-b border-white/10 px-4 py-1.5 text-[11px] font-mono text-amber-300 flex items-center justify-between shadow-inner">
+        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+          <span className="text-emerald-400 font-bold flex items-center gap-1">🔒 <span className="hidden xs:inline">https://</span></span>
+          <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">shubhamastu.in</span>
+          <span className="text-amber-300 font-bold">/{currentTab}</span>
+        </div>
+        <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">Active Subdomain Route</span>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo / Spiritual Theme */}
