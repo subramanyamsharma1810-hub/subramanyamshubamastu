@@ -124,9 +124,26 @@ export default function LandingPage({
   const [otpCooldown, setOtpCooldown] = useState<number>(0);
   const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
 
+  // Initialize from localStorage if exists
+  useEffect(() => {
+    const savedExpiry = localStorage.getItem("bvm_otp_expiry");
+    if (savedExpiry) {
+      const expiryTime = parseInt(savedExpiry, 10);
+      const now = Date.now();
+      if (expiryTime > now) {
+        setOtpCooldown(Math.ceil((expiryTime - now) / 1000));
+      } else {
+        localStorage.removeItem("bvm_otp_expiry");
+      }
+    }
+  }, []);
+
   // 2-minute (120 seconds) countdown timer for OTP resend
   useEffect(() => {
-    if (otpCooldown <= 0) return;
+    if (otpCooldown <= 0) {
+      localStorage.removeItem("bvm_otp_expiry");
+      return;
+    }
     const timer = setInterval(() => {
       setOtpCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
@@ -230,9 +247,11 @@ export default function LandingPage({
       if (data.success) {
         setIsOtpSent(true);
         setOtpCooldown(120); // 2 minutes cooldown
+        localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
         alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.\n\nYou can request a new OTP after 2 minutes (2 నిమిషాల విరామం).`);
       } else if (data.cooldownActive && data.remainingSeconds) {
         setOtpCooldown(data.remainingSeconds);
+        localStorage.setItem("bvm_otp_expiry", (Date.now() + data.remainingSeconds * 1000).toString());
         alert(data.error || "Please wait before resending OTP.");
       } else {
         alert("Failed to send email OTP: " + (data.error || "Unknown error"));
@@ -242,6 +261,7 @@ export default function LandingPage({
       // Fallback local dispatch
       setIsOtpSent(true);
       setOtpCooldown(120);
+      localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
       alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.`);
     } finally {
       setIsSendingOtp(false);

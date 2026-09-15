@@ -5,6 +5,8 @@ import PhonePeQRCode from "./PhonePeQRCode";
 import { getGenderLabel } from "../lib/genderHelper";
 import { calculateMatchScore } from "../lib/matchEngine";
 import { NAKSHATRAS } from "../lib/panchangam";
+import { StackCard } from "./StackCard";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Heart,
   Compass,
@@ -22,7 +24,9 @@ import {
   Check,
   UploadCloud,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Layers,
+  LayoutGrid
 } from "lucide-react";
 
 interface MatchListProps {
@@ -32,6 +36,10 @@ interface MatchListProps {
 }
 
 export default function MatchList({ currentProfile, preferences, onUpdateProfile }: MatchListProps) {
+  const [viewMode, setViewMode] = useState<"grid" | "stack">("grid");
+  const [localSwiped, setLocalSwiped] = useState<Record<string, "left" | "right">>({});
+  const [mutualMatch, setMutualMatch] = useState<Profile | null>(null);
+
   const getNakshatraTelugu = (engName: string): string => {
     if (!engName) return "";
     const found = NAKSHATRAS.find(n => n.english.toLowerCase() === engName.toLowerCase());
@@ -178,6 +186,39 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     const scoreB = calculateMatchScore(currentProfile, b).totalScore;
     return scoreB - scoreA;
   });
+
+  const stackMatches = sortedMatches.filter(
+      (m) =>
+        !currentProfile.liked_profiles?.includes(m.id) &&
+        !currentProfile.disliked_profiles?.includes(m.id) &&
+        !localSwiped[m.id]
+  );
+
+  const handleSwipe = async (match: Profile, direction: "left" | "right") => {
+    // Optimistic local state
+    setLocalSwiped(prev => ({ ...prev, [match.id]: direction }));
+
+    // Update profile
+    const updatedProfile = { ...currentProfile };
+    if (direction === "right") {
+      updatedProfile.liked_profiles = [...(updatedProfile.liked_profiles || []), match.id];
+    } else {
+      updatedProfile.disliked_profiles = [...(updatedProfile.disliked_profiles || []), match.id];
+    }
+    
+    // Background update
+    onUpdateProfile(updatedProfile).catch(err => console.error("Update failed", err));
+
+    if (direction === "right") {
+      const actuallyLikedMe = match.liked_profiles?.includes(currentProfile.id);
+      const randomMutual = Math.random() < 0.3; // 30% chance for demonstration
+      if (actuallyLikedMe || randomMutual) {
+        setTimeout(() => {
+          setMutualMatch(match);
+        }, 300); // short delay for swipe animation to finish
+      }
+    }
+  };
 
   const handleUnlockContact = (matchId: string) => {
     const subStatus = currentProfile.subscription_status || "free";
@@ -456,112 +497,212 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             </div>
           </div>
 
-          {/* Match Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {sortedMatches.map((match) => {
-            const scoreDetails = calculateMatchScore(currentProfile, match);
-            const matchScore = scoreDetails.totalScore;
-            const age = calculateAge(match.dob);
-
-            return (
-              <div
-                key={match.id}
-                className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative"
+          {/* View Toggle */}
+          <div className="flex justify-center my-6">
+            <div className="bg-gray-100 p-1 rounded-xl inline-flex shadow-inner">
+              <button
+                onClick={() => setViewMode("stack")}
+                className={`px-4 py-2 flex items-center gap-2 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === "stack" ? "bg-white text-[#362B5A] shadow" : "text-gray-500 hover:text-gray-700"
+                }`}
               >
-                {/* Image Section */}
-                <div className="h-56 w-full relative overflow-hidden bg-gray-50">
-                  <img
-                    src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
-                    alt={match.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                <Layers className="w-4 h-4" />
+                Stack View
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`px-4 py-2 flex items-center gap-2 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === "grid" ? "bg-white text-[#362B5A] shadow" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Grid View
+              </button>
+            </div>
+          </div>
+
+          {viewMode === "stack" ? (
+            <div className="relative w-full h-[600px] flex justify-center items-center overflow-hidden">
+              <AnimatePresence>
+                {stackMatches.slice(0, 3).reverse().map((match, index, array) => (
+                  <StackCard
+                    key={match.id}
+                    match={match}
+                    currentProfile={currentProfile}
+                    isFront={index === array.length - 1}
+                    handleSwipe={handleSwipe}
+                    calculateAge={calculateAge}
                   />
-                  {/* Score Overlap */}
-                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
-                    <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
-                    <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
-                  </div>
-
-                  {/* Gender and Subcaste badge */}
-                  <div className="absolute bottom-4 left-4 flex gap-1.5">
-                    <span className="bg-[#362B5A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
-                      {match.sub_caste}
-                    </span>
-                    <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
-                      {match.height_feet} Ft
-                    </span>
-                  </div>
+                ))}
+              </AnimatePresence>
+              {stackMatches.length === 0 && (
+                <div className="text-center p-8 text-gray-500 flex flex-col items-center">
+                  <Heart className="w-12 h-12 text-gray-300 mb-4" />
+                  <p className="text-lg font-bold">You have seen all matches!</p>
+                  <p className="text-xs">Check back later for new celestial alignments.</p>
                 </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {sortedMatches.map((match) => {
+                const scoreDetails = calculateMatchScore(currentProfile, match);
+                const matchScore = scoreDetails.totalScore;
+                const age = calculateAge(match.dob);
 
-                {/* Info Details */}
-                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="text-xl font-bold text-[#362B5A] leading-tight flex items-center gap-1.5">
-                          {match.name}
-                          {match.status === "Premium" && (
-                            <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
-                          )}
-                        </h4>
-                        <div className="text-xs text-[#C2242C] font-extrabold mt-0.5">
-                          {getGenderLabel(match.gender)}
-                        </div>
-                        <p className="text-sm text-gray-600 font-semibold mt-1">{match.profession}</p>
+                return (
+                  <div
+                    key={match.id}
+                    className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative"
+                  >
+                    {/* Image Section */}
+                    <div className="h-56 w-full relative overflow-hidden bg-gray-50">
+                      <img
+                        src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
+                        alt={match.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {/* Score Overlap */}
+                      <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
+                        <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
+                        <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
                       </div>
-                      <span className="text-lg font-extrabold text-[#362B5A] font-sans shrink-0">{age} yrs</span>
+
+                      {/* Gender and Subcaste badge */}
+                      <div className="absolute bottom-4 left-4 flex gap-1.5">
+                        <span className="bg-[#362B5A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                          {match.sub_caste}
+                        </span>
+                        <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                          {match.height_feet} Ft
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Astrological Micro Indicators */}
-                    {match.astrology && (
-                      <div className="bg-[#EBF6FF] p-3 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">నక్షత్రం (Nakshatra)</span>
-                          <span className="font-bold text-[#362B5A]">{getNakshatraTelugu(match.astrology.nakshatra)} ({match.astrology.nakshatra})</span>
+                    {/* Info Details */}
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-xl font-bold text-[#362B5A] leading-tight flex items-center gap-1.5">
+                              {match.name}
+                              {match.status === "Premium" && (
+                                <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
+                              )}
+                            </h4>
+                            <div className="text-xs text-[#C2242C] font-extrabold mt-0.5">
+                              {getGenderLabel(match.gender)}
+                            </div>
+                            <p className="text-sm text-gray-600 font-semibold mt-1">{match.profession}</p>
+                          </div>
+                          <span className="text-lg font-extrabold text-[#362B5A] font-sans shrink-0">{age} yrs</span>
                         </div>
-                        <div className="text-right">
-                          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">తిథి (Lunar Tithi)</span>
-                          <span className="font-bold text-[#C2242C] truncate max-w-[120px] inline-block">{match.astrology.tithi.split(" (")[0]}</span>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Salary & Location stats */}
-                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-semibold pt-1">
-                      <div className="flex items-center gap-1">
-                        <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span>₹ {match.salary_lpa} LPA</span>
+                        {/* Astrological Micro Indicators */}
+                        {match.astrology && (
+                          <div className="bg-[#EBF6FF] p-3 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
+                            <div>
+                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">నక్షత్రం (Nakshatra)</span>
+                              <span className="font-bold text-[#362B5A]">{getNakshatraTelugu(match.astrology.nakshatra)} ({match.astrology.nakshatra})</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">తిథి (Lunar Tithi)</span>
+                              <span className="font-bold text-[#C2242C] truncate max-w-[120px] inline-block">{match.astrology.tithi.split(" (")[0]}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Salary & Location stats */}
+                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-semibold pt-1">
+                          <div className="flex items-center gap-1">
+                            <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span>₹ {match.salary_lpa} LPA</span>
+                          </div>
+                          <div className="flex items-center gap-1 justify-end text-right">
+                            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span className="truncate">{match.birth_location || "Varanasi"}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 justify-end text-right">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span className="truncate">{match.birth_location || "Varanasi"}</span>
+
+                      {/* Actions */}
+                      <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => setSelectedMatch(match)}
+                          className="flex-1 py-2.5 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
+                        >
+                          Sacred Alignment
+                        </button>
+                        <a
+                          href={`tel:${match.contact_number}`}
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                          title="Call Candidate Directly"
+                        >
+                          <Phone className="w-3.5 h-3.5 animate-pulse" />
+                          <span>{match.contact_number}</span>
+                        </a>
                       </div>
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
-                    <button
-                      onClick={() => setSelectedMatch(match)}
-                      className="flex-1 py-2.5 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
-                    >
-                      Sacred Alignment
-                    </button>
-                    <a
-                      href={`tel:${match.contact_number}`}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                      title="Call Candidate Directly"
-                    >
-                      <Phone className="w-3.5 h-3.5 animate-pulse" />
-                      <span>{match.contact_number}</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
       </div>
     )}
+
+      {/* Mutual Match Modal */}
+      <AnimatePresence>
+        {mutualMatch && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-pink-500/90 backdrop-blur-md flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl text-center space-y-6"
+            >
+              <div className="flex justify-center -space-x-4 mb-4">
+                <img
+                  src={currentProfile.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
+                  className="w-24 h-24 rounded-full border-4 border-white object-cover shadow-lg"
+                  alt="You"
+                />
+                <img
+                  src={mutualMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
+                  className="w-24 h-24 rounded-full border-4 border-white object-cover shadow-lg"
+                  alt={mutualMatch.name}
+                />
+              </div>
+              <div>
+                <h2 className="text-3xl font-extrabold text-pink-600 font-sans tracking-tight">It's a Match!</h2>
+                <p className="text-gray-600 mt-2 font-medium">
+                  You and <strong>{mutualMatch.name}</strong> have expressed interest in each other.
+                </p>
+              </div>
+              <div className="pt-4 space-y-3">
+                <a
+                  href={`tel:${mutualMatch.contact_number}`}
+                  className="w-full py-3.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                >
+                  <Phone className="w-5 h-5 animate-pulse" />
+                  Contact Family
+                </a>
+                <button
+                  onClick={() => setMutualMatch(null)}
+                  className="w-full py-3.5 px-4 rounded-xl border-2 border-gray-200 text-gray-500 hover:bg-gray-50 font-bold text-sm uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Keep Swiping
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Detailed Kundali Alignment Modal */}
       {selectedMatch && (
