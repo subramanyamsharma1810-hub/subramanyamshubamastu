@@ -13,6 +13,20 @@ interface HeaderProps {
 export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin, onLogout, isLoggedInUserAdmin }: HeaderProps) {
   const [showQuickMenu, setShowQuickMenu] = useState(false);
 
+  const getSubdomainForTab = (tab: string) => {
+    const t = tab.toLowerCase();
+    if (t.includes("match") || t.includes("profile") || t.includes("preference") || t.includes("upload") || t.includes("calendar") || t.includes("kebab") || t.includes("grievance") || t.includes("referral")) {
+      return "user.profile.shubhamastu.in";
+    }
+    if (t.includes("checkout") || t.includes("payment") || t.includes("register") || t.includes("otp")) {
+      return "registration.shubhamastu.in";
+    }
+    if (t.includes("admin")) {
+      return "admin.shubhamastu.in";
+    }
+    return "www.shubhamastu.in";
+  };
+
   const tabsList = [
     { id: "matches", label: "Matched Souls (మ్యాచెస్)", icon: Heart },
     { id: "compact-kebab", label: "Anti-Scroll Kebab UI (జీరో-క్లటర్ వ్యూ)", icon: Sparkles },
@@ -31,7 +45,11 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
       <div className="bg-black/60 border-b border-white/10 px-4 py-1.5 text-[11px] font-mono text-amber-300 flex items-center justify-between shadow-inner">
         <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
           <span className="text-emerald-400 font-bold flex items-center gap-1">🔒 <span className="hidden xs:inline">https://</span></span>
-          <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">shubhamastu.in</span>
+          <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">
+            {typeof window !== "undefined" && window.location.hostname.includes("shubhamastu.in") && window.location.hostname !== "shubhamastu.in" && window.location.hostname !== "www.shubhamastu.in"
+              ? window.location.hostname
+              : getSubdomainForTab(currentTab)}
+          </span>
           <span className="text-amber-300 font-bold">/{currentTab}</span>
         </div>
         <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">Active Subdomain Route</span>
