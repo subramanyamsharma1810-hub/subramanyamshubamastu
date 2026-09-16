@@ -15,20 +15,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showPandithModal, setShowPandithModal] = useState(false);
 
-  const getSubdomainForTab = (tab: string) => {
-    const t = tab.toLowerCase();
-    if (t.includes("match") || t.includes("profile") || t.includes("preference") || t.includes("upload") || t.includes("calendar") || t.includes("kebab") || t.includes("grievance") || t.includes("referral")) {
-      return "user.profile.shubhamastu.in";
-    }
-    if (t.includes("checkout") || t.includes("payment") || t.includes("register") || t.includes("otp")) {
-      return "registration.shubhamastu.in";
-    }
-    if (t.includes("admin")) {
-      return "admin.shubhamastu.in";
-    }
-    return "www.shubhamastu.in";
-  };
-
   const tabsList = [
     { id: "matches", label: "Matched Souls (మ్యాచెస్)", icon: Heart },
     { id: "compact-kebab", label: "Anti-Scroll Kebab UI (జీరో-క్లటర్ వ్యూ)", icon: Sparkles },
@@ -43,20 +29,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
 
   return (
     <header className="bg-[#362B5A] text-white shadow-lg border-b border-orange-500/25 sticky top-0 z-50">
-      {/* Subdomain & URL Address Bar Badge */}
-      <div className="bg-black/60 border-b border-white/10 px-4 py-1.5 text-[11px] font-mono text-amber-300 flex items-center justify-between shadow-inner">
-        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-          <span className="text-emerald-400 font-bold flex items-center gap-1">🔒 <span className="hidden xs:inline">https://</span></span>
-          <span className="font-black text-white bg-white/10 px-2 py-0.5 rounded border border-white/15">
-            {typeof window !== "undefined" && window.location.hostname.includes("shubhamastu.in") && window.location.hostname !== "shubhamastu.in" && window.location.hostname !== "www.shubhamastu.in"
-              ? window.location.hostname
-              : getSubdomainForTab(currentTab)}
-          </span>
-          <span className="text-amber-300 font-bold">/{currentTab}</span>
-        </div>
-        <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">Active Subdomain Route</span>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo / Spiritual Theme */}
@@ -90,16 +62,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
               </button>
             )}
 
-            {/* Consult Pandith Button */}
-            <button
-              onClick={() => setShowPandithModal(true)}
-              className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 font-extrabold text-xs border border-amber-300"
-              title="Consult Vedic Pandith for Jataka Matching"
-            >
-              <Sparkles className="w-4 h-4 text-black animate-pulse" />
-              <span className="hidden md:inline">Consult Pandith (జాతకం)</span>
-            </button>
-
             {/* 3 Dots Menu Button */}
             <button
               id="quick-menu-dots-btn"
@@ -128,7 +90,7 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
       {/* Clean 3-Dots Menu Modal */}
       {showQuickMenu && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#362B5A] border-2 border-amber-400/40 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative space-y-4 text-left">
+          <div className="bg-[#362B5A] border-2 border-amber-400/40 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative space-y-4 text-left max-h-[85vh] overflow-y-auto">
             <button
               onClick={() => setShowQuickMenu(false)}
               className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-[#C2242C] text-white rounded-full transition-all cursor-pointer"

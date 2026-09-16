@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, AdminRole } from "../types";
+import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, AdminRole, Pandit } from "../types";
 import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
 import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
@@ -69,8 +69,62 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const registeringRef = React.useRef(false);
 
   // Tabs
-  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals">("registrations");
+  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits">("registrations");
   const [adminCount, setAdminCount] = useState<number>(2);
+
+  // Pandits state
+  const [pandits, setPandits] = useState<Pandit[]>([]);
+  const [isAddPanditModalOpen, setIsAddPanditModalOpen] = useState(false);
+  const [editingPandit, setEditingPandit] = useState<Pandit | null>(null);
+  const [panditName, setPanditName] = useState("");
+  const [panditPhotoUrl, setPanditPhotoUrl] = useState("");
+  const [panditMessage, setPanditMessage] = useState("");
+  const [panditPhone, setPanditPhone] = useState("");
+  const [panditSpecialization, setPanditSpecialization] = useState("");
+  const [panditAvailableDays, setPanditAvailableDays] = useState("");
+
+  useEffect(() => {
+    databaseService.getPandits().then(setPandits);
+  }, [onRefreshTrigger]);
+
+  const handleSavePandit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!panditName.trim() || !panditMessage.trim()) {
+      alert("Please enter Pandit Name and Message.");
+      return;
+    }
+    const newPandit: Pandit = {
+      id: editingPandit ? editingPandit.id : `pandit-${Date.now()}`,
+      name: panditName.trim(),
+      photoUrl: panditPhotoUrl.trim() || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+      message: panditMessage.trim(),
+      phone: panditPhone.trim() || "+91 9347359489",
+      specialization: panditSpecialization.trim() || "Vedic Astrology & Vivaha Muhurtam",
+      availableDays: panditAvailableDays.trim() || "Mon - Sat (9 AM - 6 PM)",
+      createdAt: editingPandit ? editingPandit.createdAt : new Date().toISOString()
+    };
+    await databaseService.savePandit(newPandit);
+    const updated = await databaseService.getPandits();
+    setPandits(updated);
+    setIsAddPanditModalOpen(false);
+    setEditingPandit(null);
+    setPanditName("");
+    setPanditPhotoUrl("");
+    setPanditMessage("");
+    setPanditPhone("");
+    setPanditSpecialization("");
+    setPanditAvailableDays("");
+    alert("✅ Pandit saved successfully!");
+  };
+
+  const handleDeletePandit = async (id: string) => {
+    if (window.confirm("Are you sure you want to remove this Pandit?")) {
+      await databaseService.deletePandit(id);
+      const updated = await databaseService.getPandits();
+      setPandits(updated);
+      alert("✓ Pandit removed successfully.");
+    }
+  };
 
   // Active Admin RBAC Clearance (4 Stages)
   const currentAdmin: AdminUser | null = useMemo(() => {
@@ -3372,6 +3426,17 @@ Ph: ${adminPhone}`;
         >
           <Heart className="w-4 h-4 text-rose-600" />
           Successful Marriages ({marriageRecords.length})
+        </button>
+        <button
+          onClick={() => setActiveAdminTab("pandits")}
+          className={`py-3 px-6 font-extrabold text-sm uppercase tracking-wider border-b-4 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+            activeAdminTab === "pandits"
+              ? "border-[#C2242C] text-[#362B5A]"
+              : "border-transparent text-gray-500 hover:text-[#362B5A]"
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-500" />
+          Pandits & Priests ({pandits.length})
         </button>
         <button
           id="admin-management-tab-button"
@@ -8069,6 +8134,196 @@ Ph: ${adminPhone}`;
       {/* Tab CONTENT 5: Administrator Access & Management */}
       {activeAdminTab === "admins" && (
         <AdminManagementTab onAdminCountChange={(count) => setAdminCount(count)} currentAdmin={currentAdmin} />
+      )}
+
+      {/* Tab CONTENT: Pandits & Priests Manager */}
+      {activeAdminTab === "pandits" && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1 text-left">
+              <h3 className="text-xl font-extrabold text-[#362B5A] flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                Sacred Pandits & Vedic Astrologers Manager (పండితులు మరియు జ్యోతిష్యులు)
+              </h3>
+              <p className="text-xs text-gray-500 leading-relaxed max-w-2xl">
+                Add, edit, or remove Vedic priests and astrologers whose names, photos, messages, and consultation phone numbers are displayed to candidates for auspicious horoscope matching, muhurtam fixings, and spiritual guidance.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingPandit(null);
+                setPanditName("");
+                setPanditPhotoUrl("");
+                setPanditMessage("");
+                setPanditPhone("");
+                setPanditSpecialization("");
+                setPanditAvailableDays("");
+                setIsAddPanditModalOpen(true);
+              }}
+              className="px-5 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <span>➕ Add New Pandit / Priest</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {pandits.map((p) => (
+              <div key={p.id} className="bg-white rounded-3xl p-6 border border-amber-200/60 shadow-sm hover:shadow-md transition-all space-y-4 text-left">
+                <div className="flex items-start gap-4">
+                  <img
+                    src={p.photoUrl}
+                    alt={p.name}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0 shadow-sm"
+                  />
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                        {p.specialization || "Vedic Astrologer"}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingPandit(p);
+                            setPanditName(p.name);
+                            setPanditPhotoUrl(p.photoUrl);
+                            setPanditMessage(p.message);
+                            setPanditPhone(p.phone || "");
+                            setPanditSpecialization(p.specialization || "");
+                            setPanditAvailableDays(p.availableDays || "");
+                            setIsAddPanditModalOpen(true);
+                          }}
+                          className="px-2.5 py-1 bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-900 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeletePandit(p.id)}
+                          className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <h4 className="text-base font-extrabold text-[#362B5A]">{p.name}</h4>
+                    <p className="text-xs text-amber-800 font-mono">📞 {p.phone || "+91 9347359489"}</p>
+                    <p className="text-[10px] text-gray-500 font-mono">Availability: {p.availableDays || "Mon - Sat (9 AM - 6 PM)"}</p>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 text-xs text-gray-700 italic leading-relaxed">
+                  "{p.message}"
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT PANDIT MODAL */}
+      {isAddPanditModalOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[350] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-amber-200 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="space-y-0.5 text-left">
+                <span className="text-[10px] font-mono font-bold text-amber-600 uppercase tracking-widest">Pandit & Priest Registry</span>
+                <h3 className="text-xl font-extrabold text-[#362B5A]">{editingPandit ? "Edit Pandit Profile" : "Add New Vedic Pandit"}</h3>
+              </div>
+              <button
+                onClick={() => setIsAddPanditModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePandit} className="space-y-4 text-left">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Pandit Full Name (పండితులు పేరు) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., Brahmashri Vedula Subrahmanya Sharma"
+                  value={panditName}
+                  onChange={(e) => setPanditName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-bold text-[#362B5A] focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Photo URL (ఫోటో లింక్)</label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/..."
+                  value={panditPhotoUrl}
+                  onChange={(e) => setPanditPhotoUrl(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-mono text-gray-800 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Contact Phone (ఫోన్ నంబర్)</label>
+                  <input
+                    type="text"
+                    placeholder="+91 9347359489"
+                    value={panditPhone}
+                    onChange={(e) => setPanditPhone(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-bold text-[#362B5A] focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Specialization (ప్రత్యేకత)</label>
+                  <input
+                    type="text"
+                    placeholder="Vedic Astrology & Vivaha Muhurtam"
+                    value={panditSpecialization}
+                    onChange={(e) => setPanditSpecialization(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-bold text-[#362B5A] focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Available Days / Timings (అందుబాటులో ఉండే సమయం)</label>
+                <input
+                  type="text"
+                  placeholder="Mon - Sat (9 AM - 6 PM)"
+                  value={panditAvailableDays}
+                  onChange={(e) => setPanditAvailableDays(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-bold text-[#362B5A] focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Message / About Pandit (సందేశం) *</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Dedicated to conducting sacred Vedic marriages, Kundali matching..."
+                  value={panditMessage}
+                  onChange={(e) => setPanditMessage(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-[#362B5A] focus:outline-none focus:border-amber-500 resize-none"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddPanditModalOpen(false)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 text-black font-black rounded-2xl text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>Save Pandit Profile</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* RECORD MARRIAGE MODAL */}

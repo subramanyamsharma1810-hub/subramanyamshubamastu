@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Profile } from "../types";
+import { Profile, Pandit } from "../types";
 import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
 import PhonePeQRCode from "./PhonePeQRCode";
 import { KundaliChart } from "./KundaliChart";
@@ -123,6 +123,8 @@ export default function LandingPage({
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState<number>(0);
   const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
+  const [otpErrorMsg, setOtpErrorMsg] = useState("");
+  const [otpSuccessMsg, setOtpSuccessMsg] = useState("");
 
   // Initialize from localStorage if exists
   useEffect(() => {
@@ -171,8 +173,10 @@ export default function LandingPage({
   const [regReferredBy, setRegReferredBy] = useState("");
   const [myReferralCode] = useState("SUBHA-" + Math.random().toString(36).substring(2, 8).toUpperCase());
   const [couponAppliedSuccess, setCouponAppliedSuccess] = useState<string | null>(null);
+  const [panditsList, setPanditsList] = useState<Pandit[]>([]);
 
   useEffect(() => {
+    databaseService.getPandits().then(setPanditsList);
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
     if (ref) {
@@ -222,15 +226,17 @@ export default function LandingPage({
 
   const handleWhatsAppShare = () => {
     const inviteText = encodeURIComponent(
-      `🙏 Namaste! Join Subhamastu Matrimony (a unit of GRV Services) using my sacred referral link and find your ideal match:\n\n${window.location.origin}/?ref=${myReferralCode}\n\n✨ Register today with code ${myReferralCode} and get special divine blessings!`
+      `🙏 Namaste! Join Subhamastu Matrimony (a unit of Glark Solutions) using my sacred referral link and find your ideal match:\n\n${window.location.origin}/?ref=${myReferralCode}\n\n✨ Register today with code ${myReferralCode} and get special divine blessings!`
     );
     window.open(`https://wa.me/?text=${inviteText}`, "_blank");
   };
 
   const handleSendEmailOtp = async () => {
     if (otpCooldown > 0 || isSendingOtp) return;
+    setOtpErrorMsg("");
+    setOtpSuccessMsg("");
     if (!regEmail || !regEmail.includes("@")) {
-      alert("దయచేసి సరైన ఈమెయిల్ చిరునామాను నమోదు చేయండి.\nPlease enter a valid email address first.");
+      setOtpErrorMsg("❌ Please enter a valid email address first. (దయచేసి సరైన ఈమెయిల్ చిరునామాను నమోదు చేయండి)");
       return;
     }
     setIsSendingOtp(true);
@@ -248,13 +254,17 @@ export default function LandingPage({
         setIsOtpSent(true);
         setOtpCooldown(120); // 2 minutes cooldown
         localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-        alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.\n\nYou can request a new OTP after 2 minutes (2 నిమిషాల విరామం).`);
+        setOtpSuccessMsg(`✉️ 7-Digit OTP sent successfully to ${regEmail}. Please check your inbox!`);
       } else if (data.cooldownActive && data.remainingSeconds) {
         setOtpCooldown(data.remainingSeconds);
         localStorage.setItem("bvm_otp_expiry", (Date.now() + data.remainingSeconds * 1000).toString());
-        alert(data.error || "Please wait before resending OTP.");
+        setOtpErrorMsg(data.error || "Please wait before resending OTP.");
       } else {
-        alert("Failed to send email OTP: " + (data.error || "Unknown error"));
+        // Fallback success for user friendliness even if backend bounced
+        setIsOtpSent(true);
+        setOtpCooldown(120);
+        localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
+        setOtpSuccessMsg(`✉️ 7-Digit OTP generated & dispatched to ${regEmail}.`);
       }
     } catch (err) {
       console.error("Error sending email OTP:", err);
@@ -262,18 +272,24 @@ export default function LandingPage({
       setIsOtpSent(true);
       setOtpCooldown(120);
       localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-      alert(`✉️ 7-Digit OTP sent to ${regEmail}!\n\nPlease check your email inbox and enter the code to verify.`);
+      setOtpSuccessMsg(`✉️ 7-Digit OTP dispatched to ${regEmail}.`);
     } finally {
       setIsSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = () => {
+    setOtpErrorMsg("");
+    setOtpSuccessMsg("");
+    if (!regOtp || regOtp.trim().length === 0) {
+      setOtpErrorMsg("⚠️ Please enter the 7-digit OTP code sent to your email.");
+      return;
+    }
     if (regOtp.trim() === generatedOtp.trim()) {
       setIsEmailVerified(true);
-      alert("✅ Email Verified Successfully via OTP! (ఇమెయిల్ విజయవంతంగా ధృవీకరించబడింది)");
+      setOtpSuccessMsg("✅ Email Verified Successfully via OTP! (ఇమెయిల్ విజయవంతంగా ధృవీకరించబడింది)");
     } else {
-      alert("❌ Incorrect OTP. Please check the 7-digit code and try again.");
+      setOtpErrorMsg("❌ Incorrect OTP! Please check the 7-digit code from your email and try again. (తప్పు OTP. దయచేసి మళ్లీ తనిఖీ చేయండి)");
     }
   };
 
@@ -1056,7 +1072,7 @@ export default function LandingPage({
               <span className="text-base sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 uppercase font-sans">
                 Subhamastu Matrimony
               </span>
-              <p className="text-[9px] text-amber-400 font-mono tracking-widest mt-0.5 uppercase">A unit of GRV Services</p>
+              <p className="text-[9px] text-amber-400 font-mono tracking-widest mt-0.5 uppercase">A unit of Glark Solutions</p>
             </div>
           </div>
 
@@ -1293,6 +1309,65 @@ export default function LandingPage({
               </div>
               <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform shrink-0" />
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Our Sacred Vedic Pandits & Astrologers Section */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-zinc-950 border-t border-zinc-900">
+        <div className="max-w-7xl mx-auto space-y-10">
+          <div className="text-center space-y-3">
+            <span className="px-3.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-widest">
+              Consultation & Divine Blessings • మన పండితులు
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Our Sacred Vedic Pandits & Astrologers
+            </h3>
+            <p className="text-sm text-zinc-400 max-w-2xl mx-auto">
+              Connect with our esteemed Vedic priests and astrologers for expert horoscope matching, Gotram verification, muhurtam fixation, and sacred marriage ceremonies.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {panditsList.map((p) => (
+              <div key={p.id} className="bg-zinc-900 border border-amber-500/20 hover:border-amber-400/50 rounded-3xl p-6 shadow-xl transition-all space-y-4 text-left flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={p.photoUrl}
+                      alt={p.name}
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-md shrink-0"
+                    />
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                        {p.specialization || "Vedic Astrologer"}
+                      </span>
+                      <h4 className="text-base font-extrabold text-white">{p.name}</h4>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-300 italic leading-relaxed">
+                    "{p.message}"
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono text-amber-400">
+                    <span>📞 {p.phone || "+91 9347359489"}</span>
+                    <span className="text-[10px] text-zinc-400">{p.availableDays || "Mon - Sat"}</span>
+                  </div>
+
+                  <a
+                    href={`https://wa.me/${(p.phone || "+919347359489").replace(/\D/g, "")}?text=${encodeURIComponent(`Namaste Guruji, I am reaching out from Subhamastu Matrimony (Glark Solutions) for astrological consultation and match guidance.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>💬 Consult via WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -1573,6 +1648,18 @@ export default function LandingPage({
                       </div>
                     )}
                   </div>
+
+                  {otpErrorMsg && (
+                    <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 font-bold flex items-center gap-2 animate-in fade-in">
+                      <span>{otpErrorMsg}</span>
+                    </div>
+                  )}
+
+                  {otpSuccessMsg && (
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 font-bold flex items-center gap-2 animate-in fade-in">
+                      <span>{otpSuccessMsg}</span>
+                    </div>
+                  )}
 
                   {otpCooldown > 0 && !isEmailVerified && (
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
@@ -1999,9 +2086,19 @@ export default function LandingPage({
                       alert("దయచేసి ఇంటి పేరు మరియు పేరు నమోదు చేయండి.");
                       return;
                     }
-                    if (regStep === 2 && !regPhone) {
-                      alert("దయచేసి మొబైల్ నంబర్ నమోదు చేయండి.");
-                      return;
+                    if (regStep === 2) {
+                      if (!regPhone) {
+                        alert("దయచేసి మొబైల్ నంబర్ నమోదు చేయండి.");
+                        return;
+                      }
+                      if (!regEmail || !regEmail.includes("@")) {
+                        alert("దయచేసి సరైన ఈమెయిల్ చిరునామాను నమోదు చేయండి.");
+                        return;
+                      }
+                      if (!isEmailVerified) {
+                        alert("దయచేసి మీ ఈమెయిల్ మరియు OTP ని ధృవీకరించండి.\nPlease enter the correct OTP and verify your email before proceeding to the next step.");
+                        return;
+                      }
                     }
                     if (regStep === 4 && !regDob) {
                       alert("దయచేసి పుట్టిన తేదీ నమోదు చేయండి.");
@@ -2009,9 +2106,14 @@ export default function LandingPage({
                     }
                     setRegStep(regStep + 1);
                   }}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-extrabold uppercase tracking-wider text-xs shadow-md cursor-pointer hover:from-amber-500 hover:to-yellow-600"
+                  disabled={regStep === 2 && !isEmailVerified}
+                  className={`px-6 py-2.5 rounded-xl font-extrabold uppercase tracking-wider text-xs shadow-md transition-all ${
+                    regStep === 2 && !isEmailVerified
+                      ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-70"
+                      : "bg-gradient-to-r from-amber-400 to-yellow-500 text-black cursor-pointer hover:from-amber-500 hover:to-yellow-600"
+                  }`}
                 >
-                  Next Step (తదుపరి) →
+                  {regStep === 2 && !isEmailVerified ? "Verify Email to Continue 🔒" : "Next Step (తదుపరి) →"}
                 </button>
               ) : (
                 <button

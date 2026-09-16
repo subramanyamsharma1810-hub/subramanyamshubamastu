@@ -59,7 +59,7 @@ async function sendViaZeptoFetch(payload: {
       },
       body: JSON.stringify({
         from: {
-          address: process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in",
+          address: process.env.ZOHO_SENDER_EMAIL || "verification@shubhamastu.in",
           name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
         },
         to: [

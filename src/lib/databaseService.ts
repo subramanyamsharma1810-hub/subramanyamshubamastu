@@ -1,6 +1,6 @@
 import { db } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query } from "firebase/firestore";
-import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo } from "../types";
+import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, Pandit } from "../types";
 import { calculateMatchScore } from "./matchEngine";
 
 export const ROOT_ADMINS: AdminUser[] = [
@@ -1048,5 +1048,83 @@ export const databaseService = {
       }
     }
     return null;
+  },
+
+  async getPandits(): Promise<Pandit[]> {
+    let list: Pandit[] = [
+      {
+        id: "pandit-1",
+        name: "Brahmashri Vedula Subrahmanya Sharma",
+        photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+        message: "Dedicated to conducting sacred Vedic marriages, Kundali matching, Gothra shuddhi, and providing divine blessings according to traditional Shastras.",
+        phone: "+91 9441234567",
+        specialization: "Vedic Astrology & Vivaha Muhurtam",
+        availableDays: "Mon - Sat (9 AM - 6 PM)",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "pandit-2",
+        name: "Brahmashri Challa Sastry",
+        photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80",
+        message: "Expert in Ashtakoota Guna Milan, horoscope matching, dosha pariharam, and traditional Brahmin wedding rituals.",
+        phone: "+91 9887654321",
+        specialization: "Kundali Matching & Pariharam",
+        availableDays: "All Days (By Appointment)",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    try {
+      const snap = await getDocs(collection(db, "pandits"));
+      if (!snap.empty) {
+        const fetched: Pandit[] = [];
+        snap.forEach((d) => fetched.push(d.data() as Pandit));
+        if (fetched.length > 0) list = fetched;
+      }
+    } catch (e) {
+      console.warn("Could not fetch pandits from Firestore:", e);
+    }
+
+    const local = localStorage.getItem("matrimonial_pandits");
+    if (local) {
+      try {
+        const localList: Pandit[] = JSON.parse(local);
+        if (localList.length > 0) {
+          list = localList;
+        }
+      } catch (e) {}
+    }
+
+    localStorage.setItem("matrimonial_pandits", JSON.stringify(list));
+    return list;
+  },
+
+  async savePandit(pandit: Pandit): Promise<Pandit> {
+    try {
+      await setDoc(doc(db, "pandits", pandit.id), pandit);
+    } catch (e) {
+      console.error("Error saving pandit to Firestore:", e);
+    }
+    const current = await this.getPandits();
+    const idx = current.findIndex(p => p.id === pandit.id);
+    if (idx >= 0) {
+      current[idx] = pandit;
+    } else {
+      current.push(pandit);
+    }
+    localStorage.setItem("matrimonial_pandits", JSON.stringify(current));
+    return pandit;
+  },
+
+  async deletePandit(id: string): Promise<boolean> {
+    try {
+      await deleteDoc(doc(db, "pandits", id));
+    } catch (e) {
+      console.error("Error deleting pandit from Firestore:", e);
+    }
+    const current = await this.getPandits();
+    const filtered = current.filter(p => p.id !== id);
+    localStorage.setItem("matrimonial_pandits", JSON.stringify(filtered));
+    return true;
   }
 };

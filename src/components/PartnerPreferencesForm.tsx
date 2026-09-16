@@ -72,7 +72,25 @@ export default function PartnerPreferencesForm({ userId, onSavePreferences }: Pa
           <h3 className="font-bold text-lg">Define Search Criteria</h3>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-6">
+          {/* Age Gap Preference */}
+          <div>
+            <label className="block text-xs font-bold text-[#362B5A] uppercase tracking-wider mb-2">Age Gap Preference (వయస్సు వ్యత్యాసం / తేడా)</label>
+            <select
+              value={ageGap}
+              onChange={(e) => setAgeGap(Number(e.target.value))}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#362B5A]/20 focus:border-[#362B5A] bg-[#EBF6FF]/20 font-medium text-[#362B5A]"
+            >
+              <option value={0}>Same Age (ఒకే వయస్సు - 0 Years Gap)</option>
+              <option value={3}>±3 Years (3 సంవత్సరాల లోపు వ్యత్యాసం)</option>
+              <option value={5}>±5 Years (5 సంవత్సరాల లోపు వ్యత్యాసం)</option>
+              <option value={10}>Any Age Gap / Open (ఏ వయస్సు తేడా అయినా)</option>
+            </select>
+            <div className="mt-2 text-[11px] text-gray-500 font-medium">
+              Choose whether you prefer partner matches around your exact age, within 3–5 years, or any age difference.
+            </div>
+          </div>
+
           {/* Preferred Sub-Caste */}
           <div>
             <label className="block text-xs font-bold text-[#362B5A] uppercase tracking-wider mb-2">Preferred Sub-Caste (కోరుకునే ఉపకులం)</label>

@@ -1,3 +1,14 @@
+export interface Pandit {
+  id: string;
+  name: string;
+  photoUrl: string;
+  message: string;
+  phone?: string;
+  specialization?: string;
+  availableDays?: string;
+  createdAt: string;
+}
+
 export interface AstrologyDetails {
   nakshatra: string;
   nakshatraLord: string;

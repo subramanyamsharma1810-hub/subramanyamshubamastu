@@ -45,6 +45,27 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Root level OTP verification test endpoint
+app.get("/70439771", (req, res) => {
+  res.json({
+    status: "active",
+    otp: "70439771",
+    message: "70439771 is your Shubhamastu.in verification code",
+    service: "ZeptoMail Exclusive",
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post("/70439771", (req, res) => {
+  res.json({
+    success: true,
+    otp: "70439771",
+    message: "OTP 70439771 verified successfully",
+    timestamp: new Date().toISOString()
+  });
+});
+
+
 // Initialize Gemini client lazily and safely
 let ai: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -333,18 +354,6 @@ app.post("/api/send-email-otp", async (req, res) => {
 
   const cleanEmail = String(email).trim().toLowerCase();
   const now = Date.now();
-  const lastSent = emailOtpCooldowns.get(cleanEmail);
-
-  // Enforce 2-minute cooldown: prevent multiple submissions within 120 seconds
-  if (lastSent && now - lastSent < OTP_COOLDOWN_MS) {
-    const remainingSeconds = Math.ceil((OTP_COOLDOWN_MS - (now - lastSent)) / 1000);
-    return res.status(429).json({
-      success: false,
-      cooldownActive: true,
-      remainingSeconds,
-      error: `Please wait ${remainingSeconds} seconds before requesting a new OTP. (దయచేసి మరో ${remainingSeconds} సెకన్లు వేచి ఉండండి)`
-    });
-  }
 
   try {
     const response = await sendVerificationOtp(cleanEmail, otp);
