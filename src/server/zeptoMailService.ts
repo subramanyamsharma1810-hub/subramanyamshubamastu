@@ -59,8 +59,8 @@ async function sendViaZeptoFetch(payload: {
       },
       body: JSON.stringify({
         from: {
-          address: process.env.ZOHO_SENDER_EMAIL || "verification@shubhamastu.in",
-          name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
+          address: "verification@shubhamastu.in",
+          name: "shubhamastu.in",
         },
         to: [
           {
@@ -95,7 +95,7 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
   const subject = `${otpCode} is your verification code for shubhamastu.in/registration/mobile/otpverification`;
   const htmlbody = `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px; background-color: #fffdf9;">
-      <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">Bramhana Vivaha Vedika</h2>
+      <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">shubhamastu.in</h2>
       <p style="text-align: center; font-size: 13px; color: #78350f; margin-top: 0; font-family: monospace;">shubhamastu.in/registration/mobile/otpverification</p>
       <hr style="border: 0; border-top: 1px solid #f3e8ff; margin: 16px 0;" />
       <p>Namaste,</p>
@@ -106,7 +106,7 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
         </span>
       </div>
       <p style="font-size: 13px; color: #6b7280;">This code will expire in 10 minutes. Do not share this OTP with anyone.</p>
-      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; text-align: center;">© Bramhana Vivaha Vedika • Powered by Zoho ZeptoMail API</p>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; text-align: center;">© shubhamastu.in • Powered by Zoho ZeptoMail API</p>
     </div>
   `;
 
@@ -134,7 +134,7 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
   try {
     const response = await client.sendMail({
       from: {
-        address: process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in",
+        address: "verification@shubhamastu.in",
         name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
       },
       to: [
@@ -221,7 +221,7 @@ export async function sendPasswordResetEmail(
   try {
     const response = await client.sendMail({
       from: {
-        address: process.env.ZOHO_SENDER_EMAIL || "noreply@shubhamastu.in",
+        address: "verification@shubhamastu.in",
         name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
       },
       to: [
