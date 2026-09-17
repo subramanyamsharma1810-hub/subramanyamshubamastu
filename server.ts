@@ -369,24 +369,18 @@ app.post("/api/send-email-otp", async (req, res) => {
       });
     }
 
-    console.warn("⚠️ Zoho ZeptoMail dispatch response was not successful:", response.error);
+    console.error("⚠️ Zoho ZeptoMail dispatch response was not successful:", response.error);
     emailOtpCooldowns.set(cleanEmail, now);
-    return res.json({
-      success: true,
-      otp,
-      fallback: true,
-      cooldownSeconds: 120,
-      message: `OTP generated successfully: ${otp}`
+    return res.status(500).json({
+      success: false,
+      error: response.error || "Failed to dispatch email via ZeptoMail"
     });
   } catch (err: any) {
     console.error("Zoho ZeptoMail Dispatch Error:", err);
     emailOtpCooldowns.set(cleanEmail, now);
-    return res.json({
-      success: true,
-      otp,
-      fallback: true,
-      cooldownSeconds: 120,
-      message: `OTP generated: ${otp}`
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to dispatch email via ZeptoMail"
     });
   }
 });
