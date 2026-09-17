@@ -9,8 +9,10 @@ import {
   CouponApplyResponse 
 } from "../types";
 
-// Persistent file-backed storage fallback to ensure flawless sandbox experience
-const DATA_DIR = path.join(process.cwd(), ".data");
+// Persistent file-backed storage fallback with robust serverless read-only filesystem handling
+const DATA_DIR = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+  ? path.join('/tmp', '.data')
+  : path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "matrimony_engine_store.json");
 
 interface EngineStore {
@@ -250,8 +252,10 @@ class ReferralCouponEngine {
         fs.mkdirSync(DATA_DIR, { recursive: true });
       }
       fs.writeFileSync(DATA_FILE, JSON.stringify(this.store, null, 2), "utf-8");
-    } catch (err) {
-      console.error("Failed to write to matrimony store file:", err);
+    } catch (err: any) {
+      if (!err?.message?.includes("read-only")) {
+        console.warn("Notice on store persistence:", err?.message || err);
+      }
     }
   }
 

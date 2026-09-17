@@ -7,6 +7,7 @@ import { getGenderLabel } from "../lib/genderHelper";
 import { NAKSHATRAS } from "../lib/panchangam";
 
 interface StackCardProps {
+  key?: string | number;
   match: Profile;
   currentProfile: Profile;
   isFront: boolean;

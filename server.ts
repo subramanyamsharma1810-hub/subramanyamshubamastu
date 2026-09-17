@@ -330,7 +330,7 @@ app.post("/api/test-zoho-email", async (req, res) => {
     return res.json({
       success: true,
       provider: "zeptomail_exclusive",
-      details: testResult.data
+      details: (testResult as any).data
     });
   } else {
     return res.status(500).json({
@@ -359,7 +359,7 @@ app.post("/api/send-email-otp", async (req, res) => {
     const response = await sendVerificationOtp(cleanEmail, otp);
     if (response.success) {
       emailOtpCooldowns.set(cleanEmail, now);
-      console.log(`Verification OTP successfully sent via Zoho ZeptoMail to ${cleanEmail}:`, response.data);
+      console.log(`Verification OTP successfully sent via Zoho ZeptoMail to ${cleanEmail}:`, (response as any).data);
       return res.json({
         success: true,
         otp,
@@ -681,9 +681,15 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Shiva Sati Matrimonial Server is running on port ${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Shiva Sati Matrimonial Server is running on port ${PORT}`);
+    });
+  }
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
