@@ -19,7 +19,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    let body = req.body;
+    let body: any = req.body;
+    if (!body) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      }
+      if (chunks.length > 0) {
+        const rawData = Buffer.concat(chunks).toString('utf-8');
+        try {
+          body = JSON.parse(rawData);
+        } catch (e) {
+          body = {};
+        }
+      }
+    }
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
