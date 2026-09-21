@@ -1652,16 +1652,17 @@ Ph: ${adminPhone}`;
         body: JSON.stringify({ email: emailToVerify, otp: code })
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setAdminIsOtpSent(true);
         alert(`✉️ 7-Digit OTP sent to candidate's email (${emailToVerify})!\n\nPlease ask the candidate for the 7-digit code received in their email inbox.`);
       } else {
+        setAdminIsOtpSent(false);
         alert("Failed to send email OTP: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Error sending admin email OTP:", err);
-      setAdminIsOtpSent(true);
-      alert(`✉️ 7-Digit OTP sent to candidate's email (${emailToVerify})!\n\nPlease enter the 7-digit code received.`);
+      setAdminIsOtpSent(false);
+      alert("Failed to send email OTP. Please check your network or email configuration.");
     } finally {
       setAdminIsSendingOtp(false);
     }

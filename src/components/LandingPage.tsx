@@ -250,29 +250,22 @@ export default function LandingPage({
         body: JSON.stringify({ email: regEmail.trim(), otp: code })
       });
       const data = await res.json();
-      if (data.success) {
+      
+      if (res.ok && data.success) {
         setIsOtpSent(true);
         setOtpCooldown(120); // 2 minutes cooldown
         localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
         setOtpSuccessMsg(`✉️ 7-Digit OTP sent successfully to ${regEmail}. Please check your inbox!`);
-      } else if (data.cooldownActive && data.remainingSeconds) {
-        setOtpCooldown(data.remainingSeconds);
-        localStorage.setItem("bvm_otp_expiry", (Date.now() + data.remainingSeconds * 1000).toString());
-        setOtpErrorMsg(data.error || "Please wait before resending OTP.");
       } else {
-        // Fallback success for user friendliness even if backend bounced
-        setIsOtpSent(true);
-        setOtpCooldown(120);
-        localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-        setOtpSuccessMsg(`✉️ 7-Digit OTP generated & dispatched to ${regEmail}.`);
+        setIsOtpSent(false);
+        setOtpCooldown(0);
+        setOtpErrorMsg(data.error || "❌ Failed to send OTP. Please try again or contact support.");
       }
     } catch (err) {
       console.error("Error sending email OTP:", err);
-      // Fallback local dispatch
-      setIsOtpSent(true);
-      setOtpCooldown(120);
-      localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-      setOtpSuccessMsg(`✉️ 7-Digit OTP dispatched to ${regEmail}.`);
+      setIsOtpSent(false);
+      setOtpCooldown(0);
+      setOtpErrorMsg("❌ Failed to send OTP. Please try again or contact support.");
     } finally {
       setIsSendingOtp(false);
     }
