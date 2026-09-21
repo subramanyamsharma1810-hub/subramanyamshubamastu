@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const rawToken =
       process.env.ZEPTOMAIL_API_TOKEN ||
       process.env.ZOHO_ZEPTOMAIL_API_KEY ||
-      "Zoho-enczapikey PHtE6r1bEL/uimYpoxMJsaLuFsXwZ40u/+luLAUR4opFCPJVHU0Ar919kDKz+BwqUPAXRaSfz4g7tLmf57mAJD25M2kdDmqyqK3sx/VYSPOZsbq6x00btF8ecUXeUoTtctBs1ibeu9rfNA==";
+      "Zoho-enczapikey PHtE6r0PS7y6iDQp+xNWtPPqFpbwZI8r+L82eAFA4YoTXqdRSU1crtwqkD6xoxspU6QXFqSbyd1hseybtLiAdm/tND0ZVGqyqK3sx/VYSPOZsbq6x00ZtFgTdkbbU4TsdtNq1ibTut/bNA==";
 
     const token = rawToken.toLowerCase().startsWith("zoho-enczapikey ")
       ? rawToken.trim()
