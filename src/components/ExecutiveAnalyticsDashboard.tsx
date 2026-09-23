@@ -138,8 +138,10 @@ export const ExecutiveAnalyticsDashboard: React.FC<ExecutiveAnalyticsDashboardPr
         if (p.gender === "Male") monthCounts[mName].males += 1;
         else monthCounts[mName].females += 1;
 
-        if (p.subscription_status === "paid_900") monthCounts[mName].revenue += 1000;
-        else if (p.subscription_status === "paid_100") monthCounts[mName].revenue += 100;
+        if (!p.isTestUser && !p.is_test_user) {
+          if (p.subscription_status === "paid_900") monthCounts[mName].revenue += 1000;
+          else if (p.subscription_status === "paid_100") monthCounts[mName].revenue += 100;
+        }
       }
     });
 

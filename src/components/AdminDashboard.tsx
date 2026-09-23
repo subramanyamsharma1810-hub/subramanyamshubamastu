@@ -671,6 +671,10 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   // Match Engine State
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
   const [candidatePreferences, setCandidatePreferences] = useState<PartnerPreferences | null>(null);
+  const [matchEngineMode, setMatchEngineMode] = useState<"list" | "inspect">("list");
+  const [matchEngineGenderTab, setMatchEngineGenderTab] = useState<"all" | "Male" | "Female">("all");
+  const [matchEngineSearch, setMatchEngineSearch] = useState<string>("");
+  const [matchEngineSort, setMatchEngineSort] = useState<"match_count_desc" | "age_asc" | "age_desc" | "salary_desc" | "name_asc">("match_count_desc");
 
   // Associated Phone registry state
   const [associatedPhoneModal, setAssociatedPhoneModal] = useState<string | null>(null);
@@ -731,6 +735,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const handleProfileClick = (profile: Profile) => {
     setSelectedCandidateId(profile.id);
     setActiveAdminTab("matchEngine");
+    setMatchEngineMode("inspect");
     const calculatedOwnAge = calculateAge(profile.dob);
     if (profile.gender === "Female") {
       setPreferredMinAge(calculatedOwnAge);
@@ -2395,6 +2400,7 @@ Ph: ${adminPhone}`;
     let otherPrem = 0;
 
     profiles.forEach((p) => {
+      if (p.isTestUser || p.is_test_user) return; // Exclude test users from revenue
       // Attribute to who approved the payment (fee_received_by) or registered_by as fallback
       const admin = p.fee_received_by || p.registered_by || "";
       const isSubbu = admin.toLowerCase().includes("subramanyam") || admin.toLowerCase().includes("subbu");
@@ -2671,7 +2677,10 @@ Ph: ${adminPhone}`;
 
           <button
             type="button"
-            onClick={() => setActiveAdminTab("matchEngine")}
+            onClick={() => {
+              setActiveAdminTab("matchEngine");
+              setMatchEngineMode("list");
+            }}
             className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
               activeAdminTab === "matchEngine" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
@@ -2810,7 +2819,11 @@ Ph: ${adminPhone}`;
 
           <button
             type="button"
-            onClick={() => setActiveAdminTab("matchEngine")}
+            onClick={() => {
+              setActiveAdminTab("matchEngine");
+              setMatchEngineMode("list");
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             className="w-full py-2.5 bg-[#362B5A] hover:bg-[#282043] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center"
           >
             Open Full Match Engine →
@@ -3396,7 +3409,10 @@ Ph: ${adminPhone}`;
           {stageInfo.stage === 3 ? `My Candidates (${accessibleProfiles.length})` : `Registrations Manager (${totalProfiles})`}
         </button>
         <button
-          onClick={() => setActiveAdminTab("matchEngine")}
+          onClick={() => {
+            setActiveAdminTab("matchEngine");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
           className={`py-3 px-6 font-extrabold text-sm uppercase tracking-wider border-b-4 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
             activeAdminTab === "matchEngine"
               ? "border-[#C2242C] text-[#362B5A]"
@@ -4043,7 +4059,7 @@ Ph: ${adminPhone}`;
                           ₹ {p.salary_lpa} LPA
                         </td>
 
-                        {/* Registration Approval Select */}
+                        {/* Registration Approval Select & Match Count Badge */}
                         <td className="px-4 py-4 whitespace-nowrap text-center">
                           <select
                             value={p.status}
@@ -4066,6 +4082,14 @@ Ph: ${adminPhone}`;
                             <option value="Married">💍 Marriage Done</option>
                             <option value="Declined">✕ Declined</option>
                           </select>
+                          <div className="mt-1.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-mono font-bold rounded-full border border-indigo-100 shadow-2xs">
+                              💖 {(() => {
+                                const opp = p.gender === "Female" ? "Male" : "Female";
+                                return profiles.filter(o => o.id !== p.id && o.gender === opp && (!p.sub_caste || !o.sub_caste || p.sub_caste.trim().toLowerCase() === o.sub_caste.trim().toLowerCase())).length;
+                              })()} Matches
+                            </span>
+                          </div>
                         </td>
 
                         {/* Subscription Updater */}
@@ -4144,20 +4168,21 @@ Ph: ${adminPhone}`;
               </p>
             </div>
 
-            {/* Selector */}
-            <div className="flex items-center gap-2 bg-[#EBF6FF] p-3 rounded-2xl border border-[#362B5A]/10 shrink-0">
-              <span className="text-xs font-extrabold text-[#362B5A] uppercase tracking-wider">Candidate:</span>
-              <select
-                value={selectedCandidateId}
-                onChange={(e) => setSelectedCandidateId(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-[#C2242C] focus:outline-none cursor-pointer font-sans"
-              >
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.gender === "Female" ? "F" : "M"})
-                  </option>
-                ))}
-              </select>
+            {/* Selector with Advanced Search (Name, ID, Mobile, Sub-Caste) */}
+            <div className="w-full md:w-80">
+              <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">Search & Select Candidate (Name, ID, Mobile):</span>
+              <SearchableSelect
+                options={profiles.map((p) => ({
+                  id: p.id,
+                  labelEn: `${p.name} (${p.gender === "Female" ? "Female" : "Male"}) - [ID: ${p.id} | Mob: ${p.contact_number}]`,
+                  labelTe: p.name
+                }))}
+                selectedValue={selectedCandidateId}
+                onChange={(val) => setSelectedCandidateId(val)}
+                placeholder="Search by name, ID, or mobile number..."
+                theme="light"
+                returnId={true}
+              />
             </div>
           </div>
 
@@ -4629,9 +4654,9 @@ Ph: ${adminPhone}`;
                           </div>
                         </div>
 
-                        {/* Kitchen Service Delivery Control Box */}
-                        <div className="flex flex-col items-stretch justify-center p-4 bg-gray-50 border border-gray-100 rounded-2xl min-w-[160px] text-center shrink-0 gap-2">
-                          <span className="text-[9px] font-extrabold text-[#362B5A] uppercase tracking-wider block">Kitchen Service</span>
+                        {/* Kitchen Service Delivery & Drilldown Control Box */}
+                        <div className="flex flex-col items-stretch justify-center p-4 bg-gray-50 border border-gray-100 rounded-2xl min-w-[170px] text-center shrink-0 gap-2">
+                          <span className="text-[9px] font-extrabold text-[#362B5A] uppercase tracking-wider block">Kitchen Service & Drilldown</span>
                           {selectedCandidate.approved_matches?.includes(partner.id) ? (
                             <button
                               type="button"
@@ -4642,10 +4667,10 @@ Ph: ${adminPhone}`;
                                 const saved = await databaseService.saveProfile(updatedCandidate);
                                 setProfiles(prev => prev.map(p => p.id === saved.id ? saved : p));
                               }}
-                              className="w-full py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1"
+                              className="w-full py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1"
                             >
-                              <Check className="w-3.5 h-3.5 text-white" />
-                              <span>Dish Delivered (Paid)</span>
+                              <Check className="w-3 h-3 text-white" />
+                              <span>Dish Delivered</span>
                             </button>
                           ) : (
                             <button
@@ -4657,12 +4682,24 @@ Ph: ${adminPhone}`;
                                 const saved = await databaseService.saveProfile(updatedCandidate);
                                 setProfiles(prev => prev.map(p => p.id === saved.id ? saved : p));
                               }}
-                              className="w-full py-2 px-2.5 bg-[#C2242C] hover:bg-red-700 text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                              className="w-full py-2 px-2 bg-[#C2242C] hover:bg-red-700 text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                             >
-                              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                              <Sparkles className="w-3 h-3 text-yellow-300" />
                               <span>Deliver Dish (Paid)</span>
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCandidateId(partner.id);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="w-full py-2 px-2 bg-[#362B5A] hover:bg-[#251d3b] text-white font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1"
+                            title="Inspect partner profile and see matches got for him/her"
+                          >
+                            <Compass className="w-3 h-3 text-amber-300" />
+                            <span>Inspect His/Her Matches</span>
+                          </button>
                           <p className="text-[9px] text-gray-500 font-semibold leading-tight">
                             {selectedCandidate.approved_matches?.includes(partner.id)
                               ? "🍛 Visible on user profile"

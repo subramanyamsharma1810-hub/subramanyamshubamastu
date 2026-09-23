@@ -98,6 +98,8 @@ export interface Profile {
   father_name?: string; // Father's Name
   mother_name?: string; // Mother's Name
   payment_received?: boolean; // Automated payment confirmation flag
+  isTestUser?: boolean; // Test user flag
+  is_test_user?: boolean; // Test user flag
   liked_profiles?: string[];  // Array of profile IDs this user has liked (swiped right)
   disliked_profiles?: string[]; // Array of profile IDs this user has skipped (swiped left)
 }

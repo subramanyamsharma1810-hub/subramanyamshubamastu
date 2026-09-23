@@ -649,7 +649,7 @@ export default function LandingPage({
         const cleanInput = inputClean.replace(/\D/g, "");
         matchedProfiles = profiles.filter((p) => {
           const cleanStored = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
-          return cleanStored && cleanInput && cleanStored === cleanInput;
+          return cleanStored && cleanInput && (cleanStored === cleanInput || cleanStored.slice(-10) === cleanInput.slice(-10) || cleanInput.slice(-10) === cleanStored.slice(-10));
         });
       }
 

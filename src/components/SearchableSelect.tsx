@@ -15,6 +15,7 @@ interface SearchableSelectProps {
   emptyLabel?: string;
   className?: string;
   theme?: "light" | "dark";
+  returnId?: boolean;
 }
 
 export default function SearchableSelect({
@@ -25,6 +26,7 @@ export default function SearchableSelect({
   emptyLabel = "No matches found",
   className = "",
   theme = "dark",
+  returnId = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,7 +101,7 @@ export default function SearchableSelect({
                 if (e.key === "Enter") {
                   e.preventDefault();
                   if (filteredOptions.length > 0) {
-                    onChange(filteredOptions[0].labelEn);
+                    onChange(returnId ? filteredOptions[0].id : filteredOptions[0].labelEn);
                     setIsOpen(false);
                   } else if (searchQuery.trim()) {
                     onChange(searchQuery.trim());
@@ -147,7 +149,7 @@ export default function SearchableSelect({
                     key={opt.id}
                     type="button"
                     onClick={() => {
-                      onChange(opt.labelEn); // Keep English label as stored value
+                      onChange(returnId ? opt.id : opt.labelEn);
                       setIsOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-xl text-left transition-all ${
