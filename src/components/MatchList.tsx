@@ -82,7 +82,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const handleStartCallRequest = async (receiver: Profile, callType: "audio" | "video") => {
     setIsCallingLoading(true);
     try {
-      const res = await fetch("/api/calls/request", {
+      const res = await fetch("/api/calls/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,9 +92,10 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         }),
       });
       const data = await res.json();
-      if (data.success && data.callSessionId) {
+      const sessionId = data.session?.callSessionId || data.callSessionId;
+      if (data.success && sessionId) {
         setActiveCallSession({
-          callSessionId: data.callSessionId,
+          callSessionId: sessionId,
           receiver,
           callType,
         });
