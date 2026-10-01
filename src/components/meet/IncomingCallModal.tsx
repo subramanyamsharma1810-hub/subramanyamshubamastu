@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Phone, PhoneOff, Video, User, Sparkles } from "lucide-react";
+import { Phone, PhoneOff, Video } from "lucide-react";
 import { Profile } from "../../types";
+import { ref, onValue, update, remove } from "firebase/database";
+import { rtdb } from "../../lib/firebase";
 
 interface IncomingCallModalProps {
   currentProfile: Profile | null;
@@ -14,66 +16,64 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    if (!currentProfile) return;
+    if (!currentProfile?.id) return;
 
-    const checkIncoming = async () => {
-      try {
-        const res = await fetch(`/api/calls/incoming/${currentProfile.id}`);
-        const data = await res.json();
-        if (data.success && data.sessions && data.sessions.length > 0) {
-          const session = data.sessions[0];
-          setIncomingSession(session);
-          const found = allProfiles.find(p => p.id === session.callerId);
-          setCallerProfile(found || {
-            id: session.callerId,
-            name: session.callerName,
-            reg_number: session.callerRegNumber,
-            gender: "Male",
-            dob: "1995-01-01",
-            height_feet: 5.8,
-            sub_caste: "Brahmin",
-            profession: "Professional",
-            salary_lpa: 10,
-            contact_number: "",
-            status: "Verified"
-          });
-        } else {
-          setIncomingSession(null);
-          setCallerProfile(null);
-        }
-      } catch (err) {
-        console.error("Failed to poll incoming calls:", err);
+    const myCallsRef = ref(rtdb, `calls/${currentProfile.id}`);
+    const unsubscribe = onValue(myCallsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        setIncomingSession(null);
+        setCallerProfile(null);
+        return;
       }
-    };
 
-    checkIncoming();
-    const interval = setInterval(checkIncoming, 3000); // Poll every 3s
-    return () => clearInterval(interval);
+      const sessions = Object.entries(data).map(([id, val]: [string, any]) => ({
+        callSessionId: id,
+        ...val
+      }));
+
+      const activeRinging = sessions.find((s: any) => s.status === "RINGING");
+      if (activeRinging) {
+        setIncomingSession(activeRinging);
+        const found = allProfiles.find(p => p.id === activeRinging.callerId);
+        setCallerProfile(found || {
+          id: activeRinging.callerId,
+          name: activeRinging.callerName || "Member",
+          reg_number: activeRinging.callerRegNumber || "SHUBH",
+          gender: "Male",
+          dob: "1995-01-01",
+          height_feet: 5.8,
+          sub_caste: "Brahmin",
+          profession: "Professional",
+          salary_lpa: 10,
+          contact_number: "",
+          status: "Verified"
+        });
+      } else {
+        setIncomingSession(null);
+        setCallerProfile(null);
+      }
+    });
+
+    return () => unsubscribe();
   }, [currentProfile, allProfiles]);
 
   const handleRespond = async (action: "ACCEPT" | "DECLINE") => {
     if (!incomingSession || !currentProfile) return;
     setProcessing(true);
     try {
-      const res = await fetch("/api/calls/respond", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          callSessionId: incomingSession.callSessionId,
-          userId: currentProfile.id,
-          action
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (action === "ACCEPT") {
-          onAcceptCall(incomingSession.callSessionId, incomingSession.callType || "video");
-        }
-        setIncomingSession(null);
-        setCallerProfile(null);
+      const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${incomingSession.callSessionId}`);
+      if (action === "ACCEPT") {
+        await update(sessionRef, { status: "ACTIVE", connectedPeerId: currentProfile.id });
+        onAcceptCall(incomingSession.callSessionId, incomingSession.callType || "video");
+      } else {
+        await update(sessionRef, { status: "DECLINED" });
+        setTimeout(() => remove(sessionRef), 1500);
       }
+      setIncomingSession(null);
+      setCallerProfile(null);
     } catch (err) {
-      console.error("Error responding to call:", err);
+      console.error("Error responding to call in RTDB:", err);
     } finally {
       setProcessing(false);
     }
@@ -107,7 +107,7 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
         </div>
 
         <p className="text-xs text-stone-300 bg-white/5 p-3 rounded-xl border border-white/10">
-          Namaste! You are receiving a private live match call on Shubhamastu.in. Approve to connect securely.
+          Namaste! You have an incoming live match call on Shubhamastu.in. Choose whether to accept or decline.
         </p>
 
         <div className="flex items-center gap-4 pt-2">

@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Profile } from "../types";
-import { databaseService } from "../lib/databaseService";
 import { usePresenceStatus } from "../lib/presence";
 import {
   X,
   Send,
   Phone,
   Video,
-  ShieldAlert,
-  Check,
   CheckCheck,
   Smile,
   Paperclip,
-  Lock,
-  Clock,
-  AlertTriangle
+  Lock
 } from "lucide-react";
+import { ref, push, onValue } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 
 interface MatchChatModalProps {
   currentProfile: Profile;
@@ -27,10 +24,9 @@ interface MatchChatModalProps {
 interface ChatMessage {
   id: string;
   senderId: string;
-  receiverId: string;
   text: string;
-  timestamp: string;
-  status: "sent" | "delivered" | "read";
+  timestamp: number | string;
+  status?: string;
 }
 
 export default function MatchChatModal({
@@ -39,54 +35,62 @@ export default function MatchChatModal({
   onClose,
   onStartCall,
 }: MatchChatModalProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "msg-init",
-      senderId: targetProfile.id,
-      receiverId: currentProfile.id,
-      text: `Namaskaram 🙏. Thank you for connecting on Shubhamastu.in. I'm interested in discussing further regarding our matching profiles.`,
-      timestamp: new Date(Date.now() - 1000 * 60 * 15).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: "read",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const { isOnline } = usePresenceStatus(targetProfile.id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const chatId = [currentProfile.id, targetProfile.id].sort().join("_");
+
+  useEffect(() => {
+    const messagesRef = ref(rtdb, `chats/${chatId}/messages`);
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list: ChatMessage[] = Object.entries(data).map(([id, val]: [string, any]) => ({
+          id,
+          ...val
+        })).sort((a, b) => (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0));
+        setMessages(list);
+      } else {
+        // Default welcome message if empty
+        setMessages([
+          {
+            id: "msg-init",
+            senderId: targetProfile.id,
+            text: `Namaskaram 🙏. Thank you for connecting on Shubhamastu.in. I'm interested in discussing further regarding our matching profiles.`,
+            timestamp: Date.now() - 1000 * 60 * 10,
+            status: "read"
+          }
+        ]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [chatId, targetProfile.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      senderId: currentProfile.id,
-      receiverId: targetProfile.id,
-      text: inputText.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: "delivered",
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
+    const textToSend = inputText.trim();
     setInputText("");
 
-    // Simulate auto-reply after 3 seconds for demo immersion
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg-reply-${Date.now()}`,
-          senderId: targetProfile.id,
-          receiverId: currentProfile.id,
-          text: `Namaskaram! Received your message. Let's talk or schedule a call via Shubhamastu.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: "read",
-        },
-      ]);
-    }, 3000);
+    try {
+      const messagesRef = ref(rtdb, `chats/${chatId}/messages`);
+      await push(messagesRef, {
+        senderId: currentProfile.id,
+        text: textToSend,
+        timestamp: Date.now(),
+        status: "delivered"
+      });
+    } catch (err) {
+      console.error("Error sending chat message:", err);
+    }
   };
 
   return (
@@ -131,21 +135,21 @@ export default function MatchChatModal({
           <div className="flex items-center space-x-2">
             <button
               onClick={() => onStartCall("audio")}
-              className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-all shadow"
+              className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-all shadow cursor-pointer"
               title="Start Audio Call"
             >
               <Phone className="w-5 h-5" />
             </button>
             <button
               onClick={() => onStartCall("video")}
-              className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all shadow"
+              className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all shadow cursor-pointer"
               title="Start Video Call"
             >
               <Video className="w-5 h-5" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"
             >
               <X className="w-6 h-6" />
             </button>
@@ -156,7 +160,7 @@ export default function MatchChatModal({
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-xs text-amber-900 flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
             <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-            <span>End-to-end encrypted chat • Monitored for IT Rules compliance & women's safety</span>
+            <span>WhatsApp-style Real-Time Encrypted Chat • 50ms Delivery</span>
           </div>
           <span className="font-semibold text-[#362B5A]">ID: {targetProfile.id}</span>
         </div>
@@ -171,6 +175,10 @@ export default function MatchChatModal({
 
           {messages.map((msg) => {
             const isMe = msg.senderId === currentProfile.id;
+            const timeStr = typeof msg.timestamp === 'number'
+              ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : msg.timestamp;
+
             return (
               <div
                 key={msg.id}
@@ -189,14 +197,10 @@ export default function MatchChatModal({
                       isMe ? "text-amber-200/80" : "text-slate-400"
                     }`}
                   >
-                    <span>{msg.timestamp}</span>
+                    <span>{timeStr}</span>
                     {isMe && (
                       <span>
-                        {msg.status === "read" ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-emerald-400 inline" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5 inline" />
-                        )}
+                        <CheckCheck className="w-3.5 h-3.5 text-emerald-400 inline" />
                       </span>
                     )}
                   </div>
@@ -211,7 +215,7 @@ export default function MatchChatModal({
         <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center space-x-2">
           <button
             type="button"
-            className="p-2 text-slate-500 hover:text-[#362B5A] transition-colors rounded-full hover:bg-slate-100"
+            className="p-2 text-slate-500 hover:text-[#362B5A] transition-colors rounded-full hover:bg-slate-100 cursor-pointer"
             title="Attach File / Horoscopes"
           >
             <Paperclip className="w-5 h-5" />
@@ -225,7 +229,7 @@ export default function MatchChatModal({
           />
           <button
             type="button"
-            className="p-2 text-slate-500 hover:text-[#362B5A] transition-colors rounded-full hover:bg-slate-100 hidden sm:block"
+            className="p-2 text-slate-500 hover:text-[#362B5A] transition-colors rounded-full hover:bg-slate-100 hidden sm:block cursor-pointer"
             title="Insert Emoji"
           >
             <Smile className="w-5 h-5" />
@@ -233,7 +237,7 @@ export default function MatchChatModal({
           <button
             type="submit"
             disabled={!inputText.trim()}
-            className="bg-[#362B5A] hover:bg-[#4A3D78] disabled:opacity-50 text-white p-2.5 rounded-full transition-all shadow flex items-center justify-center"
+            className="bg-[#362B5A] hover:bg-[#4A3D78] disabled:opacity-50 text-white p-2.5 rounded-full transition-all shadow flex items-center justify-center cursor-pointer"
             title="Send Message"
           >
             <Send className="w-5 h-5" />

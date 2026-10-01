@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { PhoneOff, Wifi, Clock, Sparkles } from "lucide-react";
+import { PhoneOff, Clock } from "lucide-react";
 import { Profile } from "../../types";
+import { ref, onValue, remove } from "firebase/database";
+import { rtdb } from "../../lib/firebase";
 
 interface OutgoingCallModalProps {
   callSessionId: string;
@@ -33,21 +35,27 @@ export default function OutgoingCallModal({
       });
     }, 1000);
 
-    // Poll session status
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/calls/incoming/${targetProfile.id}`);
-        // Alternatively check session status endpoint or poll session
-      } catch (err) {
-        // ignore
+    // Listen to Firebase RTDB for session updates
+    const sessionRef = ref(rtdb, `calls/${targetProfile.id}/${callSessionId}`);
+    const unsubscribe = onValue(sessionRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+      if (data.status === "ACTIVE") {
+        onCallConnected();
+      } else if (data.status === "DECLINED") {
+        setStatusText("Call was declined.");
+        setTimeout(() => {
+          remove(sessionRef).catch(() => {});
+          onCancelCall();
+        }, 1500);
       }
-    }, 3000);
+    });
 
     return () => {
       clearInterval(timer);
-      clearInterval(pollInterval);
+      unsubscribe();
     };
-  }, [targetProfile.id, onCancelCall]);
+  }, [targetProfile.id, callSessionId, onCancelCall, onCallConnected]);
 
   const progressPercent = (secondsLeft / 60) * 100;
 
@@ -87,7 +95,11 @@ export default function OutgoingCallModal({
         </div>
 
         <button
-          onClick={onCancelCall}
+          onClick={async () => {
+            const sessionRef = ref(rtdb, `calls/${targetProfile.id}/${callSessionId}`);
+            await remove(sessionRef).catch(() => {});
+            onCancelCall();
+          }}
           className="w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
         >
           <PhoneOff className="w-4 h-4" />

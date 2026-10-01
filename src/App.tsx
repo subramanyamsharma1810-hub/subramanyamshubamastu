@@ -25,6 +25,8 @@ import ReferralDashboard from "./components/ReferralDashboard";
 import { useUserPresence } from "./lib/presence";
 import IncomingCallModal from "./components/meet/IncomingCallModal";
 import CallRoom from "./components/meet/CallRoom";
+import { ref, get } from "firebase/database";
+import { rtdb } from "./lib/firebase";
 import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
 
 export default function App() {
@@ -855,6 +857,49 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Global Incoming Call Listener & Modal */}
+      {currentProfile && (
+        <IncomingCallModal
+          currentProfile={currentProfile}
+          allProfiles={allProfiles}
+          onAcceptCall={(callSessionId, callType) => {
+            const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${callSessionId}`);
+            get(sessionRef).then(snap => {
+              const val = snap.val();
+              const caller = allProfiles.find(p => p.id === val?.callerId) || {
+                id: val?.callerId || "unknown",
+                name: val?.callerName || "Member",
+                reg_number: val?.callerRegNumber || "SHUBH",
+                gender: "Male",
+                dob: "1995-01-01",
+                height_feet: 5.8,
+                sub_caste: "Brahmin",
+                profession: "Professional",
+                salary_lpa: 10,
+                contact_number: "",
+                status: "Verified"
+              };
+              setActiveCallSession({
+                callSessionId,
+                caller,
+                receiver: currentProfile,
+                callType
+              });
+            }).catch(() => {});
+          }}
+        />
+      )}
+
+      {activeCallSession && (
+        <CallRoom
+          callSessionId={activeCallSession.callSessionId}
+          caller={activeCallSession.caller}
+          receiver={activeCallSession.receiver}
+          callType={activeCallSession.callType}
+          onEndCall={() => setActiveCallSession(null)}
+        />
+      )}
 
     </div>
   );

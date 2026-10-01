@@ -10,6 +10,9 @@ import { PandithConsultationModal } from "./PandithConsultationModal";
 import MatchChatModal from "./MatchChatModal";
 import PhoneRevealWidget from "./profile/PhoneRevealWidget";
 import CallRoom from "./meet/CallRoom";
+import OutgoingCallModal from "./meet/OutgoingCallModal";
+import { ref, set } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Heart,
@@ -76,6 +79,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     callSessionId: string;
     receiver: Profile;
     callType: "audio" | "video";
+    status: "ringing" | "connected";
   } | null>(null);
   const [isCallingLoading, setIsCallingLoading] = useState(false);
 
@@ -92,12 +96,26 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         }),
       });
       const data = await res.json();
-      const sessionId = data.session?.callSessionId || data.callSessionId;
+      const sessionId = data.session?.callSessionId || data.callSessionId || `shubh_${Date.now()}`;
       if (data.success && sessionId) {
+        // Write to Firebase RTDB for instant push to receiver
+        const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
+        await set(callRef, {
+          callSessionId: sessionId,
+          callerId: currentProfile.id,
+          callerName: currentProfile.name,
+          callerRegNumber: currentProfile.reg_number || "SHUBH",
+          callType,
+          status: "RINGING",
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 60000
+        }).catch((err) => console.error("RTDB call write error:", err));
+
         setActiveCallSession({
           callSessionId: sessionId,
           receiver,
           callType,
+          status: "ringing",
         });
       } else {
         alert("Failed to initiate call session. Please try again.");
@@ -1897,8 +1915,20 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         />
       )}
 
-      {/* Active Call Room (Agora WebRTC) */}
-      {activeCallSession && (
+      {/* Active Call Room or Ringing Outgoing Modal */}
+      {activeCallSession && activeCallSession.status === "ringing" && (
+        <OutgoingCallModal
+          callSessionId={activeCallSession.callSessionId}
+          targetProfile={activeCallSession.receiver}
+          callType={activeCallSession.callType}
+          onCancelCall={() => setActiveCallSession(null)}
+          onCallConnected={() => {
+            setActiveCallSession(prev => prev ? { ...prev, status: "connected" } : null);
+          }}
+        />
+      )}
+
+      {activeCallSession && activeCallSession.status === "connected" && (
         <CallRoom
           callSessionId={activeCallSession.callSessionId}
           caller={currentProfile}
