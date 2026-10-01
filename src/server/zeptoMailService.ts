@@ -259,3 +259,145 @@ export async function sendPasswordResetEmail(
   }
 }
 
+export async function sendContactRequestEmail(
+  recipientEmail: string,
+  requesterName: string,
+  requesterId: string,
+  targetName?: string
+) {
+  const subject = `New Contact Number Request from ${requesterName} (#${requesterId}) - shubhamastu.in`;
+  const htmlbody = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px; background-color: #fffdf9;">
+      <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">Shubhamastu.in / Bramhana Vivaha Vedika</h2>
+      <p style="text-align: center; font-size: 14px; color: #78350f; margin-top: 0;">శ్రీరామ జయం • వివాహ వేదిక</p>
+      <hr style="border: 0; border-top: 1px solid #f3e8ff; margin: 16px 0;" />
+      <p>Namaste ${targetName || "Valued Member"},</p>
+      <p><b>User ${requesterName} (#${requesterId})</b> requested to view your phone number.</p>
+      <p>Log in to your dashboard at <a href="https://shubhamastu.in/dashboard" style="color: #b45309; font-weight: bold;">shubhamastu.in</a> to approve or decline this request.</p>
+      <p style="font-size: 13px; color: #6b7280;">Your phone number remains protected until you explicitly approve mutual contact sharing.</p>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; text-align: center;">© Shubhamastu.in • Powered by Zoho ZeptoMail</p>
+    </div>
+  `;
+
+  const fetchResult = await sendViaZeptoFetch({
+    toEmail: recipientEmail,
+    toName: targetName || "Member",
+    subject,
+    htmlbody,
+  });
+
+  if (fetchResult.success) {
+    return fetchResult;
+  }
+
+  try {
+    const response = await client.sendMail({
+      from: {
+        address: "verification@shubhamastu.in",
+        name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
+      },
+      to: [
+        {
+          email_address: {
+            address: recipientEmail,
+            name: targetName || "Member",
+          },
+        },
+      ],
+      subject,
+      htmlbody,
+    });
+    return { success: true, data: response };
+  } catch (error: any) {
+    return { success: false, error: error?.message || error };
+  }
+}
+
+// Rate limiting map for missed call emails (2-hour window between same caller & receiver)
+const missedCallEmailCooldowns = new Map<string, number>();
+const MISSED_CALL_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+export async function sendMissedCallEmail(params: {
+  callerId: string;
+  callerName: string;
+  callerRegNumber: string;
+  recipientEmail: string;
+  recipientName: string;
+}) {
+  const { callerId, callerName, callerRegNumber, recipientEmail, recipientName } = params;
+  if (!recipientEmail || !recipientEmail.includes("@")) {
+    return { success: false, error: "Invalid recipient email" };
+  }
+
+  const cooldownKey = `${callerId}_${recipientEmail.trim().toLowerCase()}`;
+  const now = Date.now();
+  const lastSent = missedCallEmailCooldowns.get(cooldownKey) || 0;
+
+  if (now - lastSent < MISSED_CALL_COOLDOWN_MS) {
+    console.log(`Skipping missed call email to ${recipientEmail} due to 2-hour rate limit guard.`);
+    return { success: true, skippedDueToRateLimit: true };
+  }
+
+  const subject = `Missed Call Alert from ${callerName} (#${callerRegNumber || callerId}) - Shubhamastu.in`;
+  const htmlbody = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px; background-color: #fffdf9;">
+      <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">Shubhamastu.in • వివాహ వేదిక</h2>
+      <p style="text-align: center; font-size: 14px; color: #78350f; margin-top: 0;">శ్రీరామ జయం • మిస్డ్ కాల్ అలర్ట్</p>
+      <hr style="border: 0; border-top: 1px solid #f3e8ff; margin: 16px 0;" />
+      <p>Namaste <strong>${recipientName || "Member"}</strong>,</p>
+      <p><b>${callerName} (#${callerRegNumber || callerId})</b> tried calling you on Shubhamastu Matrimony.</p>
+      <p>Since you were away or offline, they could not connect.</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="https://shubhamastu.in/dashboard" style="background-color: #b45309; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
+          View Profile & Connect (ప్రొఫైల్ చూడండి)
+        </a>
+      </div>
+      <p style="font-size: 13px; color: #6b7280;">Log in to your profile to view their details, send a message, or schedule a conversation.</p>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 24px; text-align: center;">© Shubhamastu.in • Powered by Zoho ZeptoMail API</p>
+    </div>
+  `;
+
+  const fetchResult = await sendViaZeptoFetch({
+    toEmail: recipientEmail,
+    toName: recipientName || "Member",
+    subject,
+    htmlbody,
+  });
+
+  missedCallEmailCooldowns.set(cooldownKey, now);
+
+  if (fetchResult.success) {
+    recordEmailLog({
+      recipient: recipientEmail,
+      subject,
+      type: "Test",
+      provider: "zeptomail_fetch",
+      success: true,
+      details: fetchResult.data,
+    });
+    return fetchResult;
+  }
+
+  try {
+    const response = await client.sendMail({
+      from: {
+        address: "verification@shubhamastu.in",
+        name: process.env.ZOHO_SENDER_NAME || "Bramhana Vivaha Vedika",
+      },
+      to: [
+        {
+          email_address: {
+            address: recipientEmail,
+            name: recipientName || "Member",
+          },
+        },
+      ],
+      subject,
+      htmlbody,
+    });
+    return { success: true, data: response };
+  } catch (error: any) {
+    return { success: false, error: error?.message || error };
+  }
+}
+

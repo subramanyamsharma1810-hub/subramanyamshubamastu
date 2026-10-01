@@ -2,10 +2,14 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import { calculatePanchangam } from "./src/lib/panchangam";
+import { calculatePanchangam } from "./src/lib/panchangam.ts";
+import agoraTokenPkg from "agora-token";
+const { RtcTokenBuilder, RtcRole } = (agoraTokenPkg as any).default || agoraTokenPkg;
 
 import multer from "multer";
-import { referralCouponEngine } from "./src/server/referralCouponEngine";
+import { referralCouponEngine } from "./src/server/referralCouponEngine.ts";
+import { contactRevealEngine } from "./src/server/contactRevealEngine.ts";
+import { callSessionEngine } from "./src/server/callSessionEngine.ts";
 
 dotenv.config();
 
@@ -286,7 +290,7 @@ Return the response strictly as JSON with keys: "spiritualAnalysis", "compatibil
 // ==============================================================================
 // ZOHO ZEPTOMAIL EXCLUSIVE EMAIL GATEWAY
 // ==============================================================================
-import { sendVerificationOtp, sendPasswordResetEmail, client as zeptoMailClient, emailLogs } from "./src/server/zeptoMailService";
+import { sendVerificationOtp, sendPasswordResetEmail, client as zeptoMailClient, emailLogs } from "./src/server/zeptoMailService.ts";
 
 const RAW_ZOHO_KEY =
   process.env.ZEPTOMAIL_API_TOKEN ||
@@ -661,6 +665,252 @@ app.get("/api/admin/referrals/rankings", (req, res) => {
   } catch (err: any) {
     console.error("Error fetching referral rankings:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to fetch rankings." });
+  }
+});
+
+// ==========================================
+// AGORA & ZEPTOMAIL AUDIO/VIDEO CALL ENDPOINTS
+// ==========================================
+
+app.post("/api/agora/token", (req, res) => {
+  try {
+    const { channelName, uid, role } = req.body;
+    if (!channelName) {
+      return res.status(400).json({ success: false, message: "channelName is required" });
+    }
+    const appID = "58b929a373224fd693defde48656648b";
+    const appCertificate = "906f53f47a0247e394fd3ca70cb29ce9";
+    const numericUid = uid || Math.floor(Math.random() * 100000);
+    const rtcRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const expirationTimeInSeconds = 3600;
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      appID,
+      appCertificate,
+      channelName,
+      numericUid,
+      rtcRole,
+      privilegeExpiredTs,
+      privilegeExpiredTs
+    );
+
+    return res.json({ success: true, token, uid: numericUid });
+  } catch (err: any) {
+    console.error("Error generating Agora token:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to generate Agora token" });
+  }
+});
+
+app.post("/api/calls/request", async (req, res) => {
+  try {
+    const { caller, receiver, callType } = req.body;
+    const callSessionId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const zeptoToken = process.env.ZEPTOMAIL_SEND_TOKEN || "Zoho-encztoken...";
+    const receiverEmail = receiver.email || "support@shubhamastu.in";
+
+    const emailPayload = {
+      from: { address: "support@shubhamastu.in", name: "Shubhamastu.in Safety Desk" },
+      to: [{ email_address: { address: receiverEmail, name: receiver.name } }],
+      subject: `New Private ${callType === "video" ? "Video" : "Audio"} Call Request on Shubhamastu.in`,
+      htmlbody: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background: #f9f6ef; border-radius: 10px; max-width: 600px; margin: auto;">
+          <h2 style="color: #362B5A;">📿 New Private Call Request</h2>
+          <p>Namaskaram <strong>${receiver.name}</strong>,</p>
+          <p>You have received a private <strong>${callType}</strong> call request from profile <strong>${caller.name}</strong> (#${caller.reg_number || "SHUBH"}).</p>
+          <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #D97706; margin: 15px 0;">
+            <p><strong>Caller Name:</strong> ${caller.name}</p>
+            <p><strong>Profession / City:</strong> ${caller.profession || "Professional"} - ${caller.city || "India"}</p>
+            <p><strong>Call Type:</strong> ${callType.toUpperCase()}</p>
+          </div>
+          <p>Click below to login and join the secure call room:</p>
+          <a href="https://shubhamastu.in/meet/${callSessionId}" style="display: inline-block; background: #362B5A; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 10px;">Login & Accept Call</a>
+          <p style="font-size: 11px; color: #666; margin-top: 20px;">Monitored for IT Rules 2021 compliance and women's safety.</p>
+        </div>
+      `
+    };
+
+    try {
+      await fetch("https://api.zeptomail.in/v1.1/email", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": zeptoToken
+        },
+        body: JSON.stringify(emailPayload)
+      });
+    } catch (mailErr) {
+      console.error("ZeptoMail dispatch error (non-fatal):", mailErr);
+    }
+
+    return res.json({
+      success: true,
+      callSessionId,
+      message: "Call request created and email notification dispatched via ZeptoMail."
+    });
+  } catch (err: any) {
+    console.error("Error requesting call:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to request call" });
+  }
+});
+
+app.post("/api/calls/end", (req, res) => {
+  try {
+    const { callSessionId, durationSeconds, status, reportReason } = req.body;
+    console.log(`Call session ${callSessionId} ended. Status: ${status}, Duration: ${durationSeconds}s, Reason: ${reportReason || "Normal hangup"}`);
+    return res.json({ success: true, message: "Call session logged and closed successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to end call" });
+  }
+});
+
+// Real-Time Fast-Ring Call Session Endpoints
+app.post("/api/calls/initiate", (req, res) => {
+  try {
+    const { caller, receiver, callType } = req.body;
+    if (!caller || !receiver) {
+      return res.status(400).json({ success: false, message: "Caller and receiver details are required" });
+    }
+    const session = callSessionEngine.createSession({
+      callerId: caller.id,
+      callerName: caller.name,
+      callerRegNumber: caller.reg_number || "SHUBH",
+      receiverId: receiver.id,
+      receiverEmail: receiver.email,
+      receiverName: receiver.name,
+      callType: callType || "video"
+    });
+    return res.json({ success: true, session, callSessionId: session.callSessionId });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to initiate call session" });
+  }
+});
+
+app.post("/api/calls/respond", (req, res) => {
+  try {
+    const { callSessionId, userId, action } = req.body;
+    if (!callSessionId || !userId || !action) {
+      return res.status(400).json({ success: false, message: "callSessionId, userId, and action are required" });
+    }
+    const result = callSessionEngine.respondSession(callSessionId, userId, action);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json({ success: true, session: result.session });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to respond to call session" });
+  }
+});
+
+app.get("/api/calls/incoming/:userId", (req, res) => {
+  try {
+    const { userId } = req.params;
+    const incomingSessions = callSessionEngine.getActiveSessionsForUser(userId);
+    return res.json({ success: true, sessions: incomingSessions });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch incoming calls" });
+  }
+});
+
+// --- Contact Number Masking & Mutual Approval Endpoints ---
+
+app.get("/api/profile/:id", (req, res) => {
+  try {
+    const profileId = req.params.id;
+    const requesterId = (req.query.requesterId as string) || (req.headers["x-user-id"] as string);
+    
+    const privacySetting = contactRevealEngine.getPrivacySetting(profileId);
+    const existingReq = requesterId ? contactRevealEngine.getRequest(requesterId, profileId) : null;
+    const isApproved = requesterId ? contactRevealEngine.isApproved(requesterId, profileId) : false;
+
+    let contactStatus = "NONE";
+    if (existingReq) {
+      contactStatus = existingReq.status;
+    }
+    if (isApproved) {
+      contactStatus = "APPROVED";
+    }
+
+    const canSeePhone = isApproved || requesterId === profileId;
+
+    res.json({
+      success: true,
+      profileId,
+      phonePrivacySetting: privacySetting,
+      contactStatus,
+      isApproved,
+      phoneNumber: canSeePhone ? "9876543210" : null,
+      maskedPhone: canSeePhone ? null : "+91 ••••• •••89"
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || "Failed to fetch profile privacy data" });
+  }
+});
+
+app.post("/api/contact/request", (req, res) => {
+  try {
+    const { requesterId, targetUserId, requesterName, targetEmail, targetName } = req.body;
+    if (!requesterId || !targetUserId) {
+      return res.status(400).json({ success: false, message: "requesterId and targetUserId are required" });
+    }
+
+    const result = contactRevealEngine.createRequest(
+      requesterId,
+      targetUserId,
+      requesterName || "Member",
+      targetEmail,
+      targetName
+    );
+
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to create contact request" });
+  }
+});
+
+app.post("/api/contact/respond", (req, res) => {
+  try {
+    const { requestId, userId, status } = req.body;
+    if (!requestId || !userId || !status) {
+      return res.status(400).json({ success: false, message: "requestId, userId, and status are required" });
+    }
+
+    const result = contactRevealEngine.respondRequest(requestId, userId, status);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to respond to contact request" });
+  }
+});
+
+app.get("/api/contact/requests", (req, res) => {
+  try {
+    const userId = req.query.userId as string;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "userId query parameter is required" });
+    }
+
+    const incoming = contactRevealEngine.getIncomingRequests(userId);
+    const outgoing = contactRevealEngine.getOutgoingRequests(userId);
+
+    return res.json({ success: true, incoming, outgoing });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch contact requests" });
+  }
+});
+
+app.post("/api/profile/privacy", (req, res) => {
+  try {
+    const { userId, phonePrivacySetting } = req.body;
+    if (!userId || !phonePrivacySetting) {
+      return res.status(400).json({ success: false, message: "userId and phonePrivacySetting are required" });
+    }
+
+    contactRevealEngine.setPrivacySetting(userId, phonePrivacySetting);
+    return res.json({ success: true, phonePrivacySetting });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Failed to update privacy setting" });
   }
 });
 

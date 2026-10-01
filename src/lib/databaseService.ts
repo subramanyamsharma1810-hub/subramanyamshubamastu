@@ -420,6 +420,40 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
   }
 ];
 
+async function compressBase64Image(base64Str?: string, maxWidth = 600, quality = 0.6): Promise<string | undefined> {
+  if (!base64Str || !base64Str.startsWith("data:image")) return base64Str;
+  if (base64Str.length < 300000) return base64Str;
+
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(base64Str);
+      return;
+    }
+    const img = new window.Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(base64Str);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressed = canvas.toDataURL("image/jpeg", quality);
+      resolve(compressed);
+    };
+    img.onerror = () => resolve(base64Str);
+  });
+}
+
 export const databaseService = {
   // Profiles Methods
   async getProfiles(ignoreFilter = false): Promise<Profile[]> {
@@ -517,6 +551,11 @@ export const databaseService = {
 
   async saveProfile(profile: Profile): Promise<Profile> {
     const finalProfile = { ...profile };
+
+    finalProfile.photo_url = await compressBase64Image(finalProfile.photo_url);
+    finalProfile.photo_url_2 = await compressBase64Image(finalProfile.photo_url_2);
+    finalProfile.photo_url_3 = await compressBase64Image(finalProfile.photo_url_3);
+    finalProfile.kundali_url = await compressBase64Image(finalProfile.kundali_url);
     
     if (!finalProfile.id) {
       finalProfile.id = `prof-${Date.now()}`;

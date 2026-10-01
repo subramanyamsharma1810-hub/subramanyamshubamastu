@@ -1,13 +1,13 @@
 import fs from "fs";
 import path from "path";
-import { 
+import type { 
   Coupon, 
   DefenseVerification, 
   Referral, 
   Subscription, 
   ReferralRankItem, 
   CouponApplyResponse 
-} from "../types";
+} from "../types.ts";
 
 // Persistent file-backed storage fallback with robust serverless read-only filesystem handling
 const DATA_DIR = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)

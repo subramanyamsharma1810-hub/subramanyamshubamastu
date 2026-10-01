@@ -6,6 +6,7 @@ import { calculatePanchangam } from "../lib/panchangam";
 import { KundaliChart } from "./KundaliChart";
 import SearchableSelect from "./SearchableSelect";
 import { databaseService } from "../lib/databaseService";
+import ContactRequestsManager from "./dashboard/ContactRequestsManager";
 
 interface MyProfileFormProps {
   currentProfile: Profile;
@@ -1313,6 +1314,11 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
             </div>
           )}
         </div>
+      </div>
+
+      {/* Contact Reveal Requests & Privacy Manager */}
+      <div className="mt-8 max-w-4xl mx-auto">
+        <ContactRequestsManager currentUserId={currentProfile.id} />
       </div>
     </div>
   );

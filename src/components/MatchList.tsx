@@ -7,6 +7,9 @@ import { calculateMatchScore } from "../lib/matchEngine";
 import { NAKSHATRAS } from "../lib/panchangam";
 import { StackCard } from "./StackCard";
 import { PandithConsultationModal } from "./PandithConsultationModal";
+import MatchChatModal from "./MatchChatModal";
+import PhoneRevealWidget from "./profile/PhoneRevealWidget";
+import CallRoom from "./meet/CallRoom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Heart,
@@ -27,7 +30,9 @@ import {
   AlertCircle,
   ShieldCheck,
   Layers,
-  LayoutGrid
+  LayoutGrid,
+  MessageSquare,
+  Video
 } from "lucide-react";
 
 interface MatchListProps {
@@ -64,6 +69,45 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const [meetDateForm, setMeetDateForm] = useState({ date: "", time: "11:00 AM", location: "Temple Premises / Family Lounge", note: "" });
   const [pelliChupuluForm, setPelliChupuluForm] = useState({ date: "", venue: "Bride's Residence / Function Hall", note: "" });
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Chat & Call state
+  const [activeChatMatch, setActiveChatMatch] = useState<Profile | null>(null);
+  const [activeCallSession, setActiveCallSession] = useState<{
+    callSessionId: string;
+    receiver: Profile;
+    callType: "audio" | "video";
+  } | null>(null);
+  const [isCallingLoading, setIsCallingLoading] = useState(false);
+
+  const handleStartCallRequest = async (receiver: Profile, callType: "audio" | "video") => {
+    setIsCallingLoading(true);
+    try {
+      const res = await fetch("/api/calls/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caller: currentProfile,
+          receiver,
+          callType,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.callSessionId) {
+        setActiveCallSession({
+          callSessionId: data.callSessionId,
+          receiver,
+          callType,
+        });
+      } else {
+        alert("Failed to initiate call session. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error requesting call:", err);
+      alert("Call request error.");
+    } finally {
+      setIsCallingLoading(false);
+    }
+  };
 
   // IT Act 2021 Case-handling state
   const [reportingMatch, setReportingMatch] = useState<Profile | null>(null);
@@ -156,6 +200,10 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     // Exclude married profiles
     if ((partner.status as string) === "Married") return false;
 
+    // Exclude disliked / not interested profiles reciprocally
+    if (currentProfile.disliked_profiles?.includes(partner.id)) return false;
+    if (partner.disliked_profiles?.includes(currentProfile.id)) return false;
+
     // 0. If current user has not paid registration fee (subscription_status === 'free'), show no matches
     if (currentProfile.subscription_status === "free") return false;
 
@@ -211,11 +259,27 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     if (direction === "right") {
       updatedProfile.liked_profiles = [...(updatedProfile.liked_profiles || []), match.id];
     } else {
-      updatedProfile.disliked_profiles = [...(updatedProfile.disliked_profiles || []), match.id];
+      updatedProfile.disliked_profiles = Array.from(new Set([...(updatedProfile.disliked_profiles || []), match.id]));
+      updatedProfile.liked_profiles = (updatedProfile.liked_profiles || []).filter(id => id !== match.id);
     }
     
     // Background update
     onUpdateProfile(updatedProfile).catch(err => console.error("Update failed", err));
+
+    if (direction === "left") {
+      // Reciprocally update partner profile to remove from recommendations
+      try {
+        const updatedPartner = {
+          ...match,
+          disliked_profiles: Array.from(new Set([...(match.disliked_profiles || []), currentProfile.id])),
+          liked_profiles: (match.liked_profiles || []).filter(id => id !== currentProfile.id)
+        };
+        await databaseService.saveProfile(updatedPartner);
+        setProfiles(prev => prev.map(p => p.id === match.id ? updatedPartner : p));
+      } catch (err) {
+        console.error("Failed to update partner profile on dislike:", err);
+      }
+    }
 
     if (direction === "right") {
       const actuallyLikedMe = match.liked_profiles?.includes(currentProfile.id);
@@ -872,6 +936,35 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                             <span>{match.contact_number}</span>
                           </a>
                         </div>
+                        {/* Instant Chat & Video/Audio Call Action Bar */}
+                        <div className="grid grid-cols-3 gap-1.5 pt-1">
+                          <button
+                            onClick={() => setActiveChatMatch(match)}
+                            className="py-2 px-1 bg-[#362B5A] hover:bg-[#4A3D78] text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                            title="Instant Real-Time Chat"
+                          >
+                            <MessageSquare className="w-3 h-3 text-amber-300" />
+                            <span>Chat</span>
+                          </button>
+                          <button
+                            onClick={() => handleStartCallRequest(match, "audio")}
+                            disabled={isCallingLoading}
+                            className="py-2 px-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                            title="Request Audio Call with Email Alert"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>Audio</span>
+                          </button>
+                          <button
+                            onClick={() => handleStartCallRequest(match, "video")}
+                            disabled={isCallingLoading}
+                            className="py-2 px-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                            title="Request Video Call with Email Alert"
+                          >
+                            <Video className="w-3 h-3" />
+                            <span>Video</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1251,25 +1344,13 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
               </div>
             )}
 
-            {/* Matrimonial Connection Card */}
-            <div className="bg-[#EBF6FF] border border-blue-100 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h5 className="font-bold text-[#362B5A] text-sm flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-[#C2242C]" />
-                  Direct Contact Mobile Number
-                </h5>
-                <p className="text-xs text-gray-500 max-w-sm">
-                  Connect with the candidate's family directly using this verified contact number.
-                </p>
-              </div>
-
-              <a
-                href={`tel:${selectedMatch.contact_number}`}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-3 rounded-xl uppercase tracking-wider transition-all cursor-pointer shadow-md shrink-0 flex items-center gap-2 font-mono"
-              >
-                <Phone className="w-4 h-4 text-emerald-200 animate-pulse" />
-                <span>{selectedMatch.contact_number}</span>
-              </a>
+            {/* Privacy-First Phone Reveal Widget */}
+            <div className="pt-2">
+              <PhoneRevealWidget
+                targetUser={selectedMatch}
+                currentUserId={currentProfile.id}
+                currentUserProfile={currentProfile}
+              />
             </div>
 
             {/* IT Act 2021 Grievance / Harassment report action */}
@@ -1799,6 +1880,31 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
           <CheckCircle2 className="w-6 h-6 shrink-0 text-white" />
           <span className="text-xs font-bold leading-relaxed">{successToast}</span>
         </div>
+      )}
+
+      {/* Active Chat Modal */}
+      {activeChatMatch && (
+        <MatchChatModal
+          currentProfile={currentProfile}
+          targetProfile={activeChatMatch}
+          onClose={() => setActiveChatMatch(null)}
+          onStartCall={(type) => {
+            const match = activeChatMatch;
+            setActiveChatMatch(null);
+            handleStartCallRequest(match, type);
+          }}
+        />
+      )}
+
+      {/* Active Call Room (Agora WebRTC) */}
+      {activeCallSession && (
+        <CallRoom
+          callSessionId={activeCallSession.callSessionId}
+          caller={currentProfile}
+          receiver={activeCallSession.receiver}
+          callType={activeCallSession.callType}
+          onEndCall={() => setActiveCallSession(null)}
+        />
       )}
     </>
   );

@@ -22,6 +22,9 @@ import Register from "./components/Register";
 import Payment from "./components/Payment";
 import CheckoutPricing from "./components/CheckoutPricing";
 import ReferralDashboard from "./components/ReferralDashboard";
+import { useUserPresence } from "./lib/presence";
+import IncomingCallModal from "./components/meet/IncomingCallModal";
+import CallRoom from "./components/meet/CallRoom";
 import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
 
 export default function App() {
@@ -70,6 +73,14 @@ export default function App() {
     return saved;
   });
   const [isDevWidgetOpen, setIsDevWidgetOpen] = useState<boolean>(false);
+  const [activeCallSession, setActiveCallSession] = useState<{
+    callSessionId: string;
+    receiver: Profile;
+    callType: "audio" | "video";
+  } | null>(null);
+
+  // Activate Real-Time Presence heartbeat
+  useUserPresence(currentProfile?.id);
 
   // Load active user profile and their preferences on mount
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnjL2miJOB-Ir-37151IoVMwiu-cIQNYU",
@@ -14,4 +15,6 @@ const databaseId = "ai-studio-bramhanavivahave-e0c4cd3c-62b7-411c-b376-c3b4f5d7b
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, databaseId);
+export const rtdb = getDatabase(app);
+
 

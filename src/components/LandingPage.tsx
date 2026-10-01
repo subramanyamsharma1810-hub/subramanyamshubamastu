@@ -644,12 +644,16 @@ export default function LandingPage({
       
       let matchedProfiles = [];
       if (inputClean.includes("@")) {
-        matchedProfiles = profiles.filter((p) => p.email && p.email.toLowerCase() === inputClean);
+        matchedProfiles = profiles.filter((p) => (p.email && p.email.toLowerCase() === inputClean) || (p.reg_number && p.reg_number.toLowerCase() === inputClean));
+      } else if (inputClean.startsWith("abc-") || inputClean.startsWith("bvm-") || inputClean.startsWith("adm-") || inputClean.includes("-")) {
+        matchedProfiles = profiles.filter((p) => (p.reg_number && p.reg_number.toLowerCase() === inputClean) || (p.id && p.id.toLowerCase() === inputClean));
       } else {
         const cleanInput = inputClean.replace(/\D/g, "");
         matchedProfiles = profiles.filter((p) => {
           const cleanStored = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
-          return cleanStored && cleanInput && (cleanStored === cleanInput || cleanStored.slice(-10) === cleanInput.slice(-10) || cleanInput.slice(-10) === cleanStored.slice(-10));
+          const regNum = p.reg_number ? p.reg_number.toLowerCase() : "";
+          const idStr = p.id ? p.id.toLowerCase() : "";
+          return (cleanStored && cleanInput && (cleanStored === cleanInput || cleanStored.slice(-10) === cleanInput.slice(-10) || cleanInput.slice(-10) === cleanStored.slice(-10))) || regNum.includes(inputClean) || idStr.includes(inputClean);
         });
       }
 

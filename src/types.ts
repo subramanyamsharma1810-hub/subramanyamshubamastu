@@ -41,6 +41,7 @@ export interface Profile {
   dob: string;
   salary_lpa: number;
   contact_number: string;
+  phonePrivacySetting?: "ALWAYS_HIDDEN" | "ON_MUTUAL_REQUEST_ONLY";
   email?: string;               // Candidate email ID for registration and login
   isEmailVerified?: boolean;    // Whether email has been verified via OTP
   status: "Pending" | "Verified" | "Active" | "Premium" | "Married" | "Declined";
@@ -343,4 +344,16 @@ export interface CouponApplyResponse {
   is_milestone_applied: boolean;
   defense_status?: DefenseVerificationStatus | "NOT_SUBMITTED";
   message: string;
+}
+
+export type PhonePrivacySetting = "ALWAYS_HIDDEN" | "ON_MUTUAL_REQUEST_ONLY";
+export type PhoneRevealStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface PhoneRevealRequest {
+  requestId: string;
+  requesterId: string;
+  targetUserId: string;
+  status: PhoneRevealStatus;
+  requestedAt: string;
+  respondedAt?: string;
 }

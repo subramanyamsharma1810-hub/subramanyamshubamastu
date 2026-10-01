@@ -3,13 +3,14 @@ import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, 
 import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
 import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
+import AdminGrievanceChatsDesk from "./AdminGrievanceChatsDesk";
 import { calculatePanchangam } from "../lib/panchangam";
 import { KundaliChart } from "./KundaliChart";
 import { getGenderLabel } from "../lib/genderHelper";
 import SearchableSelect from "./SearchableSelect";
 import { BRAHMIN_SUB_CASTES, BRAHMIN_GOTRAMS } from "../lib/brahminMetadata";
 import ExecutiveAnalyticsDashboard from "./ExecutiveAnalyticsDashboard";
-import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle, Lock } from "lucide-react";
+import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle, Lock, MessageSquare } from "lucide-react";
 import {
   ShieldCheck,
   Search,
@@ -69,7 +70,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const registeringRef = React.useRef(false);
 
   // Tabs
-  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits">("registrations");
+  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits" | "chatGrievanceDesk">("registrations");
   const [adminCount, setAdminCount] = useState<number>(2);
 
   // Pandits state
@@ -163,6 +164,23 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const stageInfo = useMemo(() => {
     return getAdminStageInfo(currentAdmin?.role, currentAdmin?.stage);
   }, [currentAdmin]);
+
+  const currentAdminProfile = useMemo(() => {
+    if (!currentAdmin) return null;
+    return profiles.find(p => p.id === currentAdmin.id || p.contact_number?.replace(/\D/g, "") === currentAdmin.mobile.replace(/\D/g, "")) || {
+      id: currentAdmin.id,
+      name: currentAdmin.name,
+      contact_number: currentAdmin.mobile,
+      email: currentAdmin.email,
+      role: currentAdmin.role,
+      status: "Verified",
+      gender: "Male",
+      height_feet: 5.8,
+      sub_caste: "Smartha",
+      profession: "Administrator",
+      salary_lpa: 15
+    } as Profile;
+  }, [currentAdmin, profiles]);
   const [marriageRecords, setMarriageRecords] = useState<MarriageRecord[]>([]);
   const [marriagesLoading, setMarriagesLoading] = useState(false);
   const [isRecordMarriageModalOpen, setIsRecordMarriageModalOpen] = useState(false);
@@ -2712,6 +2730,16 @@ Ph: ${adminPhone}`;
 
           <button
             type="button"
+            onClick={() => setActiveAdminTab("chatGrievanceDesk")}
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              activeAdminTab === "chatGrievanceDesk" ? "bg-[#362B5A] text-white" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200"
+            }`}
+          >
+            <span>💬 Chat & Grievance Audit Desk</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleDownloadCandidatesPasswordsCSV}
             className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
             title="Download Excel Sheet with Candidates and Passwords"
@@ -3466,6 +3494,17 @@ Ph: ${adminPhone}`;
         >
           <ShieldCheck className="w-4 h-4 text-amber-500" />
           Admin Management ({adminCount}) {stageInfo.stage > 1 && <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">View</span>}
+        </button>
+        <button
+          onClick={() => setActiveAdminTab("chatGrievanceDesk")}
+          className={`py-3 px-6 font-extrabold text-sm uppercase tracking-wider border-b-4 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+            activeAdminTab === "chatGrievanceDesk"
+              ? "border-[#C2242C] text-[#362B5A]"
+              : "border-transparent text-gray-500 hover:text-[#362B5A]"
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-indigo-600" />
+          Chat & Grievance Audit Desk
         </button>
       </div>
 
@@ -5216,6 +5255,13 @@ Ph: ${adminPhone}`;
       {activeAdminTab === "coupons_referrals" && (
         <div className="space-y-6">
           <AdminCouponManager />
+        </div>
+      )}
+
+      {/* Tab CONTENT 5: Chat & Grievance Audit Desk */}
+      {activeAdminTab === "chatGrievanceDesk" && (
+        <div className="space-y-6">
+          <AdminGrievanceChatsDesk currentAdminProfile={currentAdminProfile as Profile} />
         </div>
       )}
 
