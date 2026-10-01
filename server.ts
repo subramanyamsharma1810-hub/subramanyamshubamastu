@@ -678,8 +678,8 @@ app.post("/api/agora/token", (req, res) => {
     if (!channelName) {
       return res.status(400).json({ success: false, message: "channelName is required" });
     }
-    const appID = "58b929a373224fd693defde48656648b";
-    const appCertificate = "906f53f47a0247e394fd3ca70cb29ce9";
+    const appID = process.env.AGORA_APP_ID || "58b929a373224fd693defde48656648b";
+    const appCertificate = process.env.AGORA_APP_CERTIFICATE || "906f53f47a0247e394fd3ca70cb29ce9";
     const numericUid = uid || Math.floor(Math.random() * 100000);
     const rtcRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
     const expirationTimeInSeconds = 3600;
