@@ -127,8 +127,7 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
         await update(sessionRef, { status: "ACTIVE", connectedPeerId: currentProfile.id }).catch(() => {});
         onAcceptCall(incomingSession.callSessionId, incomingSession.callType || "video");
       } else {
-        await update(sessionRef, { status: "DECLINED" }).catch(() => {});
-        setTimeout(() => remove(sessionRef).catch(() => {}), 1500);
+        await remove(sessionRef).catch(() => {});
       }
       setIncomingSession(null);
       setCallerProfile(null);

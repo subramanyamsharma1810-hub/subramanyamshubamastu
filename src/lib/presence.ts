@@ -12,16 +12,18 @@ export function useUserPresence(userId?: string) {
     const unsubscribe = onValue(connectedRef, async (snap) => {
       if (snap.val() === true) {
         try {
-          // When user disconnects unexpectedly, update status to offline
+          // When user disconnects unexpectedly, set status to offline with 5-minute grace buffer
           await onDisconnect(myStatusRef).set({
             state: "offline",
-            lastSeen: serverTimestamp()
+            lastSeen: serverTimestamp(),
+            offlineGraceUntil: Date.now() + 5 * 60 * 1000
           });
 
           // Set online status
           await set(myStatusRef, {
             state: "online",
-            lastChanged: serverTimestamp()
+            lastChanged: serverTimestamp(),
+            offlineGraceUntil: null
           });
         } catch (err) {
           console.error("Failed to set presence onDisconnect/set:", err);
@@ -32,7 +34,8 @@ export function useUserPresence(userId?: string) {
     const handleUnload = () => {
       set(myStatusRef, {
         state: "offline",
-        lastSeen: serverTimestamp()
+        lastSeen: serverTimestamp(),
+        offlineGraceUntil: Date.now() + 5 * 60 * 1000
       }).catch(() => {});
     };
 
@@ -43,14 +46,15 @@ export function useUserPresence(userId?: string) {
       window.removeEventListener("beforeunload", handleUnload);
       set(myStatusRef, {
         state: "offline",
-        lastSeen: serverTimestamp()
+        lastSeen: serverTimestamp(),
+        offlineGraceUntil: Date.now() + 5 * 60 * 1000
       }).catch(() => {});
     };
   }, [userId]);
 }
 
-export function usePresenceStatus(targetUserId?: string): { isOnline: boolean; lastSeen?: number } {
-  const [presence, setPresence] = useState<{ isOnline: boolean; lastSeen?: number }>({ isOnline: true });
+export function usePresenceStatus(targetUserId?: string): { isOnline: boolean; lastSeen?: number | string; graceActive?: boolean } {
+  const [presence, setPresence] = useState<{ isOnline: boolean; lastSeen?: number | string; graceActive?: boolean }>({ isOnline: true });
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -59,7 +63,14 @@ export function usePresenceStatus(targetUserId?: string): { isOnline: boolean; l
     const unsubscribe = onValue(targetStatusRef, (snapshot) => {
       const val = snapshot.val();
       if (val && val.state === "offline") {
-        setPresence({ isOnline: false, lastSeen: val?.lastSeen });
+        const graceUntil = val.offlineGraceUntil || 0;
+        const now = Date.now();
+        // 5-minute grace period rule: if within 5 minutes of leaving/logout, show online/active
+        if (now < graceUntil) {
+          setPresence({ isOnline: true, graceActive: true, lastSeen: val?.lastSeen });
+        } else {
+          setPresence({ isOnline: false, graceActive: false, lastSeen: val?.lastSeen });
+        }
       } else {
         setPresence({ isOnline: true });
       }

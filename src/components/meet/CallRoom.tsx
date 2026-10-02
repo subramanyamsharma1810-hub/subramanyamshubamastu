@@ -19,7 +19,8 @@ import {
   Terminal,
   Copy,
   Check,
-  WifiOff
+  WifiOff,
+  Palette
 } from "lucide-react";
 
 interface CallRoomProps {
@@ -49,6 +50,22 @@ export default function CallRoom({
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("Harassment / Misbehavior during call");
+  const [videoFilter, setVideoFilter] = useState<"normal" | "sepia" | "grayscale" | "vintage" | "contrast">("normal");
+
+  const getFilterClass = (filter: string) => {
+    switch (filter) {
+      case "sepia":
+        return "sepia-[0.85] hue-rotate-[-10deg] saturate-[1.2]";
+      case "grayscale":
+        return "grayscale-[0.95] contrast-[1.25]";
+      case "vintage":
+        return "sepia-[0.45] contrast-[1.1] brightness-[0.95] hue-rotate-[15deg]";
+      case "contrast":
+        return "contrast-[1.4] brightness-[1.05] saturate-[1.1]";
+      default:
+        return "";
+    }
+  };
 
   // Diagnostic Utility state
   const [showDiagnostics, setShowDiagnostics] = useState(true);
@@ -346,6 +363,24 @@ export default function CallRoom({
         </div>
 
         <div className="flex items-center space-x-2.5">
+          {callType === "video" && (
+            <div className="hidden lg:flex items-center space-x-1 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700">
+              <span className="text-[10px] uppercase font-mono px-2 text-amber-400 font-bold flex items-center gap-1">
+                <Palette className="w-3.5 h-3.5" /> Filter:
+              </span>
+              {(["normal", "sepia", "grayscale", "vintage", "contrast"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setVideoFilter(f)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold capitalize transition-all cursor-pointer ${
+                    videoFilter === f ? "bg-amber-500 text-slate-950 font-bold shadow" : "text-slate-300 hover:text-white hover:bg-slate-700"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setShowDiagnostics(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow cursor-pointer relative"
@@ -388,7 +423,7 @@ export default function CallRoom({
         {callType === "video" ? (
           <div className="w-full h-full max-w-5xl max-h-[75vh] grid grid-cols-1 md:grid-cols-2 gap-4 relative">
             {/* Remote Video */}
-            <div className="w-full h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 relative flex items-center justify-center shadow-2xl">
+            <div className={`w-full h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 relative flex items-center justify-center shadow-2xl transition-all duration-300 ${getFilterClass(videoFilter)}`}>
               <div ref={remoteVideoRef} className="w-full h-full absolute inset-0 object-cover" />
               {!remoteUid && (
                 <div className="text-center p-6 space-y-3 z-10">
@@ -405,7 +440,7 @@ export default function CallRoom({
             </div>
 
             {/* Local Video */}
-            <div className="w-full h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 relative flex items-center justify-center shadow-2xl">
+            <div className={`w-full h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 relative flex items-center justify-center shadow-2xl transition-all duration-300 ${getFilterClass(videoFilter)}`}>
               <div ref={localVideoRef} className="w-full h-full absolute inset-0 object-cover" />
               {isVideoOff && (
                 <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-slate-400">
