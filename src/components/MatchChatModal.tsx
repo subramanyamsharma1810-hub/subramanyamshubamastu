@@ -11,8 +11,8 @@ import {
   Paperclip,
   Lock
 } from "lucide-react";
-import { ref, push, onValue } from "firebase/database";
-import { rtdb } from "../lib/firebase";
+import { db } from "../lib/firebase";
+import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 
 interface MatchChatModalProps {
   currentProfile: Profile;
@@ -25,7 +25,7 @@ interface ChatMessage {
   id: string;
   senderId: string;
   text: string;
-  timestamp: number | string;
+  timestamp: number | any;
   status?: string;
 }
 
@@ -40,34 +40,40 @@ export default function MatchChatModal({
   const { isOnline } = usePresenceStatus(targetProfile.id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const chatId = [currentProfile.id, targetProfile.id].sort().join("_");
+  const chatId = [currentProfile?.id || "u1", targetProfile?.id || "u2"].sort().join("_");
 
   useEffect(() => {
-    const messagesRef = ref(rtdb, `chats/${chatId}/messages`);
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list: ChatMessage[] = Object.entries(data).map(([id, val]: [string, any]) => ({
-          id,
-          ...val
-        })).sort((a, b) => (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0));
-        setMessages(list);
-      } else {
-        // Default welcome message if empty
-        setMessages([
-          {
-            id: "msg-init",
-            senderId: targetProfile.id,
-            text: `Namaskaram 🙏. Thank you for connecting on Shubhamastu.in. I'm interested in discussing further regarding our matching profiles.`,
-            timestamp: Date.now() - 1000 * 60 * 10,
-            status: "read"
-          }
-        ]);
+    if (!currentProfile?.id || !targetProfile?.id) return;
+
+    const messagesColRef = collection(db, "chats", chatId, "messages");
+    const q = query(messagesColRef, orderBy("timestamp", "asc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: ChatMessage[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        } as ChatMessage);
+      });
+
+      if (list.length === 0) {
+        list.push({
+          id: "msg-init",
+          senderId: targetProfile.id,
+          text: `Namaskaram 🙏. Thank you for connecting on Shubhamastu.in. I'm interested in discussing further regarding our matching profiles.`,
+          timestamp: Date.now() - 1000 * 60 * 10,
+          status: "read"
+        });
       }
+
+      setMessages(list);
+    }, (err) => {
+      console.error("Firestore chat snapshot error:", err);
     });
 
     return () => unsubscribe();
-  }, [chatId, targetProfile.id]);
+  }, [chatId, currentProfile?.id, targetProfile?.id, targetProfile?.name]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,21 +81,22 @@ export default function MatchChatModal({
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !currentProfile?.id || !targetProfile?.id) return;
 
     const textToSend = inputText.trim();
     setInputText("");
 
     try {
-      const messagesRef = ref(rtdb, `chats/${chatId}/messages`);
-      await push(messagesRef, {
+      const messagesColRef = collection(db, "chats", chatId, "messages");
+      await addDoc(messagesColRef, {
         senderId: currentProfile.id,
+        receiverId: targetProfile.id,
         text: textToSend,
         timestamp: Date.now(),
         status: "delivered"
       });
     } catch (err) {
-      console.error("Error sending chat message:", err);
+      console.error("Error sending Firestore chat message:", err);
     }
   };
 
@@ -177,7 +184,7 @@ export default function MatchChatModal({
             const isMe = msg.senderId === currentProfile.id;
             const timeStr = typeof msg.timestamp === 'number'
               ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : msg.timestamp;
+              : "Just now";
 
             return (
               <div

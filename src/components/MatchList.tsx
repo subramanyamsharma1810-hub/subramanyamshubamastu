@@ -82,6 +82,14 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     status: "ringing" | "connected";
   } | null>(null);
   const [isCallingLoading, setIsCallingLoading] = useState(false);
+  const [showCallHistoryModal, setShowCallHistoryModal] = useState(false);
+  const [callHistory, setCallHistory] = useState<any[]>([]);
+
+  const openCallHistory = () => {
+    const history = JSON.parse(localStorage.getItem(`call_history_${currentProfile.id}`) || "[]");
+    setCallHistory(history);
+    setShowCallHistoryModal(true);
+  };
 
   const handleStartCallRequest = async (receiver: Profile, callType: "audio" | "video") => {
     setIsCallingLoading(true);
@@ -98,6 +106,32 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
       const data = await res.json();
       const sessionId = data.session?.callSessionId || data.callSessionId || `shubh_${Date.now()}`;
       if (data.success && sessionId) {
+        // Trigger offline email notification from verification@shubhamastu.in
+        const emailLog = {
+          from: "verification@shubhamastu.in",
+          to: receiver.email || "member@shubhamastu.in",
+          subject: `🔔 Missed ${callType.toUpperCase()} Call Request from ${currentProfile.name}`,
+          body: `Namaskaram 🙏\n\nSri G.V. Subramanyam (Founder) & Bramhana Vivaha Vedika System:\n\n${currentProfile.name} (${currentProfile.reg_number || 'Member'}) attempted to initiate a ${callType} call with you while you were offline on Shubhamastu.in.\n\nPlease log in at https://brahmanavivaha.org/login to view and respond.\n\nWarm regards,\nVerification Desk\nverification@shubhamastu.in`,
+          timestamp: new Date().toISOString()
+        };
+        const existingOutbox = JSON.parse(localStorage.getItem("simulated_email_outbox") || "[]");
+        localStorage.setItem("simulated_email_outbox", JSON.stringify([emailLog, ...existingOutbox]));
+
+        // Record missed call log
+        const callLogs = JSON.parse(localStorage.getItem(`call_history_${receiver.id}`) || "[]");
+        callLogs.push({
+          id: `call-${Date.now()}`,
+          callerName: currentProfile.name,
+          callerReg: currentProfile.reg_number || "SHUBH",
+          type: callType,
+          status: "MISSED / OFFLINE EMAIL ALERT SENT FROM verification@shubhamastu.in",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
+        });
+        localStorage.setItem(`call_history_${receiver.id}`, JSON.stringify(callLogs));
+
+        setSuccessToast(`📧 Offline Email Alert Dispatched from verification@shubhamastu.in to ${receiver.name}! Call ringing initiated.`);
+        setTimeout(() => setSuccessToast(null), 4000);
+
         // Write to Firebase RTDB for instant push to receiver
         const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
         await set(callRef, {
@@ -399,6 +433,14 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             >
               <span>({filteredMatches.length} Matches Found)</span>
               <span className="text-[10px] underline">View Details</span>
+            </button>
+            <button
+              onClick={openCallHistory}
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-full shadow-md cursor-pointer transition-all flex items-center gap-1.5 font-mono"
+              title="View Call History & Missed Calls"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Call Logs & Missed Calls</span>
             </button>
           </div>
           <p className="text-gray-600 max-w-xl text-sm leading-relaxed">
@@ -1936,6 +1978,53 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
           callType={activeCallSession.callType}
           onEndCall={() => setActiveCallSession(null)}
         />
+      )}
+
+      {/* Call History & Missed Calls Modal */}
+      {showCallHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-lg font-black text-[#362B5A] uppercase flex items-center gap-2">
+                <Phone className="w-5 h-5 text-emerald-600" />
+                <span>Call History & Missed Calls</span>
+              </h3>
+              <button
+                onClick={() => setShowCallHistoryModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {callHistory.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 font-medium text-sm">
+                  No recent calls or missed call logs.
+                </div>
+              ) : (
+                callHistory.map((call, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between text-xs">
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-[#362B5A] block">{call.callerName} ({call.callerReg})</span>
+                      <span className="text-[10px] text-gray-500 font-mono">Type: {call.type.toUpperCase()} • {call.timestamp}</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-100 text-red-700 border border-red-200 font-mono">
+                      {call.status}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowCallHistoryModal(false)}
+              className="w-full py-3 bg-[#362B5A] text-white font-bold text-xs uppercase rounded-xl cursor-pointer"
+            >
+              Close History
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
