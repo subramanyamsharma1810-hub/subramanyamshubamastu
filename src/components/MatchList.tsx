@@ -11,7 +11,7 @@ import MatchChatModal from "./MatchChatModal";
 import PhoneRevealWidget from "./profile/PhoneRevealWidget";
 import CallRoom from "./meet/CallRoom";
 import OutgoingCallModal from "./meet/OutgoingCallModal";
-import { ref, set } from "firebase/database";
+import { ref, set, get } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -123,30 +123,38 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     }
 
     try {
-      // Trigger offline email notification from verification@shubhamastu.in
-      const emailLog = {
-        from: "verification@shubhamastu.in",
-        to: receiver.email || "member@shubhamastu.in",
-        subject: `🔔 Missed ${callType.toUpperCase()} Call Request from ${currentProfile.name}`,
-        body: `Namaskaram 🙏\n\nSri G.V. Subramanyam (Founder) & Bramhana Vivaha Vedika System:\n\n${currentProfile.name} (${currentProfile.reg_number || 'Member'}) attempted to initiate a ${callType} call with you while you were offline on Shubhamastu.in.\n\nPlease log in at https://brahmanavivaha.org/login to view and respond.\n\nWarm regards,\nVerification Desk\nverification@shubhamastu.in`,
-        timestamp: new Date().toISOString()
-      };
-      const existingOutbox = JSON.parse(localStorage.getItem("simulated_email_outbox") || "[]");
-      localStorage.setItem("simulated_email_outbox", JSON.stringify([emailLog, ...existingOutbox]));
+      // Check if receiver is online first
+      const statusSnap = await get(ref(rtdb, `status/${receiver.id}`)).catch(() => null);
+      const isReceiverOnline = statusSnap?.val()?.state === "online";
 
-      // Record missed call log
-      const callLogs = JSON.parse(localStorage.getItem(`call_history_${receiver.id}`) || "[]");
-      callLogs.push({
-        id: `call-${Date.now()}`,
-        callerName: currentProfile.name,
-        callerReg: currentProfile.reg_number || "SHUBH",
-        type: callType,
-        status: "MISSED / OFFLINE EMAIL ALERT SENT FROM verification@shubhamastu.in",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
-      });
-      localStorage.setItem(`call_history_${receiver.id}`, JSON.stringify(callLogs));
+      if (!isReceiverOnline) {
+        // Trigger offline email notification from verification@shubhamastu.in only when offline
+        const emailLog = {
+          from: "verification@shubhamastu.in",
+          to: receiver.email || "member@shubhamastu.in",
+          subject: `🔔 Missed ${callType.toUpperCase()} Call Request from ${currentProfile.name}`,
+          body: `Namaskaram 🙏\n\nSri G.V. Subramanyam (Founder) & Bramhana Vivaha Vedika System:\n\n${currentProfile.name} (${currentProfile.reg_number || 'Member'}) attempted to initiate a ${callType} call with you while you were offline on Shubhamastu.in.\n\nPlease log in at https://brahmanavivaha.org/login to view and respond.\n\nWarm regards,\nVerification Desk\nverification@shubhamastu.in`,
+          timestamp: new Date().toISOString()
+        };
+        const existingOutbox = JSON.parse(localStorage.getItem("simulated_email_outbox") || "[]");
+        localStorage.setItem("simulated_email_outbox", JSON.stringify([emailLog, ...existingOutbox]));
 
-      setSuccessToast(`📧 Offline Email Alert Dispatched from verification@shubhamastu.in to ${receiver.name}! Call ringing initiated.`);
+        // Record missed call log
+        const callLogs = JSON.parse(localStorage.getItem(`call_history_${receiver.id}`) || "[]");
+        callLogs.push({
+          id: `call-${Date.now()}`,
+          callerName: currentProfile.name,
+          callerReg: currentProfile.reg_number || "SHUBH",
+          type: callType,
+          status: "MISSED / OFFLINE EMAIL ALERT SENT FROM verification@shubhamastu.in",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
+        });
+        localStorage.setItem(`call_history_${receiver.id}`, JSON.stringify(callLogs));
+
+        setSuccessToast(`📧 Offline Email Alert Dispatched from verification@shubhamastu.in to ${receiver.name} (User is Offline)!`);
+      } else {
+        setSuccessToast(`📞 Direct WhatsApp-Style Call Ringing initiated with ${receiver.name} (User is Online)!`);
+      }
       setTimeout(() => setSuccessToast(null), 4000);
 
       // Write to Firebase RTDB & localStorage for instant push to receiver
