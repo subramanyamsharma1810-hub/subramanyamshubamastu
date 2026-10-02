@@ -123,12 +123,13 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     }
 
     try {
-      // Check if receiver is online first
+      // Check if receiver is explicitly offline
       const statusSnap = await get(ref(rtdb, `status/${receiver.id}`)).catch(() => null);
-      const isReceiverOnline = statusSnap?.val()?.state === "online";
+      const val = statusSnap?.val();
+      const isReceiverOffline = val?.state === "offline";
 
-      if (!isReceiverOnline) {
-        // Trigger offline email notification from verification@shubhamastu.in only when offline
+      if (isReceiverOffline) {
+        // Trigger offline email notification from verification@shubhamastu.in only when explicitly offline
         const emailLog = {
           from: "verification@shubhamastu.in",
           to: receiver.email || "member@shubhamastu.in",

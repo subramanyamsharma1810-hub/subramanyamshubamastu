@@ -120,18 +120,36 @@ export default function MatchChatModal({
     setInputText("");
     remove(myTypingRef).catch(() => {});
 
-    try {
-      // Send Firestore message
-      const messagesColRef = collection(db, "chats", chatId, "messages");
-      await addDoc(messagesColRef, {
-        senderId: currentProfile.id,
-        receiverId: targetProfile.id,
-        text: textToSend,
-        timestamp: Date.now(),
-        status: "delivered"
-      });
+    const newMsg = {
+      id: `msg-${Date.now()}`,
+      senderId: currentProfile.id,
+      senderName: currentProfile.name,
+      receiverId: targetProfile.id,
+      receiverName: targetProfile.name,
+      text: textToSend,
+      timestamp: Date.now(),
+      status: "delivered"
+    };
 
-      // If offline or as an auxiliary safety net, trigger offline email notification from verification@shubhamastu.in
+    try {
+      // 1. Send Firestore message
+      const messagesColRef = collection(db, "chats", chatId, "messages");
+      await addDoc(messagesColRef, newMsg);
+    } catch (err) {
+      console.error("Error sending Firestore chat message:", err);
+    }
+
+    // 2. Dual-write to localStorage chat_messages_${chatId} so Admin Grievance Desk sees it instantly!
+    try {
+      const chatKey = `chat_messages_${chatId}`;
+      const existing = JSON.parse(localStorage.getItem(chatKey) || "[]");
+      const updated = [...existing, newMsg];
+      localStorage.setItem(chatKey, JSON.stringify(updated));
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {}
+
+    // If offline or as an auxiliary safety net, trigger offline email notification from verification@shubhamastu.in
+    try {
       const emailLog = {
         from: "verification@shubhamastu.in",
         to: targetProfile.email || "subramanyamghadiyaram@gmail.com",
@@ -144,10 +162,7 @@ export default function MatchChatModal({
 
       setToastMessage(`📧 Offline Email Alert Dispatched from verification@shubhamastu.in to ${targetProfile.name}`);
       setTimeout(() => setToastMessage(null), 4000);
-
-    } catch (err) {
-      console.error("Error sending Firestore chat message:", err);
-    }
+    } catch (e) {}
   };
 
   return (
