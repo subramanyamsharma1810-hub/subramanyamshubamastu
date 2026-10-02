@@ -11,6 +11,7 @@ import MatchChatModal from "./MatchChatModal";
 import PhoneRevealWidget from "./profile/PhoneRevealWidget";
 import CallRoom from "./meet/CallRoom";
 import OutgoingCallModal from "./meet/OutgoingCallModal";
+import CallHistory from "./meet/CallHistory";
 import { ref, set, get } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import { AnimatePresence, motion } from "motion/react";
@@ -83,6 +84,111 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
   // Chat & Call state
   const [activeChatMatch, setActiveChatMatch] = useState<Profile | null>(null);
+  const [incomingMsgToast, setIncomingMsgToast] = useState<{
+    senderName: string;
+    senderPhoto?: string;
+    text: string;
+    chatMatch: Profile;
+  } | null>(null);
+
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+
+    const handleNewChatMessage = (e: any) => {
+      const detail = e.detail;
+      if (!detail || !currentProfile) return;
+      if (detail.receiverId === currentProfile.id) {
+        const foundMatch = profiles.find(p => p.id === detail.senderId) || {
+          id: detail.senderId,
+          name: detail.senderName,
+          photo_url: detail.senderPhoto,
+          reg_number: "SHUBH",
+          gender: "Male",
+          dob: "1995-01-01",
+          height_feet: 5.8,
+          sub_caste: "Brahmin",
+          profession: "Professional",
+          salary_lpa: 10,
+          contact_number: "",
+          status: "Verified"
+        } as Profile;
+
+        setIncomingMsgToast({
+          senderName: detail.senderName,
+          senderPhoto: detail.senderPhoto,
+          text: detail.text,
+          chatMatch: foundMatch
+        });
+
+        // Play subtle message notification chime
+        try {
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.2);
+        } catch (err) {}
+      }
+      setChatVersion(prev => prev + 1);
+    };
+
+    const handleStorageEvent = () => {
+      setChatVersion(prev => prev + 1);
+    };
+
+    window.addEventListener("new_chat_message", handleNewChatMessage);
+    window.addEventListener("storage", handleStorageEvent);
+    return () => {
+      window.removeEventListener("new_chat_message", handleNewChatMessage);
+      window.removeEventListener("storage", handleStorageEvent);
+    };
+  }, [currentProfile, profiles]);
+
+  const [chatVersion, setChatVersion] = useState(0);
+
+  const getUnreadCount = (partnerId: string): number => {
+    const chatId = [currentProfile.id, partnerId].sort().join("_");
+    const chatKey = `chat_messages_${chatId}`;
+    const lastReadTime = Number(localStorage.getItem(`last_read_${currentProfile.id}_${partnerId}`) || "0");
+    try {
+      const msgs = JSON.parse(localStorage.getItem(chatKey) || "[]");
+      const unread = msgs.filter((m: any) => 
+        m.receiverId === currentProfile.id &&
+        (m.timestamp ? m.timestamp > lastReadTime : true) &&
+        !m.read
+      );
+      return unread.length;
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const markAsRead = (partnerId: string) => {
+    localStorage.setItem(`last_read_${currentProfile.id}_${partnerId}`, String(Date.now()));
+    const chatId = [currentProfile.id, partnerId].sort().join("_");
+    const chatKey = `chat_messages_${chatId}`;
+    try {
+      const msgs = JSON.parse(localStorage.getItem(chatKey) || "[]");
+      const updated = msgs.map((m: any) => {
+        if (m.receiverId === currentProfile.id) {
+          return { ...m, read: true };
+        }
+        return m;
+      });
+      localStorage.setItem(chatKey, JSON.stringify(updated));
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {}
+    setChatVersion(prev => prev + 1);
+  };
   const [activeCallSession, setActiveCallSession] = useState<{
     callSessionId: string;
     receiver: Profile;
@@ -109,12 +215,16 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
       callerId: currentProfile.id,
       callerName: currentProfile.name,
       callerRegNumber: currentProfile.reg_number || "SHUBH",
+      callerPhoto: currentProfile.photo_url,
       callType,
       status: "RINGING",
       createdAt: Date.now(),
       expiresAt: Date.now() + 60000
     };
+
     localStorage.setItem(`incoming_call_${receiver.id}`, JSON.stringify(callPayload));
+    window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new CustomEvent("incoming_call_signal", { detail: callPayload }));
 
     try {
       const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
@@ -226,6 +336,12 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     if (currentProfile.disliked_profiles?.includes(partner.id)) return false;
     if (partner.disliked_profiles?.includes(currentProfile.id)) return false;
 
+    const myNotInterested: string[] = JSON.parse(localStorage.getItem(`not_interested_${currentProfile.id}`) || "[]");
+    if (myNotInterested.includes(partner.id)) return false;
+
+    const partnerNotInterested: string[] = JSON.parse(localStorage.getItem(`not_interested_${partner.id}`) || "[]");
+    if (partnerNotInterested.includes(currentProfile.id)) return false;
+
     // 0. If current user has not paid registration fee (subscription_status === 'free'), show no matches
     if (currentProfile.subscription_status === "free") return false;
 
@@ -310,6 +426,18 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     if (direction === "left") {
       // Reciprocally update partner profile to remove from recommendations
       try {
+        const myNotInterested = JSON.parse(localStorage.getItem(`not_interested_${currentProfile.id}`) || "[]");
+        if (!myNotInterested.includes(match.id)) {
+          myNotInterested.push(match.id);
+          localStorage.setItem(`not_interested_${currentProfile.id}`, JSON.stringify(myNotInterested));
+        }
+
+        const partnerNotInterested = JSON.parse(localStorage.getItem(`not_interested_${match.id}`) || "[]");
+        if (!partnerNotInterested.includes(currentProfile.id)) {
+          partnerNotInterested.push(currentProfile.id);
+          localStorage.setItem(`not_interested_${match.id}`, JSON.stringify(partnerNotInterested));
+        }
+
         const updatedPartner = {
           ...match,
           disliked_profiles: Array.from(new Set([...(match.disliked_profiles || []), currentProfile.id])),
@@ -317,6 +445,9 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         };
         await databaseService.saveProfile(updatedPartner);
         setProfiles(prev => prev.map(p => p.id === match.id ? updatedPartner : p));
+
+        setSuccessToast(`🚫 ${match.name} has been removed from your feed and your profile from theirs.`);
+        setTimeout(() => setSuccessToast(null), 3500);
       } catch (err) {
         console.error("Failed to update partner profile on dislike:", err);
       }
@@ -988,12 +1119,20 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                         {/* Instant Chat & Video/Audio Call Action Bar */}
                         <div className="grid grid-cols-3 gap-1.5 pt-1">
                           <button
-                            onClick={() => setActiveChatMatch(match)}
-                            className="py-2 px-1 bg-[#362B5A] hover:bg-[#4A3D78] text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                            onClick={() => {
+                              markAsRead(match.id);
+                              setActiveChatMatch(match);
+                            }}
+                            className="py-2 px-1 bg-[#362B5A] hover:bg-[#4A3D78] text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer relative"
                             title="Instant Real-Time Chat"
                           >
                             <MessageSquare className="w-3 h-3 text-amber-300" />
                             <span>Chat</span>
+                            {getUnreadCount(match.id) > 0 && (
+                              <span className="absolute -top-2 -right-1 bg-emerald-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full animate-bounce border-2 border-white shadow-lg font-mono flex items-center gap-0.5">
+                                {getUnreadCount(match.id)}
+                              </span>
+                            )}
                           </button>
                           <button
                             onClick={() => handleStartCallRequest(match, "audio")}
@@ -1970,47 +2109,55 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
       {/* Call History & Missed Calls Modal */}
       {showCallHistoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-200 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-lg font-black text-[#362B5A] uppercase flex items-center gap-2">
-                <Phone className="w-5 h-5 text-emerald-600" />
-                <span>Call History & Missed Calls</span>
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+          <CallHistory
+            currentProfile={currentProfile}
+            allProfiles={profiles}
+            onClose={() => setShowCallHistoryModal(false)}
+            onCallBack={(target, type) => {
+              setShowCallHistoryModal(false);
+              handleStartCallRequest(target, type);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Real-time Push Message Pop-Up Toast */}
+      {incomingMsgToast && (
+        <div className="fixed top-20 right-4 z-[250] bg-[#362B5A] text-white border-2 border-amber-400 rounded-2xl p-4 shadow-2xl max-w-sm w-full animate-in slide-in-from-top duration-300 flex items-start gap-3">
+          <img
+            src={incomingMsgToast.senderPhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"}
+            alt={incomingMsgToast.senderName}
+            className="w-11 h-11 rounded-full object-cover border-2 border-amber-400 shrink-0 mt-0.5"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-amber-300 truncate">{incomingMsgToast.senderName}</h4>
               <button
-                onClick={() => setShowCallHistoryModal(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 cursor-pointer"
+                onClick={() => setIncomingMsgToast(null)}
+                className="text-stone-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
-
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-              {callHistory.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 font-medium text-sm">
-                  No recent calls or missed call logs.
-                </div>
-              ) : (
-                callHistory.map((call, idx) => (
-                  <div key={idx} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between text-xs">
-                    <div className="space-y-0.5">
-                      <span className="font-extrabold text-[#362B5A] block">{call.callerName} ({call.callerReg})</span>
-                      <span className="text-[10px] text-gray-500 font-mono">Type: {call.type.toUpperCase()} • {call.timestamp}</span>
-                    </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-100 text-red-700 border border-red-200 font-mono">
-                      {call.status}
-                    </span>
-                  </div>
-                ))
-              )}
+            <p className="text-xs text-stone-200 truncate mt-0.5 font-sans">"{incomingMsgToast.text}"</p>
+            <div className="mt-2.5 flex gap-2">
+              <button
+                onClick={() => {
+                  setActiveChatMatch(incomingMsgToast.chatMatch);
+                  setIncomingMsgToast(null);
+                }}
+                className="bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition shadow cursor-pointer flex items-center gap-1"
+              >
+                <span>💬 Reply Now</span>
+              </button>
+              <button
+                onClick={() => setIncomingMsgToast(null)}
+                className="bg-white/10 hover:bg-white/20 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-xl cursor-pointer"
+              >
+                Dismiss
+              </button>
             </div>
-
-            <button
-              onClick={() => setShowCallHistoryModal(false)}
-              className="w-full py-3 bg-[#362B5A] text-white font-bold text-xs uppercase rounded-xl cursor-pointer"
-            >
-              Close History
-            </button>
           </div>
         </div>
       )}

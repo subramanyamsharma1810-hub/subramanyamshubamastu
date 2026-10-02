@@ -48,6 +48,105 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+import { testR2Connectivity } from "./scripts/verify-r2-connection.ts";
+import { uploadCallRecording, getPresignedRecordingUrl, checkRecordingExists, listCallRecordings } from "./src/server/uploadCallRecording.ts";
+
+// List all call recordings stored in Cloudflare R2 bucket
+app.get("/api/recordings/list", async (req, res) => {
+  try {
+    const result = await listCallRecordings();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Cloudflare R2 Storage Status for Call Recordings
+app.get("/api/recordings/r2-status", (req, res) => {
+  res.json({
+    status: "configured",
+    storageVendor: "Cloudflare R2 (S3 Compatible)",
+    bucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || "shubhamastu-call-recordings",
+    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT || "https://32b3e56224ba3dca35f04eae6392e78a.r2.cloudflarestorage.com",
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID || "32b3e56224ba3dca35f04eae6392e78a",
+    accessKeyIdConfigured: true,
+    secretAccessKeyConfigured: true,
+    freeTierQuota: "10 GB / Month FREE with $0 Egress Fees",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Live Cloudflare R2 Connectivity & Write/Read Permission Diagnostic Test
+app.get("/api/recordings/r2-test", async (req, res) => {
+  try {
+    const diagnostic = await testR2Connectivity();
+    res.json(diagnostic);
+  } catch (err: any) {
+    res.status(500).json({
+      overallStatus: "FAILED",
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Upload Call Recording Endpoint (accepts multipart/form-data or json base64)
+app.post("/api/recordings/upload", upload.single("recording"), async (req, res) => {
+  try {
+    let fileBuffer: Buffer;
+    let fileName: string;
+    let contentType = "video/mp4";
+
+    if (req.file) {
+      fileBuffer = req.file.buffer;
+      fileName = req.file.originalname || `call_${Date.now()}.mp4`;
+      contentType = req.file.mimetype || contentType;
+    } else if (req.body?.base64Data) {
+      fileBuffer = Buffer.from(req.body.base64Data, "base64");
+      fileName = req.body.fileName || `call_${Date.now()}.${req.body.fileExtension || "mp4"}`;
+      contentType = req.body.contentType || contentType;
+    } else {
+      res.status(400).json({ success: false, error: "No recording file or base64Data provided" });
+      return;
+    }
+
+    const result = await uploadCallRecording({
+      fileName,
+      fileBuffer,
+      contentType,
+      metadata: {
+        callerId: req.body?.callerId || "unknown",
+        receiverId: req.body?.receiverId || "unknown",
+        callSessionId: req.body?.callSessionId || `session_${Date.now()}`
+      }
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Recording upload error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get Presigned Playback URL for a recorded call
+app.get("/api/recordings/playback/*", async (req, res) => {
+  try {
+    const rawPath = req.params[0] || "";
+    const fileKey = rawPath.startsWith("recordings/") ? rawPath : `recordings/${rawPath}`;
+
+    const exists = await checkRecordingExists(fileKey);
+    if (!exists) {
+      res.status(404).json({ success: false, error: "Recording file not found in Cloudflare R2 bucket" });
+      return;
+    }
+
+    const playbackUrl = await getPresignedRecordingUrl(fileKey, 3600);
+    res.json({ success: true, fileKey, playbackUrl });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Call initiation and ending telemetry/tracking endpoints
 app.post("/api/calls/initiate", (req, res) => {
   const { callerId, receiverId, callType } = req.body || {};

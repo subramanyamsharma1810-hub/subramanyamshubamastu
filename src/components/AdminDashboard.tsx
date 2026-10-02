@@ -4,6 +4,7 @@ import { databaseService, generateRandomPassword, generateDefaultDobPassword } f
 import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
 import AdminGrievanceChatsDesk from "./AdminGrievanceChatsDesk";
+import CallRecordingsDesk from "./CallRecordingsDesk";
 import { calculatePanchangam } from "../lib/panchangam";
 import { KundaliChart } from "./KundaliChart";
 import { getGenderLabel } from "../lib/genderHelper";
@@ -70,7 +71,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const registeringRef = React.useRef(false);
 
   // Tabs
-  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits" | "chatGrievanceDesk">("registrations");
+  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits" | "chatGrievanceDesk" | "recordings">("registrations");
   const [adminCount, setAdminCount] = useState<number>(2);
 
   // Pandits state
@@ -2736,6 +2737,16 @@ Ph: ${adminPhone}`;
             }`}
           >
             <span>💬 Chat & Grievance Audit Desk</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveAdminTab("recordings")}
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              activeAdminTab === "recordings" ? "bg-amber-600 text-white" : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300"
+            }`}
+          >
+            <span>🎙️ Call Recordings Desk</span>
           </button>
 
           <button
@@ -8301,6 +8312,11 @@ Ph: ${adminPhone}`;
             ))}
           </div>
         </div>
+      )}
+
+      {/* Tab CONTENT: Call Recordings Desk (Cloudflare R2 Bucket) */}
+      {activeAdminTab === "recordings" && (
+        <CallRecordingsDesk />
       )}
 
       {/* ADD / EDIT PANDIT MODAL */}

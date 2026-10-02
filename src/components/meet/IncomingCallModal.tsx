@@ -108,14 +108,73 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
       }
     };
     window.addEventListener("storage", handleStorage);
-    const interval = setInterval(handleStorage, 2000);
+    window.addEventListener("incoming_call_signal", handleStorage);
+    const interval = setInterval(handleStorage, 1000);
 
     return () => {
       unsubscribe();
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("incoming_call_signal", handleStorage);
       clearInterval(interval);
     };
   }, [currentProfile, allProfiles]);
+
+  useEffect(() => {
+    if (!incomingSession) return;
+    let audioCtx: AudioContext | null = null;
+    let ringInterval: any = null;
+
+    try {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playRingtone = () => {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      };
+
+      playRingtone();
+      ringInterval = setInterval(playRingtone, 2000);
+    } catch (e) {}
+
+    return () => {
+      if (ringInterval) clearInterval(ringInterval);
+      if (audioCtx) audioCtx.close().catch(() => {});
+    };
+  }, [incomingSession]);
+
+  // Browser Push Notification trigger for incoming calls even when tab is out of focus
+  useEffect(() => {
+    if (!incomingSession || !callerProfile) return;
+
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        try {
+          const callType = (incomingSession.callType || "video").toUpperCase();
+          const notif = new Notification(`📞 Incoming ${callType} Call from ${callerProfile.name}`, {
+            body: `Sri ${callerProfile.name} (${callerProfile.reg_number || 'SHUBH'}) is calling you! Click here to answer now on Shubhamastu.in`,
+            icon: callerProfile.photo_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+            tag: `call-${incomingSession.callSessionId}`,
+            requireInteraction: true
+          });
+          notif.onclick = () => {
+            window.focus();
+            notif.close();
+          };
+        } catch (e) {}
+      } else if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }, [incomingSession, callerProfile]);
 
   const handleRespond = async (action: "ACCEPT" | "DECLINE") => {
     if (!incomingSession || !currentProfile) return;

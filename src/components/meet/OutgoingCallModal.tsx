@@ -23,19 +23,37 @@ export default function OutgoingCallModal({
   const [statusText, setStatusText] = useState("Ringing target user...");
 
   useEffect(() => {
-    // Auto-answer after 3 seconds of ringing for seamless experience
-    const autoAnswerTimer = setTimeout(() => {
-      setStatusText("✅ Call Answered! Opening Secure Call Room...");
-      setTimeout(() => {
-        onCallConnected();
-      }, 800);
-    }, 3000);
+    // Play subtle Web Audio ringer tone while ringing
+    let audioCtx: AudioContext | null = null;
+    let ringInterval: any = null;
+
+    try {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playRingtone = () => {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4 tone
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      };
+
+      playRingtone();
+      ringInterval = setInterval(playRingtone, 2500);
+    } catch (e) {}
 
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          setStatusText("Call timed out. User was unavailable.");
+          if (ringInterval) clearInterval(ringInterval);
+          setStatusText("Call timed out. Member was unavailable.");
           setTimeout(() => onCancelCall(), 2000);
           return 0;
         }
@@ -49,8 +67,12 @@ export default function OutgoingCallModal({
       const data = snapshot.val();
       if (!data) return;
       if (data.status === "ACTIVE") {
+        if (ringInterval) clearInterval(ringInterval);
+        if (audioCtx) audioCtx.close().catch(() => {});
         onCallConnected();
       } else if (data.status === "DECLINED") {
+        if (ringInterval) clearInterval(ringInterval);
+        if (audioCtx) audioCtx.close().catch(() => {});
         setStatusText("Call was declined.");
         setTimeout(() => {
           remove(sessionRef).catch(() => {});
@@ -59,10 +81,47 @@ export default function OutgoingCallModal({
       }
     });
 
+    // Also listen to window signals for instant local/cross-tab status updates
+    const handleCallStatusSignal = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.callSessionId === callSessionId) {
+        if (detail.status === "ACTIVE") {
+          if (ringInterval) clearInterval(ringInterval);
+          if (audioCtx) audioCtx.close().catch(() => {});
+          onCallConnected();
+        } else if (detail.status === "DECLINED") {
+          if (ringInterval) clearInterval(ringInterval);
+          if (audioCtx) audioCtx.close().catch(() => {});
+          setStatusText("Call was declined.");
+          setTimeout(() => onCancelCall(), 1500);
+        }
+      }
+    };
+
+    const handleStorageChange = () => {
+      const activeData = localStorage.getItem(`call_active_${callSessionId}`);
+      if (activeData) {
+        try {
+          const parsed = JSON.parse(activeData);
+          if (parsed.status === "ACTIVE") {
+            if (ringInterval) clearInterval(ringInterval);
+            if (audioCtx) audioCtx.close().catch(() => {});
+            onCallConnected();
+          }
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener("call_status_signal", handleCallStatusSignal);
+    window.addEventListener("storage", handleStorageChange);
+
     return () => {
-      clearTimeout(autoAnswerTimer);
+      if (ringInterval) clearInterval(ringInterval);
+      if (audioCtx) audioCtx.close().catch(() => {});
       clearInterval(timer);
       unsubscribe();
+      window.removeEventListener("call_status_signal", handleCallStatusSignal);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [targetProfile.id, callSessionId, onCancelCall, onCallConnected]);
 
@@ -104,22 +163,25 @@ export default function OutgoingCallModal({
         </div>
 
         <div className="space-y-3">
-          <button
-            onClick={() => {
-              onCallConnected();
-            }}
-            className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition shadow-xl flex items-center justify-center gap-2 cursor-pointer border border-emerald-400/40 animate-pulse"
-          >
-            <span>⚡ Connect Instantly (Test / Open Call Room)</span>
-          </button>
+          <div className="p-3 bg-emerald-900/40 border border-emerald-400/40 rounded-2xl text-[11px] text-emerald-200 font-medium space-y-1 text-left">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-300 uppercase tracking-wider text-[10px]">
+              <span>🛡️ Zero Credit Waste Protection</span>
+            </div>
+            <p>Agora RTC channel joins ONLY after {targetProfile.name} answers. No credits are consumed while ringing!</p>
+          </div>
 
           <button
             onClick={async () => {
               const sessionRef = ref(rtdb, `calls/${targetProfile.id}/${callSessionId}`);
               await remove(sessionRef).catch(() => {});
+              localStorage.removeItem(`incoming_call_${targetProfile.id}`);
+              window.dispatchEvent(new Event("storage"));
+              window.dispatchEvent(new CustomEvent("call_status_signal", {
+                detail: { callSessionId, status: "CANCELLED" }
+              }));
               onCancelCall();
             }}
-            className="w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
           >
             <PhoneOff className="w-4 h-4" />
             <span>Cancel Call</span>

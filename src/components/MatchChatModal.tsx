@@ -78,6 +78,23 @@ export default function MatchChatModal({
       }
 
       setMessages(list);
+
+      // Mark messages as read when viewing chat
+      try {
+        localStorage.setItem(`last_read_${currentProfile.id}_${targetProfile.id}`, String(Date.now()));
+        const chatKey = `chat_messages_${chatId}`;
+        const existing = JSON.parse(localStorage.getItem(chatKey) || "[]");
+        if (existing.length > 0) {
+          const updated = existing.map((m: any) => {
+            if (m.receiverId === currentProfile.id) {
+              return { ...m, read: true };
+            }
+            return m;
+          });
+          localStorage.setItem(chatKey, JSON.stringify(updated));
+        }
+        window.dispatchEvent(new Event("storage"));
+      } catch (e) {}
     }, (err) => {
       console.error("Firestore chat snapshot error:", err);
     });
@@ -145,7 +162,32 @@ export default function MatchChatModal({
       const existing = JSON.parse(localStorage.getItem(chatKey) || "[]");
       const updated = [...existing, newMsg];
       localStorage.setItem(chatKey, JSON.stringify(updated));
+
+      // Trigger custom window event for real-time push popups across UI
+      window.dispatchEvent(
+        new CustomEvent("new_chat_message", {
+          detail: {
+            senderId: currentProfile.id,
+            senderName: currentProfile.name,
+            senderPhoto: currentProfile.photo_url,
+            receiverId: targetProfile.id,
+            text: textToSend,
+            chatId,
+            timestamp: Date.now()
+          }
+        })
+      );
       window.dispatchEvent(new Event("storage"));
+
+      // Browser Push Notification
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification(`💬 New Message from ${currentProfile.name}`, {
+            body: textToSend,
+            icon: currentProfile.photo_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"
+          });
+        } catch (err) {}
+      }
     } catch (e) {}
 
     // If offline or as an auxiliary safety net, trigger offline email notification from verification@shubhamastu.in
