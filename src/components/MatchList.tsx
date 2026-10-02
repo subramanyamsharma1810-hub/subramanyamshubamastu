@@ -2000,8 +2000,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
           onClose={() => setActiveChatMatch(null)}
           onStartCall={(type) => {
             const match = activeChatMatch;
-            setActiveChatMatch(null);
             handleStartCallRequest(match, type);
+            setActiveChatMatch(null);
           }}
         />
       )}

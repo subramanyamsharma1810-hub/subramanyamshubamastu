@@ -44,8 +44,8 @@ export default function MatchChatModal({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
 
-  // Consider online if RTDB says online OR default to true for testing active multi-device sessions
-  const isOnline = rtdbOnline || true; 
+  // Real-time presence status
+  const isOnline = rtdbOnline; 
 
   const chatId = [currentProfile?.id || "u1", targetProfile?.id || "u2"].sort().join("_");
   const typingRef = ref(rtdb, `chats/${chatId}/typing/${targetProfile?.id}`);
