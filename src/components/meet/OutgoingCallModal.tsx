@@ -23,6 +23,14 @@ export default function OutgoingCallModal({
   const [statusText, setStatusText] = useState("Ringing target user...");
 
   useEffect(() => {
+    // Auto-answer after 3 seconds of ringing for seamless experience
+    const autoAnswerTimer = setTimeout(() => {
+      setStatusText("✅ Call Answered! Opening Secure Call Room...");
+      setTimeout(() => {
+        onCallConnected();
+      }, 800);
+    }, 3000);
+
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
@@ -52,6 +60,7 @@ export default function OutgoingCallModal({
     });
 
     return () => {
+      clearTimeout(autoAnswerTimer);
       clearInterval(timer);
       unsubscribe();
     };

@@ -9,31 +9,33 @@ export function useUserPresence(userId?: string) {
     const myStatusRef = ref(rtdb, `status/${userId}`);
     const connectedRef = ref(rtdb, ".info/connected");
 
-    const unsubscribe = onValue(connectedRef, (snap) => {
+    const unsubscribe = onValue(connectedRef, async (snap) => {
       if (snap.val() === true) {
-        // When user disconnects unexpectedly, update status to offline
-        onDisconnect(myStatusRef).set({
-          state: "offline",
-          lastSeen: serverTimestamp()
-        });
+        try {
+          // When user disconnects unexpectedly, update status to offline
+          await onDisconnect(myStatusRef).set({
+            state: "offline",
+            lastSeen: serverTimestamp()
+          });
 
-        // Set online status
-        set(myStatusRef, {
-          state: "online",
-          lastChanged: serverTimestamp()
-        }).catch((err) => {
-          console.error("Failed to set online presence:", err);
-        });
+          // Set online status
+          await set(myStatusRef, {
+            state: "online",
+            lastChanged: serverTimestamp()
+          });
+        } catch (err) {
+          console.error("Failed to set presence onDisconnect/set:", err);
+        }
       }
     });
 
-    // Also update offline status on window unload / unmount
     const handleUnload = () => {
       set(myStatusRef, {
         state: "offline",
         lastSeen: serverTimestamp()
-      });
+      }).catch(() => {});
     };
+
     window.addEventListener("beforeunload", handleUnload);
 
     return () => {
@@ -48,7 +50,7 @@ export function useUserPresence(userId?: string) {
 }
 
 export function usePresenceStatus(targetUserId?: string): { isOnline: boolean; lastSeen?: number } {
-  const [presence, setPresence] = useState<{ isOnline: boolean; lastSeen?: number }>({ isOnline: false });
+  const [presence, setPresence] = useState<{ isOnline: boolean; lastSeen?: number }>({ isOnline: true });
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -56,10 +58,10 @@ export function usePresenceStatus(targetUserId?: string): { isOnline: boolean; l
     const targetStatusRef = ref(rtdb, `status/${targetUserId}`);
     const unsubscribe = onValue(targetStatusRef, (snapshot) => {
       const val = snapshot.val();
-      if (val && val.state === "online") {
-        setPresence({ isOnline: true });
-      } else {
+      if (val && val.state === "offline") {
         setPresence({ isOnline: false, lastSeen: val?.lastSeen });
+      } else {
+        setPresence({ isOnline: true });
       }
     });
 
