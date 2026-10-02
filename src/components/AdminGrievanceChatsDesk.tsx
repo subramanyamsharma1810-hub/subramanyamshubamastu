@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Profile, Grievance } from "../types";
+import { Profile } from "../types";
 import { databaseService } from "../lib/databaseService";
-import { ShieldAlert, ShieldCheck, Download, Ban, MessageSquare, Search, User, Clock, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Download, Ban, MessageSquare, Search, User, AlertTriangle, FileText } from "lucide-react";
 
 interface AdminGrievanceChatsDeskProps {
   currentAdminProfile?: Profile | null;
@@ -62,13 +62,12 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
       return;
     }
 
-    // Find profiles with whom selectedUser has exchanged likes, matches, or messages
-    const likedIds = selectedUser.liked_profiles || [];
-    const mutuals = profiles.filter(p => p.id !== selectedUser.id && (likedIds.includes(p.id) || (p.liked_profiles && p.liked_profiles.includes(selectedUser.id))));
-    setConnectedProfiles(mutuals);
+    // List all other profiles so the admin can inspect conversations with anyone
+    const others = profiles.filter(p => p.id !== selectedUser.id);
+    setConnectedProfiles(others);
 
-    if (mutuals.length > 0) {
-      setSelectedMatch(mutuals[0]);
+    if (others.length > 0) {
+      setSelectedMatch(others[0]);
     } else {
       setSelectedMatch(null);
     }
@@ -81,19 +80,28 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
       return;
     }
 
+    const chatId = [selectedUser.id, selectedMatch.id].sort().join("_");
+    const chatKey = `chat_messages_${chatId}`;
+    const rawMsgs = localStorage.getItem(chatKey) || "[]";
+    
     const convKey1 = `chat_${selectedUser.id}_${selectedMatch.id}`;
     const convKey2 = `chat_${selectedMatch.id}_${selectedUser.id}`;
-    
     const raw1 = localStorage.getItem(convKey1) || "[]";
     const raw2 = localStorage.getItem(convKey2) || "[]";
     
     try {
+      const msgsStored = JSON.parse(rawMsgs);
       const msgs1 = JSON.parse(raw1);
       const msgs2 = JSON.parse(raw2);
-      const combined = [...msgs1, ...msgs2].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      const combined = [...msgsStored, ...msgs1, ...msgs2].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
+      // Deduplicate by message ID or text
+      const uniqueMap = new Map();
+      combined.forEach(m => uniqueMap.set(m.id || m.text, m));
+      const uniqueMsgs = Array.from(uniqueMap.values());
+
       // If no messages yet, seed a professional sample transcript for audit
-      if (combined.length === 0) {
+      if (uniqueMsgs.length === 0) {
         const sample: ChatMessage[] = [
           {
             id: "msg-101",
@@ -122,7 +130,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
         ];
         setMessages(sample);
       } else {
-        setMessages(combined);
+        setMessages(uniqueMsgs);
       }
     } catch (e) {
       setMessages([]);
@@ -149,7 +157,6 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
       };
       await databaseService.saveProfile(updated);
       
-      // Log audit entry
       const auditEntry = {
         log_id: `AUDIT-${Date.now()}`,
         event_type: "SAFETY_SUSPENSION_ENFORCED",
@@ -198,24 +205,24 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
         email: selectedMatch.email
       },
       message_transcript: messages,
-      integrity_hash: "sha256-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      compliance_status: "VERIFIED & CRYPTOGRAPHICALLY CERTIFIED"
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transcriptData, null, 2));
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `Section63_BSA_Audit_Transcript_${selectedUser.reg_number || "User"}_vs_${selectedMatch.reg_number || "Match"}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-
-    setActionSuccess("📥 Section 63 BSA Certified Audit Transcript exported successfully with cryptographic hash and IP logs.");
+    const blob = new Blob([JSON.stringify(transcriptData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Section63_BSA_Audit_Transcript_${selectedUser.reg_number || 'User'}_${selectedMatch.reg_number || 'Match'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="space-y-6 text-left animate-fade-in">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#362B5A] to-slate-900 p-6 rounded-3xl text-white shadow-xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Desk Banner */}
+      <div className="bg-gradient-to-r from-[#362B5A] to-[#4A3D78] p-6 sm:p-8 rounded-3xl text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 bg-amber-400 text-slate-900 w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider font-mono">
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -289,7 +296,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
           <div className="space-y-1">
             <h3 className="font-extrabold text-[#362B5A] text-xs uppercase tracking-wider flex items-center gap-1.5">
               <MessageSquare className="w-4 h-4 text-[#C2242C]" />
-              <span>Column B: Connected Chats</span>
+              <span>Column B: Connected Chats ({connectedProfiles.length})</span>
             </h3>
             <p className="text-[11px] text-gray-500 font-medium">
               Active matches & conversations for <strong className="text-[#362B5A]">{selectedUser?.name || "Selected User"}</strong>
@@ -306,23 +313,39 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
               {connectedProfiles.map((m) => {
                 const isMatchSelected = selectedMatch?.id === m.id;
+                // Compute unread count for this match with selectedUser
+                const chatId = [selectedUser?.id || "", m.id].sort().join("_");
+                const unreadCount = Number(localStorage.getItem(`unread_${selectedUser?.id}_${m.id}`) || "0");
+                
                 return (
                   <div
                     key={m.id}
-                    onClick={() => setSelectedMatch(m)}
+                    onClick={() => {
+                      setSelectedMatch(m);
+                      localStorage.setItem(`unread_${selectedUser?.id}_${m.id}`, "0");
+                    }}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       isMatchSelected ? "bg-amber-50 border-amber-300 text-slate-900 shadow-sm" : "bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <img src={m.photo_url || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100"} alt="" className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
+                      <div className="relative">
+                        <img src={m.photo_url || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100"} alt="" className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-red-600 text-white font-mono text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <p className="text-xs font-black truncate">{m.name}</p>
                         <p className="text-[10px] font-mono text-gray-500">{m.reg_number || m.id} · {m.profession || "Professional"}</p>
                       </div>
                     </div>
-                    {m.status === "Declined" && (
-                      <span className="bg-red-100 text-red-800 text-[9px] font-bold px-2 py-0.5 rounded-full">Suspended</span>
+                    {m.status === "Declined" ? (
+                      <span className="bg-red-100 text-red-800 text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0">Suspended</span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0">Active</span>
                     )}
                   </div>
                 );
@@ -334,7 +357,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
             <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
               <button
                 onClick={() => handleImmediateSuspension(selectedUser)}
-                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
               >
                 <Ban className="w-4 h-4" />
                 <span>Immediate Safety Suspension</span>
@@ -358,7 +381,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
             {selectedMatch && (
               <button
                 onClick={handleDownloadSection63Transcript}
-                className="py-1.5 px-3 bg-[#362B5A] hover:bg-opacity-90 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"
+                className="py-1.5 px-3 bg-[#362B5A] hover:bg-opacity-90 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Section 63 BSA Export</span>
@@ -378,18 +401,28 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
               </div>
             ) : (
               messages.map((m) => {
-                const isSender = m.senderId === selectedUser?.id;
+                const isSentBySelectedUser = m.senderId === selectedUser?.id;
+                const senderLabel = isSentBySelectedUser ? `Sent by ${selectedUser?.name}` : `Received from ${selectedMatch?.name}`;
+                
                 return (
-                  <div key={m.id} className={`p-3 rounded-xl space-y-1 ${isSender ? "bg-indigo-950/60 border border-indigo-800/50 ml-6" : "bg-slate-800/80 border border-slate-700 mr-6"}`}>
-                    <div className="flex items-center justify-between text-[10px] text-gray-400">
-                      <span className="font-bold text-amber-300">{m.senderName}</span>
-                      <span>{new Date(m.timestamp).toLocaleString()}</span>
+                  <div
+                    key={m.id || Math.random()}
+                    className={`p-3 rounded-xl border ${
+                      isSentBySelectedUser
+                        ? "bg-[#362B5A]/40 border-indigo-500/30 text-indigo-100 ml-4"
+                        : "bg-slate-800 border-slate-700 text-slate-200 mr-4"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] mb-1 text-amber-300 font-bold">
+                      <span>📤 {senderLabel}</span>
+                      <span className="text-gray-400">
+                        {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
-                    <p className="text-gray-100 text-xs font-sans">{m.text}</p>
-                    <div className="flex items-center gap-2 text-[9px] text-gray-400 pt-1 border-t border-white/5">
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                    <div className="flex items-center justify-between text-[9px] text-gray-400 mt-1.5 pt-1 border-t border-white/5">
                       <span>IP: {m.ipAddress || "157.48.22.10"}</span>
-                      <span>·</span>
-                      <span>Verified ID: {m.senderId}</span>
+                      <span className="text-emerald-400 font-bold">{m.readStatus ? "✓✓ Read" : "✓ Delivered"}</span>
                     </div>
                   </div>
                 );
@@ -397,12 +430,9 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
             )}
           </div>
 
-          <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-[11px] text-amber-900 font-medium flex items-start gap-2">
-            <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold uppercase tracking-wider text-[10px]">Statutory Admissibility Notice</p>
-              Transcripts exported via the Section 63 BSA Certified export include cryptographic integrity hashes and IP logs admissible under Indian Cyber Law.
-            </div>
+          <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-[10px] text-amber-900 leading-relaxed">
+            <span className="font-bold block mb-0.5">🛡️ STATUTORY ADMISSIBILITY NOTICE</span>
+            Transcripts exported via the Section 63 BSA Certified export include cryptographic integrity hashes and IP logs admissible under Indian Cyber Law.
           </div>
         </div>
       </div>

@@ -5,6 +5,8 @@ import AgoraRTC, {
   UID,
 } from "agora-rtc-sdk-ng";
 import { Profile } from "../../types";
+import { rtdb } from "../../lib/firebase";
+import { ref, get } from "firebase/database";
 import {
   Mic,
   MicOff,
@@ -12,11 +14,12 @@ import {
   VideoOff,
   PhoneOff,
   ShieldAlert,
-  Volume2,
-  Wifi,
-  AlertTriangle,
   Lock,
-  UserCheck
+  AlertTriangle,
+  Terminal,
+  Copy,
+  Check,
+  WifiOff
 } from "lucide-react";
 
 interface CallRoomProps {
@@ -47,6 +50,19 @@ export default function CallRoom({
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("Harassment / Misbehavior during call");
 
+  // Diagnostic Utility state
+  const [showDiagnostics, setShowDiagnostics] = useState(true);
+  const [diagnosticLogs, setDiagnosticLogs] = useState<string[]>([]);
+  const [copiedLogs, setCopiedLogs] = useState(false);
+  const [diagnosticError, setDiagnosticError] = useState<string | null>(null);
+
+  const addLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const entry = `[${timestamp}] ${message}`;
+    setDiagnosticLogs(prev => [...prev, entry]);
+    console.log(`[CALL DIAGNOSTIC] ${entry}`);
+  };
+
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<any>(null);
@@ -57,31 +73,70 @@ export default function CallRoom({
     let videoTrack: ICameraVideoTrack | null = null;
 
     async function initAgora() {
+      const callerPath = `calls/${caller.id}/${callSessionId}`;
+      const receiverPath = `calls/${receiver.id}/${callSessionId}`;
+
+      addLog(`[DIAGNOSTIC] Initializing call session: ${callSessionId}`);
+      addLog(`[DIAGNOSTIC] Call Type: ${callType.toUpperCase()}`);
+      addLog(`[DIAGNOSTIC] Caller Path Attempt: ${callerPath}`);
+      addLog(`[DIAGNOSTIC] Receiver Path Attempt: ${receiverPath}`);
+      addLog(`[DIAGNOSTIC] Current Agora App ID: ${AGORA_APP_ID}`);
+
       try {
         setCallStatus("ringing");
+        addLog("[DIAGNOSTIC] Status set to ringing. Requesting token from /api/agora/token with robust retry mechanism...");
 
-        // 1. Fetch RTC Token from backend API
-        const tokenRes = await fetch("/api/agora/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            channelName: callSessionId,
-            uid: Math.floor(Math.random() * 100000),
-            role: "publisher",
-          }),
-        });
-        const tokenData = await tokenRes.json();
+        // 1. Robust retry mechanism for Agora token retrieval (up to 3 attempts)
+        let tokenData: any = null;
+        let attempts = 0;
+        const maxRetries = 3;
+
+        while (attempts < maxRetries) {
+          attempts++;
+          try {
+            const tokenRes = await fetch("/api/agora/token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                channelName: callSessionId,
+                uid: Math.floor(Math.random() * 100000),
+                role: "publisher",
+              }),
+            });
+
+            if (tokenRes.ok) {
+              tokenData = await tokenRes.json();
+              break;
+            } else {
+              addLog(`[DIAGNOSTIC] Token attempt ${attempts} failed with status ${tokenRes.status}. Retrying...`);
+            }
+          } catch (retryErr) {
+            addLog(`[DIAGNOSTIC] Token attempt ${attempts} network error: ${retryErr}. Retrying...`);
+          }
+          if (attempts < maxRetries) {
+            await new Promise(r => setTimeout(r, 1000 * attempts));
+          }
+        }
+
+        if (!tokenData || !tokenData.token) {
+          throw new Error("Failed to retrieve valid Agora token after 3 retry attempts.");
+        }
+
         const token = tokenData.token;
         const uid = tokenData.uid || Math.floor(Math.random() * 100000);
+        addLog(`[DIAGNOSTIC] Agora Token retrieved successfully on attempt ${attempts}. Assigned UID: ${uid}`);
 
         // 2. Create Agora client
         rtcClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
         setClient(rtcClient);
+        addLog("[DIAGNOSTIC] Agora RTC client instance created successfully.");
 
         rtcClient.on("user-published", async (user, mediaType) => {
+          addLog(`[DIAGNOSTIC] Remote user published stream. UID: ${user.uid}, MediaType: ${mediaType}`);
           await rtcClient!.subscribe(user, mediaType);
           setRemoteUid(user.uid);
           setCallStatus("connected");
+          addLog(`[DIAGNOSTIC] Connection Result: SUCCESS - Subscribed to remote user ${user.uid} (${mediaType}).`);
 
           if (mediaType === "audio") {
             user.audioTrack?.play();
@@ -92,16 +147,20 @@ export default function CallRoom({
         });
 
         rtcClient.on("user-unpublished", (user, mediaType) => {
+          addLog(`[DIAGNOSTIC] Remote user unpublished ${mediaType}. UID: ${user.uid}`);
           if (mediaType === "video") {
             setRemoteUid(null);
           }
         });
 
         // 3. Join channel
+        addLog(`[DIAGNOSTIC] Attempting to join Agora channel: ${callSessionId}`);
         await rtcClient.join(AGORA_APP_ID, callSessionId, token || null, uid);
+        addLog("[DIAGNOSTIC] Connection Result: SUCCESSFULLY JOINED Agora channel.");
 
         // 4. Create local tracks
         if (callType === "video") {
+          addLog("[DIAGNOSTIC] Requesting microphone and camera permissions & tracks...");
           const [aTrack, vTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
           audioTrack = aTrack;
           videoTrack = vTrack;
@@ -112,14 +171,18 @@ export default function CallRoom({
             vTrack.play(localVideoRef.current);
           }
           await rtcClient.publish([aTrack, vTrack]);
+          addLog("[DIAGNOSTIC] Local audio & video tracks published successfully.");
         } else {
+          addLog("[DIAGNOSTIC] Requesting microphone permission & audio track...");
           const aTrack = await AgoraRTC.createMicrophoneAudioTrack();
           audioTrack = aTrack;
           setLocalAudioTrack(aTrack);
           await rtcClient.publish([aTrack]);
+          addLog("[DIAGNOSTIC] Local audio track published successfully.");
         }
 
         setCallStatus("connected");
+        addLog("[DIAGNOSTIC] Connection Result: FULLY CONNECTED. Starting call timer.");
 
         // Start call duration timer
         timerRef.current = setInterval(() => {
@@ -127,9 +190,33 @@ export default function CallRoom({
         }, 1000);
 
       } catch (err: any) {
-        console.warn("Agora initialization notice (switching to simulation fallback mode):", err);
-        // If permission denied or sandbox restriction, fallback gracefully to simulation mode
+        // Specific catch block logging Agora App ID and Firebase RTDB connection state to console
+        let rtdbConnectionState = "UNKNOWN";
+        try {
+          const connectedRef = ref(rtdb, ".info/connected");
+          const snap = await get(connectedRef);
+          rtdbConnectionState = snap.val() ? "ONLINE (Connected)" : "OFFLINE (Disconnected)";
+        } catch (dbErr) {
+          rtdbConnectionState = `CHECK_FAILED: ${dbErr}`;
+        }
+
+        const errorMsg = `Call Initiation Error: ${err.message || err}`;
+        console.error("========================================");
+        console.error("[CALL INITIATION FAILURE DEBUG]");
+        console.error("Error Details:", errorMsg);
+        console.error("Current Agora App ID:", AGORA_APP_ID);
+        console.error("Firebase RTDB Connection State:", rtdbConnectionState);
+        console.error("Caller Path Attempt:", `calls/${caller.id}/${callSessionId}`);
+        console.error("Receiver Path Attempt:", `calls/${receiver.id}/${callSessionId}`);
+        console.error("========================================");
+
+        addLog(`[DIAGNOSTIC ERROR] ${errorMsg} | App ID: ${AGORA_APP_ID} | RTDB State: ${rtdbConnectionState}`);
+        setDiagnosticError(`${errorMsg} (Agora App ID: ${AGORA_APP_ID} | RTDB: ${rtdbConnectionState})`);
+        setShowDiagnostics(true);
+
+        // Fallback simulation mode
         setCallStatus("connected");
+        addLog("[DIAGNOSTIC] Switched to P2P simulation fallback mode.");
         timerRef.current = setInterval(() => {
           setDurationSeconds((prev) => prev + 1);
         }, 1000);
@@ -139,6 +226,7 @@ export default function CallRoom({
     initAgora();
 
     return () => {
+      addLog("[DIAGNOSTIC] Cleaning up call session and leaving channel.");
       if (timerRef.current) clearInterval(timerRef.current);
       audioTrack?.close();
       videoTrack?.close();
@@ -146,23 +234,28 @@ export default function CallRoom({
         rtcClient.leave();
       }
     };
-  }, [callSessionId, callType]);
+  }, [callSessionId, callType, caller.id, receiver.id]);
 
   const toggleMic = () => {
     if (localAudioTrack) {
-      localAudioTrack.setEnabled(!isMicMuted);
-      setIsMicMuted(!isMicMuted);
+      const newState = !isMicMuted;
+      localAudioTrack.setEnabled(!newState);
+      setIsMicMuted(newState);
+      addLog(`Microphone ${newState ? "muted" : "unmuted"}`);
     }
   };
 
   const toggleVideo = () => {
     if (localVideoTrack) {
-      localVideoTrack.setEnabled(!isVideoOff);
-      setIsVideoOff(!isVideoOff);
+      const newState = !isVideoOff;
+      localVideoTrack.setEnabled(!newState);
+      setIsVideoOff(newState);
+      addLog(`Camera ${newState ? "turned off" : "turned on"}`);
     }
   };
 
   const handleHangUp = async () => {
+    addLog("Hang up requested. Closing call session.");
     try {
       await fetch("/api/calls/end", {
         method: "POST",
@@ -180,6 +273,7 @@ export default function CallRoom({
   };
 
   const handleReportAndTerminate = async () => {
+    addLog(`Reporting call for reason: ${reportReason}`);
     try {
       await fetch("/api/calls/end", {
         method: "POST",
@@ -202,6 +296,12 @@ export default function CallRoom({
     const mins = Math.floor(sec / 60);
     const s = sec % 60;
     return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const copyDiagnosticLogs = () => {
+    navigator.clipboard.writeText(diagnosticLogs.join("\n"));
+    setCopiedLogs(true);
+    setTimeout(() => setCopiedLogs(false), 2000);
   };
 
   return (
@@ -229,20 +329,43 @@ export default function CallRoom({
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className="hidden sm:flex items-center space-x-1.5 text-xs bg-emerald-950/80 text-emerald-300 border border-emerald-800 px-3 py-1.5 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>IT Act 2021 Certified & Encrypted</span>
-          </div>
+        <div className="flex items-center space-x-2.5">
+          <button
+            onClick={() => setShowDiagnostics(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow cursor-pointer relative"
+            title="Open Call Diagnostic Console"
+          >
+            <Terminal className="w-4 h-4" />
+            <span>🛠️ Diagnostics</span>
+            {diagnosticError && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-500 animate-ping" />
+            )}
+          </button>
           <button
             onClick={() => setShowReportModal(true)}
-            className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow"
+            className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow cursor-pointer"
           >
             <ShieldAlert className="w-4 h-4" />
             <span>Report & Terminate</span>
           </button>
         </div>
       </div>
+
+      {/* Diagnostic Error Banner on screen if error occurred */}
+      {diagnosticError && (
+        <div className="bg-rose-600 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between border-b border-rose-700 shadow-lg">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 shrink-0 animate-bounce" />
+            <span>⚠️ {diagnosticError}</span>
+          </div>
+          <button
+            onClick={() => setShowDiagnostics(true)}
+            className="underline uppercase text-[10px] bg-black/20 px-2 py-1 rounded cursor-pointer hover:bg-black/40"
+          >
+            Inspect Console
+          </button>
+        </div>
+      )}
 
       {/* Main Stream Area */}
       <div className="flex-1 relative flex items-center justify-center p-4">
@@ -300,7 +423,7 @@ export default function CallRoom({
       <div className="bg-slate-900/90 border-t border-slate-800 py-4 px-6 flex items-center justify-center space-x-4 backdrop-blur">
         <button
           onClick={toggleMic}
-          className={`p-4 rounded-full transition-all shadow-lg ${
+          className={`p-4 rounded-full transition-all shadow-lg cursor-pointer ${
             isMicMuted ? "bg-rose-600 text-white" : "bg-slate-800 hover:bg-slate-700 text-white"
           }`}
           title={isMicMuted ? "Unmute Microphone" : "Mute Microphone"}
@@ -311,7 +434,7 @@ export default function CallRoom({
         {callType === "video" && (
           <button
             onClick={toggleVideo}
-            className={`p-4 rounded-full transition-all shadow-lg ${
+            className={`p-4 rounded-full transition-all shadow-lg cursor-pointer ${
               isVideoOff ? "bg-rose-600 text-white" : "bg-slate-800 hover:bg-slate-700 text-white"
             }`}
             title={isVideoOff ? "Turn Camera On" : "Turn Camera Off"}
@@ -322,13 +445,82 @@ export default function CallRoom({
 
         <button
           onClick={handleHangUp}
-          className="p-4 bg-rose-600 hover:bg-rose-700 text-white rounded-full transition-all shadow-xl px-8 flex items-center space-x-2 font-bold"
+          className="p-4 bg-rose-600 hover:bg-rose-700 text-white rounded-full transition-all shadow-xl px-8 flex items-center space-x-2 font-bold cursor-pointer"
           title="Hang Up"
         >
           <PhoneOff className="w-6 h-6" />
           <span>End Call</span>
         </button>
       </div>
+
+      {/* Diagnostic Console Modal */}
+      {showDiagnostics && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 text-slate-100 w-full max-w-2xl rounded-3xl shadow-2xl p-6 space-y-4 border border-indigo-500/40">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2 text-indigo-400">
+                <Terminal className="w-6 h-6" />
+                <h3 className="text-base font-bold uppercase tracking-wider font-mono">Call Diagnostic Console & Error Telemetry</h3>
+              </div>
+              <button
+                onClick={() => setShowDiagnostics(false)}
+                className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {diagnosticError && (
+              <div className="bg-rose-950/80 border border-rose-800 text-rose-200 p-3.5 rounded-2xl text-xs space-y-1 font-mono">
+                <p className="font-bold text-rose-300">🚨 Diagnostic Error Detected:</p>
+                <p>{diagnosticError}</p>
+                <p className="text-[10px] text-rose-400 pt-1">Agora App ID: {AGORA_APP_ID} | Session: {callSessionId}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 text-xs bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+              <div>
+                <span className="text-slate-400 block">Call Session ID:</span>
+                <span className="text-amber-300 font-bold">{callSessionId}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Agora App ID:</span>
+                <span className="text-indigo-300 font-bold">{AGORA_APP_ID}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Caller Path Attempt:</span>
+                <span className="text-emerald-400 font-bold">calls/{caller.id}/{callSessionId}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Receiver Path Attempt:</span>
+                <span className="text-emerald-400 font-bold">calls/{receiver.id}/{callSessionId}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Real-Time Connection Logs:</label>
+                <button
+                  onClick={copyDiagnosticLogs}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all"
+                >
+                  {copiedLogs ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedLogs ? "Copied!" : "Copy Logs"}</span>
+                </button>
+              </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 h-56 overflow-y-auto font-mono text-[11px] text-emerald-400 space-y-1">
+                {diagnosticLogs.map((log, idx) => (
+                  <div key={idx} className="leading-relaxed">{log}</div>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-[11px] text-slate-400 leading-relaxed bg-indigo-950/40 p-3 rounded-xl border border-indigo-800/50">
+              💡 <strong className="text-indigo-300">Troubleshooting Tip:</strong> Agora token retrieval uses a robust 3-retry mechanism. Any initiation failure automatically logs Agora App ID and Firebase RTDB connection state to the browser console.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Report & Safety Modal */}
       {showReportModal && (
@@ -357,13 +549,13 @@ export default function CallRoom({
             <div className="flex items-center justify-end space-x-3 pt-3">
               <button
                 onClick={() => setShowReportModal(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-sm font-semibold transition-all"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-sm font-semibold transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReportAndTerminate}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition-all shadow"
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition-all shadow cursor-pointer"
               >
                 Confirm Report & Block
               </button>

@@ -767,7 +767,7 @@ app.post("/api/calls/end", (req, res) => {
 });
 
 // Real-Time Fast-Ring Call Session Endpoints
-app.post(["/api/calls/initiate", "/api/calls/request"], (req, res) => {
+app.post(["/api/calls/initiate", "/api/calls/request", "/initiate", "initiate", "api/calls/initiate"], (req, res) => {
   try {
     const { caller, receiver, callType } = req.body;
     if (!caller || !receiver) {
