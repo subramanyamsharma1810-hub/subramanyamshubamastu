@@ -99,98 +99,36 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     setShowCallHistoryModal(true);
   };
 
-  const handleStartCallRequest = async (receiver: Profile, callType: "audio" | "video") => {
-    setIsCallingLoading(true);
-    let sessionId = `shubh_${Date.now()}`;
-    try {
-      const res = await fetch("/api/calls/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          caller: currentProfile,
-          receiver,
-          callType,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.session?.callSessionId || data.callSessionId) {
-          sessionId = data.session?.callSessionId || data.callSessionId;
-        }
-      }
-    } catch (err) {
-      console.warn("Server call initiate endpoint offline, falling back to P2P Firebase RTDB signaling:", err);
-    }
+  const handleStartCallRequest = (receiver: Profile, callType: "audio" | "video") => {
+    const sessionId = `shubh_${Date.now()}`;
+    setSuccessToast(`📞 Instant WhatsApp-Style ${callType.toUpperCase()} Call initiated with ${receiver.name}!`);
+    setTimeout(() => setSuccessToast(null), 3000);
+
+    const callPayload = {
+      callSessionId: sessionId,
+      callerId: currentProfile.id,
+      callerName: currentProfile.name,
+      callerRegNumber: currentProfile.reg_number || "SHUBH",
+      callType,
+      status: "RINGING",
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 60000
+    };
+    localStorage.setItem(`incoming_call_${receiver.id}`, JSON.stringify(callPayload));
 
     try {
-      // Check if receiver is explicitly offline
-      const statusSnap = await get(ref(rtdb, `status/${receiver.id}`)).catch(() => null);
-      const val = statusSnap?.val();
-      const isReceiverOffline = val?.state === "offline";
-
-      if (isReceiverOffline) {
-        // Trigger offline email notification from verification@shubhamastu.in only when explicitly offline
-        const emailLog = {
-          from: "verification@shubhamastu.in",
-          to: receiver.email || "member@shubhamastu.in",
-          subject: `🔔 Missed ${callType.toUpperCase()} Call Request from ${currentProfile.name}`,
-          body: `Namaskaram 🙏\n\nSri G.V. Subramanyam (Founder) & Bramhana Vivaha Vedika System:\n\n${currentProfile.name} (${currentProfile.reg_number || 'Member'}) attempted to initiate a ${callType} call with you while you were offline on Shubhamastu.in.\n\nPlease log in at https://brahmanavivaha.org/login to view and respond.\n\nWarm regards,\nVerification Desk\nverification@shubhamastu.in`,
-          timestamp: new Date().toISOString()
-        };
-        const existingOutbox = JSON.parse(localStorage.getItem("simulated_email_outbox") || "[]");
-        localStorage.setItem("simulated_email_outbox", JSON.stringify([emailLog, ...existingOutbox]));
-
-        // Record missed call log
-        const callLogs = JSON.parse(localStorage.getItem(`call_history_${receiver.id}`) || "[]");
-        callLogs.push({
-          id: `call-${Date.now()}`,
-          callerName: currentProfile.name,
-          callerReg: currentProfile.reg_number || "SHUBH",
-          type: callType,
-          status: "MISSED / OFFLINE EMAIL ALERT SENT FROM verification@shubhamastu.in",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
-        });
-        localStorage.setItem(`call_history_${receiver.id}`, JSON.stringify(callLogs));
-
-        setSuccessToast(`📧 Offline Email Alert Dispatched from verification@shubhamastu.in to ${receiver.name} (User is Offline)!`);
-      } else {
-        setSuccessToast(`📞 Direct WhatsApp-Style Call Ringing initiated with ${receiver.name} (User is Online)!`);
-      }
-      setTimeout(() => setSuccessToast(null), 4000);
-
-      // Write to Firebase RTDB & localStorage for instant push to receiver
-      const callPayload = {
-        callSessionId: sessionId,
-        callerId: currentProfile.id,
-        callerName: currentProfile.name,
-        callerRegNumber: currentProfile.reg_number || "SHUBH",
-        callType,
-        status: "RINGING",
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 60000
-      };
-      localStorage.setItem(`incoming_call_${receiver.id}`, JSON.stringify(callPayload));
-
       const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
-      await set(callRef, callPayload).catch((err) => console.error("RTDB call write error:", err));
-
-      setActiveCallSession({
-        callSessionId: sessionId,
-        receiver,
-        callType,
-        status: "ringing",
-      });
+      set(callRef, callPayload).catch(() => {});
     } catch (err) {
-      console.warn("Call request notice:", err);
-      setActiveCallSession({
-        callSessionId: sessionId,
-        receiver,
-        callType,
-        status: "ringing",
-      });
-    } finally {
-      setIsCallingLoading(false);
+      // Ignore network errors
     }
+
+    setActiveCallSession({
+      callSessionId: sessionId,
+      receiver,
+      callType,
+      status: "ringing",
+    });
   };
 
   // IT Act 2021 Case-handling state

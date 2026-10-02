@@ -6,7 +6,7 @@ import AgoraRTC, {
 } from "agora-rtc-sdk-ng";
 import { Profile } from "../../types";
 import { rtdb } from "../../lib/firebase";
-import { ref, get } from "firebase/database";
+import { ref, get, remove } from "firebase/database";
 import {
   Mic,
   MicOff,
@@ -255,7 +255,22 @@ export default function CallRoom({
   };
 
   const handleHangUp = async () => {
-    addLog("Hang up requested. Closing call session.");
+    addLog("Hang up requested. Closing call session instantly.");
+    try {
+      if (localAudioTrack) localAudioTrack.close();
+      if (localVideoTrack) localVideoTrack.close();
+      if (client) await client.leave().catch(() => {});
+    } catch (e) {
+      console.warn("Agora cleanup notice:", e);
+    }
+
+    try {
+      const callRef = ref(rtdb, `calls/${receiver.id}/${callSessionId}`);
+      await remove(callRef).catch(() => {});
+    } catch (e) {
+      // Ignore
+    }
+
     try {
       await fetch("/api/calls/end", {
         method: "POST",
@@ -265,10 +280,11 @@ export default function CallRoom({
           durationSeconds,
           status: "COMPLETED",
         }),
-      });
+      }).catch(() => {});
     } catch (e) {
-      console.error(e);
+      // Ignore
     }
+
     onEndCall();
   };
 

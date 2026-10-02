@@ -48,6 +48,31 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Call initiation and ending telemetry/tracking endpoints
+app.post("/api/calls/initiate", (req, res) => {
+  const { callerId, receiverId, callType } = req.body || {};
+  res.json({
+    success: true,
+    sessionId: `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    callerId,
+    receiverId,
+    callType: callType || "audio",
+    status: "RINGING",
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post("/api/calls/end", (req, res) => {
+  const { sessionId, duration } = req.body || {};
+  res.json({
+    success: true,
+    sessionId,
+    status: "ENDED",
+    duration: duration || 0,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Root level OTP verification test endpoint
 app.get("/70439771", (req, res) => {
   res.json({
