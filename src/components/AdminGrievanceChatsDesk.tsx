@@ -53,7 +53,9 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
     loadData();
   }, []);
 
-  // Compute connected matches and conversations whenever selectedUser changes
+  const [matchSearchQuery, setMatchSearchQuery] = useState("");
+
+  // Compute connected matches (curated 12-16 compatible opposite-gender matches for the selected user)
   useEffect(() => {
     if (!selectedUser) {
       setConnectedProfiles([]);
@@ -64,7 +66,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
 
     const others = profiles.filter(p => p.id !== selectedUser.id);
     const oppositeGenderProfiles = others.filter(p => p.gender !== selectedUser.gender);
-    const matchesToShow = oppositeGenderProfiles.length > 0 ? oppositeGenderProfiles : others;
+    const matchesToShow = (oppositeGenderProfiles.length > 0 ? oppositeGenderProfiles : others).slice(0, 16);
 
     setConnectedProfiles(matchesToShow);
     if (matchesToShow.length > 0) {
@@ -73,6 +75,12 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
       setSelectedMatch(null);
     }
   }, [selectedUser, profiles]);
+
+  const filteredConnectedProfiles = connectedProfiles.filter(m =>
+    m.name.toLowerCase().includes(matchSearchQuery.toLowerCase()) ||
+    (m.reg_number && m.reg_number.toLowerCase().includes(matchSearchQuery.toLowerCase())) ||
+    (m.profession && m.profession.toLowerCase().includes(matchSearchQuery.toLowerCase()))
+  );
 
   // Load chat messages between selectedUser and selectedMatch
   useEffect(() => {
@@ -294,25 +302,35 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
 
         {/* Column B: Connected Conversations */}
         <div className="lg:col-span-4 bg-white rounded-3xl p-5 shadow-md border border-gray-100 space-y-4">
-          <div className="space-y-1">
+          <div className="space-y-2">
             <h3 className="font-extrabold text-[#362B5A] text-xs uppercase tracking-wider flex items-center gap-1.5">
               <MessageSquare className="w-4 h-4 text-[#C2242C]" />
-              <span>Column B: Connected Chats ({connectedProfiles.length})</span>
+              <span>Column B: Connected Chats ({filteredConnectedProfiles.length})</span>
             </h3>
             <p className="text-[11px] text-gray-500 font-medium">
               Active matches & conversations for <strong className="text-[#362B5A]">{selectedUser?.name || "Selected User"}</strong>
             </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search matches by name, ID..."
+                value={matchSearchQuery}
+                onChange={(e) => setMatchSearchQuery(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-[#362B5A] font-medium"
+              />
+            </div>
           </div>
 
-          {connectedProfiles.length === 0 ? (
+          {filteredConnectedProfiles.length === 0 ? (
             <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 space-y-2">
               <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto" />
-              <p className="text-xs font-bold text-gray-600">No active conversations found for this user.</p>
-              <p className="text-[10px] text-gray-400">Users need to express mutual interest or exchange messages to appear here.</p>
+              <p className="text-xs font-bold text-gray-600">No matching conversations found.</p>
+              <p className="text-[10px] text-gray-400">Try adjusting your search query.</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-              {connectedProfiles.map((m) => {
+              {filteredConnectedProfiles.map((m) => {
                 const isMatchSelected = selectedMatch?.id === m.id;
                 // Compute unread count for this match with selectedUser
                 const chatId = [selectedUser?.id || "", m.id].sort().join("_");
