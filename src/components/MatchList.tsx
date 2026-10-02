@@ -44,6 +44,14 @@ interface MatchListProps {
   onUpdateProfile: (updatedProfile: Profile) => Promise<void>;
 }
 
+export function maskMobileNumber(phone?: string): string {
+  if (!phone) return "+91 99xxxxxxxxx2";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length < 10) return "+91 99xxxxxxxxx2";
+  const lastDigit = cleaned.slice(-1);
+  return `+91 99xxxxxxxxx${lastDigit}`;
+}
+
 export default function MatchList({ currentProfile, preferences, onUpdateProfile }: MatchListProps) {
   const [viewMode, setViewMode] = useState<"grid" | "stack">("grid");
   const [localSwiped, setLocalSwiped] = useState<Record<string, "left" | "right">>({});
@@ -141,9 +149,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
       setSuccessToast(`📧 Offline Email Alert Dispatched from verification@shubhamastu.in to ${receiver.name}! Call ringing initiated.`);
       setTimeout(() => setSuccessToast(null), 4000);
 
-      // Write to Firebase RTDB for instant push to receiver
-      const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
-      await set(callRef, {
+      // Write to Firebase RTDB & localStorage for instant push to receiver
+      const callPayload = {
         callSessionId: sessionId,
         callerId: currentProfile.id,
         callerName: currentProfile.name,
@@ -152,7 +159,11 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         status: "RINGING",
         createdAt: Date.now(),
         expiresAt: Date.now() + 60000
-      }).catch((err) => console.error("RTDB call write error:", err));
+      };
+      localStorage.setItem(`incoming_call_${receiver.id}`, JSON.stringify(callPayload));
+
+      const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
+      await set(callRef, callPayload).catch((err) => console.error("RTDB call write error:", err));
 
       setActiveCallSession({
         callSessionId: sessionId,
@@ -300,8 +311,27 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     return true;
   });
 
-  // Sort partners by compatibility score (highest first) using the dynamic Vedic and profile match engine
+  // Sort partners by latest message/call activity first (WhatsApp style), then by compatibility score
   const sortedMatches = [...filteredMatches].sort((a, b) => {
+    const getLatestActivity = (partnerId: string) => {
+      const chatId = [currentProfile.id, partnerId].sort().join("_");
+      const chatKey = `chat_messages_${chatId}`;
+      try {
+        const msgs = JSON.parse(localStorage.getItem(chatKey) || "[]");
+        if (msgs.length > 0) {
+          const lastMsg = msgs[msgs.length - 1];
+          return new Date(lastMsg.timestamp || 0).getTime();
+        }
+      } catch (e) {}
+      return 0;
+    };
+
+    const timeA = getLatestActivity(a.id);
+    const timeB = getLatestActivity(b.id);
+    if (timeA !== timeB) {
+      return timeB - timeA; // Latest message at the top
+    }
+
     const scoreA = calculateMatchScore(currentProfile, a).totalScore;
     const scoreB = calculateMatchScore(currentProfile, b).totalScore;
     return scoreB - scoreA;
@@ -1005,7 +1035,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                             className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                           >
                             <Phone className="w-3.5 h-3.5 animate-pulse" />
-                            <span>{match.contact_number}</span>
+                            <span>{maskMobileNumber(match.contact_number)}</span>
                           </a>
                         </div>
                         {/* Instant Chat & Video/Audio Call Action Bar */}

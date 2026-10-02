@@ -18,10 +18,36 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
   useEffect(() => {
     if (!currentProfile?.id) return;
 
+    // Check Firebase RTDB
     const myCallsRef = ref(rtdb, `calls/${currentProfile.id}`);
     const unsubscribe = onValue(myCallsRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {
+        // Fallback check localStorage for cross-device/tab testing
+        const localCall = localStorage.getItem(`incoming_call_${currentProfile.id}`);
+        if (localCall) {
+          try {
+            const parsed = JSON.parse(localCall);
+            if (parsed.status === "RINGING") {
+              setIncomingSession(parsed);
+              const found = allProfiles.find(p => p.id === parsed.callerId);
+              setCallerProfile(found || {
+                id: parsed.callerId,
+                name: parsed.callerName || "Member",
+                reg_number: parsed.callerRegNumber || "SHUBH",
+                gender: "Male",
+                dob: "1995-01-01",
+                height_feet: 5.8,
+                sub_caste: "Brahmin",
+                profession: "Professional",
+                salary_lpa: 10,
+                contact_number: "",
+                status: "Verified"
+              });
+              return;
+            }
+          } catch (e) {}
+        }
         setIncomingSession(null);
         setCallerProfile(null);
         return;
@@ -55,20 +81,54 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
       }
     });
 
-    return () => unsubscribe();
+    // Also listen to storage events for instant local ringing
+    const handleStorage = () => {
+      const localCall = localStorage.getItem(`incoming_call_${currentProfile.id}`);
+      if (localCall) {
+        try {
+          const parsed = JSON.parse(localCall);
+          if (parsed.status === "RINGING") {
+            setIncomingSession(parsed);
+            const found = allProfiles.find(p => p.id === parsed.callerId);
+            setCallerProfile(found || {
+              id: parsed.callerId,
+              name: parsed.callerName || "Member",
+              reg_number: parsed.callerRegNumber || "SHUBH",
+              gender: "Male",
+              dob: "1995-01-01",
+              height_feet: 5.8,
+              sub_caste: "Brahmin",
+              profession: "Professional",
+              salary_lpa: 10,
+              contact_number: "",
+              status: "Verified"
+            });
+          }
+        } catch (e) {}
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    const interval = setInterval(handleStorage, 2000);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
   }, [currentProfile, allProfiles]);
 
   const handleRespond = async (action: "ACCEPT" | "DECLINE") => {
     if (!incomingSession || !currentProfile) return;
     setProcessing(true);
     try {
+      localStorage.removeItem(`incoming_call_${currentProfile.id}`);
       const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${incomingSession.callSessionId}`);
       if (action === "ACCEPT") {
-        await update(sessionRef, { status: "ACTIVE", connectedPeerId: currentProfile.id });
+        await update(sessionRef, { status: "ACTIVE", connectedPeerId: currentProfile.id }).catch(() => {});
         onAcceptCall(incomingSession.callSessionId, incomingSession.callType || "video");
       } else {
-        await update(sessionRef, { status: "DECLINED" });
-        setTimeout(() => remove(sessionRef), 1500);
+        await update(sessionRef, { status: "DECLINED" }).catch(() => {});
+        setTimeout(() => remove(sessionRef).catch(() => {}), 1500);
       }
       setIncomingSession(null);
       setCallerProfile(null);
@@ -98,38 +158,41 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
 
         <div className="space-y-1.5">
           <span className="text-[10px] font-mono text-amber-300 uppercase tracking-widest font-black bg-amber-500/20 px-3 py-1 rounded-full border border-amber-400/30">
-            Incoming {incomingSession.callType?.toUpperCase() || "VIDEO"} Call 📿
+            Incoming {incomingSession.callType?.toUpperCase() || "VIDEO"} Call Request
           </span>
-          <h3 className="text-xl font-extrabold text-white">{callerProfile.name}</h3>
-          <p className="text-xs text-blue-200">
-            {callerProfile.profession || "Professional"} • <code className="font-mono text-amber-300">{callerProfile.reg_number || "SHUBH"}</code>
-          </p>
+          <h2 className="text-2xl font-black">{callerProfile.name}</h2>
+          <p className="text-amber-200 font-mono text-sm">#{callerProfile.reg_number || "SHUBH"} • {callerProfile.current_city || "Hyderabad"}</p>
         </div>
 
-        <p className="text-xs text-stone-300 bg-white/5 p-3 rounded-xl border border-white/10">
-          Namaste! You have an incoming live match call on Shubhamastu.in. Choose whether to accept or decline.
-        </p>
+        <div className="bg-white/10 rounded-2xl p-3 text-xs text-amber-100 font-medium">
+          🔔 Ringing securely via Agora WebRTC & Firebase RTDB signaling...
+        </div>
 
-        <div className="flex items-center gap-4 pt-2">
+        <div className="flex items-center justify-center space-x-6 pt-2">
           <button
             onClick={() => handleRespond("DECLINE")}
             disabled={processing}
-            className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            className="flex flex-col items-center space-y-1 group cursor-pointer"
+            title="Decline Call"
           >
-            <PhoneOff className="w-4 h-4" />
-            <span>Decline</span>
+            <div className="w-16 h-16 rounded-full bg-rose-600 group-hover:bg-rose-700 flex items-center justify-center shadow-xl transition-all active:scale-95">
+              <PhoneOff className="w-7 h-7 text-white" />
+            </div>
+            <span className="text-xs font-bold text-rose-300">Decline</span>
           </button>
-          
+
           <button
             onClick={() => handleRespond("ACCEPT")}
             disabled={processing}
-            className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer animate-pulse"
+            className="flex flex-col items-center space-y-1 group cursor-pointer"
+            title="Accept Call"
           >
-            {incomingSession.callType === "video" ? <Video className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
-            <span>Accept Call</span>
+            <div className="w-16 h-16 rounded-full bg-emerald-600 group-hover:bg-emerald-700 flex items-center justify-center shadow-xl transition-all active:scale-95 animate-bounce">
+              {incomingSession.callType === "video" ? <Video className="w-7 h-7 text-white" /> : <Phone className="w-7 h-7 text-white" />}
+            </div>
+            <span className="text-xs font-bold text-emerald-300">Accept Call</span>
           </button>
         </div>
-
       </div>
     </div>
   );
