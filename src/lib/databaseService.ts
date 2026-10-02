@@ -180,7 +180,10 @@ for (let i = 1; i <= 100; i++) {
   const height = 5.6 + ((i % 5) * 0.1);
   const salary = 12.0 + (i % 38) + ((i % 10) * 0.1);
   const mobile = `+91 98${String(i).padStart(8, "0")}`;
-  const email = `${firstName.toLowerCase()}.${surname.toLowerCase()}${idNum}@test-matrimony.org`;
+  let email = `${firstName.toLowerCase()}.${surname.toLowerCase()}${idNum}@test-matrimony.org`;
+  if (id === "ABC-M1001") {
+    email = "subramanyamghadiyaram@gmail.com";
+  }
 
   PRE_SEEDED_PROFILES.push({
     id,
@@ -249,7 +252,10 @@ for (let i = 1; i <= 100; i++) {
   const height = 5.2 + ((i % 5) * 0.1);
   const salary = 8.0 + (i % 25) + ((i % 10) * 0.1);
   const mobile = `+91 97${String(i).padStart(8, "0")}`;
-  const email = `${firstName.toLowerCase()}.${surname.toLowerCase()}${idNum}@test-matrimony.org`;
+  let email = `${firstName.toLowerCase()}.${surname.toLowerCase()}${idNum}@test-matrimony.org`;
+  if (id === "ABC-F1012") {
+    email = "subramanyamsharma1810@gmail.com";
+  }
 
   PRE_SEEDED_PROFILES.push({
     id,
