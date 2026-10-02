@@ -53,7 +53,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
     loadData();
   }, []);
 
-  // Compute connected conversations whenever selectedUser changes
+  // Compute connected matches and conversations whenever selectedUser changes
   useEffect(() => {
     if (!selectedUser) {
       setConnectedProfiles([]);
@@ -63,78 +63,14 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
     }
 
     const others = profiles.filter(p => p.id !== selectedUser.id);
-    
-    // Filter to profiles with past or present chat history
-    const chattedProfiles = others.filter(p => {
-      const chatId = [selectedUser.id, p.id].sort().join("_");
-      const chatKey = `chat_messages_${chatId}`;
-      const convKey1 = `chat_${selectedUser.id}_${p.id}`;
-      const convKey2 = `chat_${p.id}_${selectedUser.id}`;
-      
-      const rawMsgs = localStorage.getItem(chatKey);
-      const raw1 = localStorage.getItem(convKey1);
-      const raw2 = localStorage.getItem(convKey2);
+    const oppositeGenderProfiles = others.filter(p => p.gender !== selectedUser.gender);
+    const matchesToShow = oppositeGenderProfiles.length > 0 ? oppositeGenderProfiles : others;
 
-      let hasMsgs = false;
-      try {
-        if (rawMsgs && JSON.parse(rawMsgs).length > 0) hasMsgs = true;
-        if (raw1 && JSON.parse(raw1).length > 0) hasMsgs = true;
-        if (raw2 && JSON.parse(raw2).length > 0) hasMsgs = true;
-      } catch (e) {}
-
-      return hasMsgs;
-    });
-
-    // If no past chats exist for this user yet, seed 2 past/present chatted candidates so Column B shows relevant past & present chats
-    if (chattedProfiles.length === 0 && others.length >= 2) {
-      const partner1 = others[0];
-      const partner2 = others[1];
-      
-      const seedChat = (u1Id: string, u1Name: string, u2Id: string, u2Name: string) => {
-        const chatId = [u1Id, u2Id].sort().join("_");
-        const chatKey = `chat_messages_${chatId}`;
-        const existing = localStorage.getItem(chatKey);
-        if (!existing || JSON.parse(existing).length === 0) {
-          const sampleMsgs = [
-            {
-              id: `msg-${Date.now()}-1`,
-              senderId: u1Id,
-              senderName: u1Name,
-              receiverId: u2Id,
-              receiverName: u2Name,
-              text: "Namaste! Discussing horoscope compatibility for our children's alliance.",
-              timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), // Past chat (2 days ago)
-              ipAddress: "157.48.22.10",
-              readStatus: true
-            },
-            {
-              id: `msg-${Date.now()}-2`,
-              senderId: u2Id,
-              senderName: u2Name,
-              receiverId: u1Id,
-              receiverName: u1Name,
-              text: "Namaste ji. Yes, matching is favorable. Let us coordinate further.",
-              timestamp: new Date(Date.now() - 3600000 * 1).toISOString(), // Present chat (1 hour ago)
-              ipAddress: "103.21.144.5",
-              readStatus: true
-            }
-          ];
-          localStorage.setItem(chatKey, JSON.stringify(sampleMsgs));
-        }
-      };
-
-      seedChat(selectedUser.id, selectedUser.name, partner1.id, partner1.name);
-      seedChat(selectedUser.id, selectedUser.name, partner2.id, partner2.name);
-
-      setConnectedProfiles([partner1, partner2]);
-      if (partner1) setSelectedMatch(partner1);
+    setConnectedProfiles(matchesToShow);
+    if (matchesToShow.length > 0) {
+      setSelectedMatch(matchesToShow[0]);
     } else {
-      setConnectedProfiles(chattedProfiles);
-      if (chattedProfiles.length > 0) {
-        setSelectedMatch(chattedProfiles[0]);
-      } else {
-        setSelectedMatch(null);
-      }
+      setSelectedMatch(null);
     }
   }, [selectedUser, profiles]);
 

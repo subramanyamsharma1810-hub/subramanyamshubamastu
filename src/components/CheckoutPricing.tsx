@@ -240,7 +240,7 @@ export default function CheckoutPricing({
   };
 
   // Final Price Calculation
-  const BASE_PRICE = 1500;
+  const BASE_PRICE = 1599; // ₹1,599 for 42 days subscription plan
   const finalPayable = couponResult ? couponResult.final_price : BASE_PRICE;
   const totalSavings = BASE_PRICE - finalPayable;
 
