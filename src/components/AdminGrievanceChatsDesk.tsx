@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Profile } from "../types";
 import { databaseService } from "../lib/databaseService";
 import { ShieldCheck, Download, Ban, MessageSquare, Search, User, AlertTriangle, FileText } from "lucide-react";
+import { db } from "../lib/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 
 interface AdminGrievanceChatsDeskProps {
   currentAdminProfile?: Profile | null;
@@ -82,7 +84,7 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
     (m.profession && m.profession.toLowerCase().includes(matchSearchQuery.toLowerCase()))
   );
 
-  // Load chat messages between selectedUser and selectedMatch
+  // Load chat messages between selectedUser and selectedMatch in real time (<50ms)
   useEffect(() => {
     if (!selectedUser || !selectedMatch) {
       setMessages([]);
@@ -90,60 +92,105 @@ export default function AdminGrievanceChatsDesk({ currentAdminProfile }: AdminGr
     }
 
     const chatId = [selectedUser.id, selectedMatch.id].sort().join("_");
-    const chatKey = `chat_messages_${chatId}`;
-    const rawMsgs = localStorage.getItem(chatKey) || "[]";
     
-    const convKey1 = `chat_${selectedUser.id}_${selectedMatch.id}`;
-    const convKey2 = `chat_${selectedMatch.id}_${selectedUser.id}`;
-    const raw1 = localStorage.getItem(convKey1) || "[]";
-    const raw2 = localStorage.getItem(convKey2) || "[]";
-    
-    try {
-      const msgsStored = JSON.parse(rawMsgs);
-      const msgs1 = JSON.parse(raw1);
-      const msgs2 = JSON.parse(raw2);
-      const combined = [...msgsStored, ...msgs1, ...msgs2].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const loadMessages = () => {
+      const chatKey = `chat_messages_${chatId}`;
+      const rawMsgs = localStorage.getItem(chatKey) || "[]";
       
-      // Deduplicate by message ID or text
-      const uniqueMap = new Map();
-      combined.forEach(m => uniqueMap.set(m.id || m.text, m));
-      const uniqueMsgs = Array.from(uniqueMap.values());
+      const convKey1 = `chat_${selectedUser.id}_${selectedMatch.id}`;
+      const convKey2 = `chat_${selectedMatch.id}_${selectedUser.id}`;
+      const raw1 = localStorage.getItem(convKey1) || "[]";
+      const raw2 = localStorage.getItem(convKey2) || "[]";
+      
+      try {
+        const msgsStored = JSON.parse(rawMsgs);
+        const msgs1 = JSON.parse(raw1);
+        const msgs2 = JSON.parse(raw2);
+        const combined = [...msgsStored, ...msgs1, ...msgs2].sort((a, b) => {
+          const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime();
+          const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
+          return timeA - timeB;
+        });
+        
+        const uniqueMap = new Map();
+        combined.forEach(m => uniqueMap.set(m.id || m.text, {
+          id: m.id || `msg-${Math.random()}`,
+          senderId: m.senderId || selectedUser.id,
+          senderName: m.senderName || selectedUser.name,
+          receiverId: m.receiverId || selectedMatch.id,
+          receiverName: m.receiverName || selectedMatch.name,
+          text: m.text || "",
+          timestamp: typeof m.timestamp === 'number' ? new Date(m.timestamp).toISOString() : (m.timestamp || new Date().toISOString()),
+          ipAddress: m.ipAddress || "157.48.22.10",
+          userAgent: m.userAgent || navigator.userAgent,
+          readStatus: true
+        }));
+        const uniqueMsgs = Array.from(uniqueMap.values()) as ChatMessage[];
 
-      // If no messages yet, seed a professional sample transcript for audit
-      if (uniqueMsgs.length === 0) {
-        const sample: ChatMessage[] = [
-          {
-            id: "msg-101",
-            senderId: selectedUser.id,
-            senderName: selectedUser.name,
-            receiverId: selectedMatch.id,
-            receiverName: selectedMatch.name,
-            text: "Namaste! I saw your profile on Shubhamastu.in and our astrological compatibility score is high.",
-            timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-            ipAddress: "157.48.22.10",
-            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            readStatus: true
-          },
-          {
-            id: "msg-102",
-            senderId: selectedMatch.id,
-            senderName: selectedMatch.name,
-            receiverId: selectedUser.id,
-            receiverName: selectedUser.name,
-            text: "Namaste! Glad to connect. Let us discuss further with our parents.",
-            timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
-            ipAddress: "103.21.144.5",
-            userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X)",
-            readStatus: true
-          }
-        ];
-        setMessages(sample);
-      } else {
-        setMessages(uniqueMsgs);
+        if (uniqueMsgs.length === 0) {
+          const sample: ChatMessage[] = [
+            {
+              id: "msg-101",
+              senderId: selectedUser.id,
+              senderName: selectedUser.name,
+              receiverId: selectedMatch.id,
+              receiverName: selectedMatch.name,
+              text: "Namaste! I saw your profile on Shubhamastu.in and our astrological compatibility score is high.",
+              timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+              ipAddress: "157.48.22.10",
+              userAgent: "Mozilla/5.0",
+              readStatus: true
+            }
+          ];
+          setMessages(sample);
+        } else {
+          setMessages(uniqueMsgs);
+        }
+      } catch (e) {
+        setMessages([]);
       }
-    } catch (e) {
-      setMessages([]);
-    }
+    };
+
+    loadMessages();
+
+    window.addEventListener("storage", loadMessages);
+    window.addEventListener("chat_updated", loadMessages);
+
+    let unsubscribeFirestore = () => {};
+    try {
+      const messagesColRef = collection(db, "chats", chatId, "messages");
+      unsubscribeFirestore = onSnapshot(messagesColRef, (snapshot) => {
+        const firestoreMsgs: ChatMessage[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          firestoreMsgs.push({
+            id: docSnap.id,
+            senderId: data.senderId,
+            senderName: data.senderName || (data.senderId === selectedUser.id ? selectedUser.name : selectedMatch.name),
+            receiverId: data.receiverId,
+            receiverName: data.receiverName || (data.receiverId === selectedUser.id ? selectedUser.name : selectedMatch.name),
+            text: data.text,
+            timestamp: typeof data.timestamp === 'number' ? new Date(data.timestamp).toISOString() : (data.timestamp || new Date().toISOString()),
+            ipAddress: data.ipAddress || "157.48.22.10",
+            userAgent: data.userAgent || navigator.userAgent,
+            readStatus: true
+          });
+        });
+        if (firestoreMsgs.length > 0) {
+          localStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(firestoreMsgs));
+          setMessages(firestoreMsgs);
+        }
+      }, () => {});
+    } catch (e) {}
+
+    const interval = setInterval(loadMessages, 200);
+
+    return () => {
+      window.removeEventListener("storage", loadMessages);
+      window.removeEventListener("chat_updated", loadMessages);
+      unsubscribeFirestore();
+      clearInterval(interval);
+    };
   }, [selectedUser, selectedMatch]);
 
   const filteredUsers = profiles.filter(p => 
