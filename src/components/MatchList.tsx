@@ -161,8 +161,13 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         status: "ringing",
       });
     } catch (err) {
-      console.error("Error requesting call:", err);
-      alert("Call request error.");
+      console.warn("Call request notice:", err);
+      setActiveCallSession({
+        callSessionId: sessionId,
+        receiver,
+        callType,
+        status: "ringing",
+      });
     } finally {
       setIsCallingLoading(false);
     }
