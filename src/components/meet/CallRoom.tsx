@@ -6,7 +6,8 @@ import AgoraRTC, {
 } from "agora-rtc-sdk-ng";
 import { Profile } from "../../types";
 import { rtdb } from "../../lib/firebase";
-import { ref, get, remove } from "firebase/database";
+import { ref, get, remove, update, set } from "firebase/database";
+import { useCallDiagnostics } from "../../hooks/useCallDiagnostics";
 import {
   Mic,
   MicOff,
@@ -20,7 +21,9 @@ import {
   Copy,
   Check,
   WifiOff,
-  Palette
+  Palette,
+  Loader2,
+  Star
 } from "lucide-react";
 
 interface CallRoomProps {
@@ -49,6 +52,13 @@ export default function CallRoom({
   const [callStatus, setCallStatus] = useState<"connecting" | "ringing" | "connected" | "reconnecting">("connecting");
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showEndCallConfirmModal, setShowEndCallConfirmModal] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [terminationStatusText, setTerminationStatusText] = useState("Preparing call termination...");
   const [reportReason, setReportReason] = useState("Harassment / Misbehavior during call");
   const [videoFilter, setVideoFilter] = useState<"normal" | "sepia" | "grayscale" | "vintage" | "contrast">("normal");
 
@@ -79,6 +89,8 @@ export default function CallRoom({
     setDiagnosticLogs(prev => [...prev, entry]);
     console.log(`[CALL DIAGNOSTIC] ${entry}`);
   };
+
+  const { logDiagnostic } = useCallDiagnostics(callSessionId, caller.id);
 
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
@@ -271,25 +283,51 @@ export default function CallRoom({
     }
   };
 
-  const handleHangUp = async () => {
-    addLog("Hang up requested. Closing call session instantly.");
-    try {
-      if (localAudioTrack) localAudioTrack.close();
-      if (localVideoTrack) localVideoTrack.close();
-      if (client) await client.leave().catch(() => {});
-    } catch (e) {
-      console.warn("Agora cleanup notice:", e);
-    }
+  const handleHangUp = () => {
+    setShowEndCallConfirmModal(true);
+  };
+
+  const confirmAndExecuteHangUp = async () => {
+    setShowEndCallConfirmModal(false);
+    setIsTerminating(true);
+    setTerminationStatusText("Updating Firebase RTDB status to 'ended'...");
+    addLog(`[DIAGNOSTIC HANGUP] User confirmed termination. SessionId: ${callSessionId}`);
 
     try {
-      const callRef = ref(rtdb, `calls/${receiver.id}/${callSessionId}`);
-      await remove(callRef).catch(() => {});
+      // 1. Await Firebase RTDB status update confirmation
+      const receiverCallRef = ref(rtdb, `calls/${receiver.id}/${callSessionId}`);
+      const callerCallRef = ref(rtdb, `calls/${caller.id}/${callSessionId}`);
+      
+      await Promise.all([
+        update(receiverCallRef, { status: "ended", endedAt: Date.now() }).catch(() => {}),
+        update(callerCallRef, { status: "ended", endedAt: Date.now() }).catch(() => {})
+      ]);
+      addLog("[DIAGNOSTIC HANGUP] Firebase RTDB status successfully updated to 'ended' with server confirmation.");
     } catch (e) {
-      // Ignore
+      addLog(`[DIAGNOSTIC HANGUP WARNING] Firebase RTDB update warning: ${e}`);
     }
 
+    setTerminationStatusText("Closing Agora local audio & video streams...");
     try {
-      await fetch("/api/calls/end", {
+      if (localAudioTrack) {
+        localAudioTrack.close();
+        addLog("[DIAGNOSTIC HANGUP] Local audio track closed successfully.");
+      }
+      if (localVideoTrack) {
+        localVideoTrack.close();
+        addLog("[DIAGNOSTIC HANGUP] Local video track closed successfully.");
+      }
+      if (client) {
+        await client.leave().catch(() => {});
+        addLog("[DIAGNOSTIC HANGUP] Left Agora RTC channel successfully.");
+      }
+    } catch (e) {
+      addLog(`[DIAGNOSTIC HANGUP NOTICE] Agora cleanup warning: ${e}`);
+    }
+
+    setTerminationStatusText("Submitting server telemetry & awaiting confirmation...");
+    try {
+      const res = await fetch("/api/calls/end", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -297,12 +335,42 @@ export default function CallRoom({
           durationSeconds,
           status: "COMPLETED",
         }),
-      }).catch(() => {});
+      });
+      const data = await res.json();
+      addLog(`[DIAGNOSTIC HANGUP] Server telemetry /api/calls/end confirmed: ${JSON.stringify(data)}`);
     } catch (e) {
-      // Ignore
+      addLog(`[DIAGNOSTIC HANGUP NOTICE] Server telemetry notice: ${e}`);
     }
 
-    onEndCall();
+    // Clean up non-volatile active call storage
+    localStorage.removeItem("bramhana_active_call_session");
+
+    addLog("[DIAGNOSTIC HANGUP] Call successfully ended. Opening Post-Call Feedback.");
+    setIsTerminating(false);
+    setShowFeedbackModal(true);
+  };
+
+  const handleSubmitFeedback = async () => {
+    setIsSubmittingFeedback(true);
+    try {
+      const feedbackRef = ref(rtdb, `call-feedback/${callSessionId}`);
+      await set(feedbackRef, {
+        callSessionId,
+        callerId: caller.id,
+        receiverId: receiver.id,
+        rating: feedbackRating,
+        comment: feedbackComment,
+        durationSeconds,
+        timestamp: Date.now()
+      });
+      addLog("[DIAGNOSTIC FEEDBACK] Post-call feedback successfully saved to Firebase RTDB call-feedback node.");
+    } catch (e) {
+      addLog(`[DIAGNOSTIC FEEDBACK ERROR] Failed to save feedback: ${e}`);
+    } finally {
+      setIsSubmittingFeedback(false);
+      setShowFeedbackModal(false);
+      onEndCall();
+    }
   };
 
   const handleReportAndTerminate = async () => {
@@ -381,6 +449,14 @@ export default function CallRoom({
               ))}
             </div>
           )}
+          <button
+            onClick={handleHangUp}
+            className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center space-x-1.5 transition-all shadow-lg cursor-pointer animate-pulse"
+            title="End Call Now"
+          >
+            <PhoneOff className="w-4 h-4" />
+            <span>End Call</span>
+          </button>
           <button
             onClick={() => setShowDiagnostics(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow cursor-pointer relative"
@@ -609,6 +685,126 @@ export default function CallRoom({
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold transition-all shadow cursor-pointer"
               >
                 Confirm Report & Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* End Call Confirmation Modal */}
+      {showEndCallConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-slate-900 text-slate-100 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 border border-rose-500/40 text-center">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-500 mx-auto flex items-center justify-center border-2 border-rose-500 animate-pulse">
+              <PhoneOff className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-black uppercase tracking-wider text-white">End Secure Call?</h3>
+              <p className="text-xs text-slate-400">This will terminate the Agora channel and update your live status in Firebase RTDB.</p>
+            </div>
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                onClick={() => setShowEndCallConfirmModal(false)}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer transition"
+              >
+                Continue Call
+              </button>
+              <button
+                onClick={confirmAndExecuteHangUp}
+                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg transition animate-pulse"
+              >
+                Yes, End Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Termination Visual Feedback Overlay */}
+      {isTerminating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-slate-900 text-slate-100 w-full max-w-md rounded-3xl shadow-2xl p-8 space-y-6 border border-amber-500/40 text-center">
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 mx-auto flex items-center justify-center border-2 border-amber-400 animate-spin">
+              <Loader2 className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-base font-extrabold text-white uppercase tracking-wider">Terminating Call Session</h3>
+              <p className="text-xs text-amber-300 font-mono animate-pulse">{terminationStatusText}</p>
+            </div>
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div className="bg-amber-400 h-full animate-pulse w-full"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Call Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-slate-900 text-slate-100 w-full max-w-md rounded-3xl shadow-2xl p-8 space-y-6 border border-amber-500/40 text-center">
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 mx-auto flex items-center justify-center border-2 border-amber-400">
+              <Star className="w-8 h-8 fill-amber-400" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-white uppercase tracking-wider">Rate Call Quality</h3>
+              <p className="text-xs text-slate-400">How was your audio & video experience with {receiver.name}?</p>
+            </div>
+            
+            {/* Star Rating */}
+            <div className="flex items-center justify-center space-x-2 py-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setFeedbackRating(star)}
+                  className="p-1.5 focus:outline-none transition-transform hover:scale-125 cursor-pointer"
+                  title={`${star} Star`}
+                >
+                  <Star
+                    className={`w-8 h-8 ${
+                      star <= feedbackRating
+                        ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+                        : "text-slate-700"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Comment Input */}
+            <div className="space-y-2 text-left">
+              <label className="text-[11px] font-mono text-amber-300 uppercase tracking-widest block">Review Comments (Optional)</label>
+              <textarea
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                placeholder="Share your feedback on call clarity, network stability, or video quality..."
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-400 h-24 resize-none"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  onEndCall();
+                }}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer transition"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleSubmitFeedback}
+                disabled={isSubmittingFeedback}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg transition flex items-center justify-center gap-2"
+              >
+                {isSubmittingFeedback ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Submit & Return</span>
+                )}
               </button>
             </div>
           </div>

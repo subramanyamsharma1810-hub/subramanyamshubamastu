@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, BookOpen } from "lucide-react";
 import { PandithConsultationModal } from "./PandithConsultationModal";
+import NotificationBell from "./NotificationBell";
+import { Profile } from "../types";
 
 interface HeaderProps {
   currentTab: string;
@@ -9,9 +11,11 @@ interface HeaderProps {
   setIsAdmin: (val: boolean) => void;
   onLogout?: () => void;
   isLoggedInUserAdmin?: boolean;
+  currentProfile?: Profile | null;
+  allProfiles?: Profile[];
 }
 
-export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin, onLogout, isLoggedInUserAdmin }: HeaderProps) {
+export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin, onLogout, isLoggedInUserAdmin, currentProfile, allProfiles }: HeaderProps) {
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showPandithModal, setShowPandithModal] = useState(false);
 
@@ -61,6 +65,9 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
                 <span className="hidden sm:inline">{isAdmin ? "User Portal View" : "Admin Sanctuary"}</span>
               </button>
             )}
+
+            {/* Notification Bell Dropdown */}
+            <NotificationBell currentProfile={currentProfile || null} allProfiles={allProfiles || []} onNavigateTab={setCurrentTab} />
 
             {/* 3 Dots Menu Button */}
             <button

@@ -194,7 +194,22 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     receiver: Profile;
     callType: "audio" | "video";
     status: "ringing" | "connected";
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem("bramhana_active_call_session");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (activeCallSession) {
+      localStorage.setItem("bramhana_active_call_session", JSON.stringify(activeCallSession));
+    } else {
+      localStorage.removeItem("bramhana_active_call_session");
+    }
+  }, [activeCallSession]);
   const [isCallingLoading, setIsCallingLoading] = useState(false);
   const [showCallHistoryModal, setShowCallHistoryModal] = useState(false);
   const [callHistory, setCallHistory] = useState<any[]>([]);
@@ -205,10 +220,31 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     setShowCallHistoryModal(true);
   };
 
-  const handleStartCallRequest = (receiver: Profile, callType: "audio" | "video") => {
-    const sessionId = `shubh_${Date.now()}`;
-    setSuccessToast(`📞 Instant WhatsApp-Style ${callType.toUpperCase()} Call initiated with ${receiver.name}!`);
+  const handleStartCallRequest = async (receiver: Profile, callType: "audio" | "video") => {
+    setSuccessToast(`📞 Instant ${callType.toUpperCase()} Call initiated with ${receiver.name}!`);
     setTimeout(() => setSuccessToast(null), 3000);
+
+    let sessionId = `shubh_${Date.now()}`;
+
+    try {
+      const initRes = await fetch("/api/calls/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callerId: currentProfile.id,
+          callerName: currentProfile.name,
+          callerRegNumber: currentProfile.reg_number || "SHUBH",
+          receiverId: receiver.id,
+          receiverEmail: receiver.email,
+          receiverName: receiver.name,
+          callType
+        })
+      });
+      const initData = await initRes.json();
+      if (initData.success && initData.sessionId) {
+        sessionId = initData.sessionId;
+      }
+    } catch (err) {}
 
     const callPayload = {
       callSessionId: sessionId,
@@ -229,9 +265,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     try {
       const callRef = ref(rtdb, `calls/${receiver.id}/${sessionId}`);
       set(callRef, callPayload).catch(() => {});
-    } catch (err) {
-      // Ignore network errors
-    }
+    } catch (err) {}
 
     setActiveCallSession({
       callSessionId: sessionId,

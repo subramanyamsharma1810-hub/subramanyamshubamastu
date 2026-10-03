@@ -329,6 +329,8 @@ export default function App() {
         setIsAdmin={setIsAdmin}
         onLogout={handleLogout}
         isLoggedInUserAdmin={isLoggedInUserAdmin}
+        currentProfile={currentProfile}
+        allProfiles={allProfiles}
       />
 
       {/* Main Content Body */}

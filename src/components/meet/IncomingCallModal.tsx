@@ -18,7 +18,38 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
   useEffect(() => {
     if (!currentProfile?.id) return;
 
-    // Check Firebase RTDB
+    // Poll backend callSessionEngine API for real-time fast ringing across devices
+    const pollBackendCalls = async () => {
+      try {
+        const res = await fetch(`/api/calls/active/${currentProfile.id}`);
+        const data = await res.json();
+        if (data.success && data.sessions && data.sessions.length > 0) {
+          const activeRinging = data.sessions.find((s: any) => s.status === "RINGING");
+          if (activeRinging) {
+            setIncomingSession(activeRinging);
+            const found = allProfiles.find(p => p.id === activeRinging.callerId);
+            setCallerProfile(found || {
+              id: activeRinging.callerId,
+              name: activeRinging.callerName || "Member",
+              reg_number: activeRinging.callerRegNumber || "SHUBH",
+              gender: "Male",
+              dob: "1995-01-01",
+              height_feet: 5.8,
+              sub_caste: "Brahmin",
+              profession: "Professional",
+              salary_lpa: 10,
+              contact_number: "",
+              status: "Verified"
+            });
+            return;
+          }
+        }
+      } catch (err) {}
+    };
+
+    pollBackendCalls();
+    const pollInterval = setInterval(pollBackendCalls, 1500);
+
     const myCallsRef = ref(rtdb, `calls/${currentProfile.id}`);
     const unsubscribe = onValue(myCallsRef, (snapshot) => {
       const data = snapshot.val();
@@ -181,6 +212,18 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
     setProcessing(true);
     try {
       localStorage.removeItem(`incoming_call_${currentProfile.id}`);
+      
+      // Notify backend callSessionEngine
+      fetch("/api/calls/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callSessionId: incomingSession.callSessionId,
+          userId: currentProfile.id,
+          action
+        })
+      }).catch(() => {});
+
       const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${incomingSession.callSessionId}`);
       if (action === "ACCEPT") {
         await update(sessionRef, { status: "ACTIVE", connectedPeerId: currentProfile.id }).catch(() => {});
@@ -191,7 +234,7 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
       setIncomingSession(null);
       setCallerProfile(null);
     } catch (err) {
-      console.error("Error responding to call in RTDB:", err);
+      console.error("Error responding to call:", err);
     } finally {
       setProcessing(false);
     }

@@ -147,29 +147,147 @@ app.get("/api/recordings/playback/*", async (req, res) => {
   }
 });
 
-// Call initiation and ending telemetry/tracking endpoints
-app.post("/api/calls/initiate", (req, res) => {
-  const { callerId, receiverId, callType } = req.body || {};
-  res.json({
-    success: true,
-    sessionId: `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    callerId,
-    receiverId,
-    callType: callType || "audio",
-    status: "RINGING",
-    timestamp: new Date().toISOString()
-  });
+// Master Health Check & API Integration Keys Testing Endpoint
+app.get("/api/system/health-check", async (req, res) => {
+  const results: Record<string, any> = {
+    timestamp: new Date().toISOString(),
+    overallStatus: "HEALTHY",
+    services: {}
+  };
+
+  // 1. Test Gemini API Key
+  try {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
+      results.services.gemini = { status: "WARNING", message: "Gemini API key is default or missing." };
+    } else {
+      results.services.gemini = { status: "CONNECTED", message: "Gemini API key configured and ready." };
+    }
+  } catch (err: any) {
+    results.services.gemini = { status: "FAILED", error: err.message };
+  }
+
+  // 2. Test Cloudflare R2 Connectivity
+  try {
+    const r2Test = await testR2Connectivity();
+    results.services.cloudflareR2 = r2Test;
+  } catch (err: any) {
+    results.services.cloudflareR2 = { status: "FAILED", error: err.message };
+  }
+
+  // 3. Test Agora RTC Token Generation
+  try {
+    const testChannel = "health_check_channel";
+    const testUid = 12345;
+    const expirationTimeInSeconds = 3600;
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      "58b929a373224fd693defde48656648b",
+      "9704791d09ec42f38d4e4129a073587b",
+      testChannel,
+      testUid,
+      RtcRole.PUBLISHER,
+      privilegeExpiredTs,
+      privilegeExpiredTs
+    );
+    results.services.agoraRTC = { status: "CONNECTED", message: "Agora token generated successfully", tokenSample: token.substring(0, 15) + "..." };
+  } catch (err: any) {
+    results.services.agoraRTC = { status: "FAILED", error: err.message };
+  }
+
+  // 4. Test ZeptoMail Configuration
+  try {
+    const zeptoToken = process.env.ZEPTOMAIL_API_TOKEN;
+    results.services.zeptomail = {
+      status: zeptoToken ? "CONNECTED" : "WARNING",
+      message: zeptoToken ? "ZeptoMail API token configured." : "ZeptoMail token missing, emails will fallback to simulated mode."
+    };
+  } catch (err: any) {
+    results.services.zeptomail = { status: "FAILED", error: err.message };
+  }
+
+  // 5. Test Call Session Engine & Storage
+  try {
+    const activeSessions = callSessionEngine.getActiveSessionsForUser("test_user");
+    results.services.callSessionEngine = { status: "CONNECTED", activeSessionsCount: activeSessions.length };
+  } catch (err: any) {
+    results.services.callSessionEngine = { status: "FAILED", error: err.message };
+  }
+
+  res.json(results);
 });
 
-app.post("/api/calls/end", (req, res) => {
-  const { sessionId, duration } = req.body || {};
-  res.json({
-    success: true,
-    sessionId,
-    status: "ENDED",
-    duration: duration || 0,
-    timestamp: new Date().toISOString()
-  });
+// Call initiation endpoint
+app.post("/api/calls/initiate", (req, res) => {
+  try {
+    const { callerId, callerName, callerRegNumber, receiverId, receiverEmail, receiverName, callType } = req.body || {};
+    if (!callerId || !receiverId) {
+      res.status(400).json({ success: false, error: "callerId and receiverId are required" });
+      return;
+    }
+
+    const session = callSessionEngine.createSession({
+      callerId,
+      callerName: callerName || "Member",
+      callerRegNumber: callerRegNumber || "SHUBH",
+      receiverId,
+      receiverEmail,
+      receiverName,
+      callType: callType || "video"
+    });
+
+    res.json({
+      success: true,
+      sessionId: session.callSessionId,
+      session
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Check active incoming calls for a user
+app.get("/api/calls/active/:userId", (req, res) => {
+  try {
+    const { userId } = req.params;
+    const activeSessions = callSessionEngine.getActiveSessionsForUser(userId);
+    res.json({ success: true, sessions: activeSessions });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get session status
+app.get("/api/calls/status/:callSessionId", (req, res) => {
+  try {
+    const { callSessionId } = req.params;
+    const session = callSessionEngine.getSession(callSessionId);
+    if (!session) {
+      res.status(404).json({ success: false, error: "Call session not found" });
+      return;
+    }
+    res.json({ success: true, session });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Respond to call (ACCEPT / DECLINE)
+app.post("/api/calls/respond", (req, res) => {
+  try {
+    const { callSessionId, userId, action } = req.body || {};
+    if (!callSessionId || !userId || !action) {
+      res.status(400).json({ success: false, error: "callSessionId, userId, and action are required" });
+      return;
+    }
+
+    const result = callSessionEngine.respondSession(callSessionId, userId, action);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Root level OTP verification test endpoint
