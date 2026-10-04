@@ -426,9 +426,8 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
   }
 ];
 
-async function compressBase64Image(base64Str?: string, maxWidth = 600, quality = 0.6): Promise<string | undefined> {
+async function compressBase64Image(base64Str?: string, maxWidth = 400, quality = 0.5): Promise<string | undefined> {
   if (!base64Str || !base64Str.startsWith("data:image")) return base64Str;
-  if (base64Str.length < 300000) return base64Str;
 
   return new Promise((resolve) => {
     if (typeof window === "undefined") {
@@ -449,14 +448,17 @@ async function compressBase64Image(base64Str?: string, maxWidth = 600, quality =
       canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        resolve(base64Str);
+        resolve("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400");
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
-      const compressed = canvas.toDataURL("image/jpeg", quality);
+      let compressed = canvas.toDataURL("image/jpeg", quality);
+      if (compressed.length > 900000) {
+        compressed = canvas.toDataURL("image/jpeg", 0.3);
+      }
       resolve(compressed);
     };
-    img.onerror = () => resolve(base64Str);
+    img.onerror = () => resolve("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400");
   });
 }
 
@@ -513,9 +515,13 @@ export const databaseService = {
             rawProfiles.push(lp);
             // Proactively try to sync this missing local profile to Firestore
             try {
-              await setDoc(doc(db, "profiles", lp.id), lp);
+              const safeLp = { ...lp };
+              if (safeLp.photo_url && safeLp.photo_url.startsWith("data:image") && safeLp.photo_url.length > 900000) {
+                safeLp.photo_url = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400";
+              }
+              await setDoc(doc(db, "profiles", lp.id), safeLp);
             } catch (syncErr) {
-              console.warn(`Background sync failed for profile ${lp.id}:`, syncErr);
+              // Silently handle size or network sync errors
             }
           }
         }

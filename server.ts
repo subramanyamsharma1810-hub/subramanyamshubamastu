@@ -290,6 +290,27 @@ app.post("/api/calls/respond", (req, res) => {
   }
 });
 
+// End call session endpoint
+app.post("/api/calls/end", (req, res) => {
+  try {
+    const { callSessionId, durationSeconds, status, reportReason } = req.body || {};
+    if (!callSessionId) {
+      res.status(400).json({ success: false, error: "callSessionId is required" });
+      return;
+    }
+
+    const result = callSessionEngine.endSession(callSessionId, {
+      durationSeconds: durationSeconds || 0,
+      status: status || "COMPLETED",
+      reportReason
+    });
+
+    res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Root level OTP verification test endpoint
 app.get("/70439771", (req, res) => {
   res.json({

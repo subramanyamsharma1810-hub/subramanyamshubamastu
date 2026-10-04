@@ -61,6 +61,7 @@ export default function CallRoom({
   const [terminationStatusText, setTerminationStatusText] = useState("Preparing call termination...");
   const [reportReason, setReportReason] = useState("Harassment / Misbehavior during call");
   const [videoFilter, setVideoFilter] = useState<"normal" | "sepia" | "grayscale" | "vintage" | "contrast">("normal");
+  const [signalBars, setSignalBars] = useState<number>(4);
 
   const getFilterClass = (filter: string) => {
     switch (filter) {
@@ -180,6 +181,14 @@ export default function CallRoom({
           if (mediaType === "video") {
             setRemoteUid(null);
           }
+        });
+
+        rtcClient.on("network-quality", (stats: any) => {
+          const quality = Math.max(stats.uplinkNetworkQuality || 1, stats.downlinkNetworkQuality || 1);
+          if (quality <= 1) setSignalBars(4);
+          else if (quality === 2) setSignalBars(3);
+          else if (quality === 3) setSignalBars(2);
+          else setSignalBars(1);
         });
 
         // 3. Join channel
@@ -431,6 +440,19 @@ export default function CallRoom({
         </div>
 
         <div className="flex items-center space-x-2.5">
+          {/* Signal Strength Indicator */}
+          <div className="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1.5 rounded-2xl border border-slate-700" title={`Signal Quality: ${signalBars === 4 ? "Excellent (HD)" : signalBars === 3 ? "Good" : signalBars === 2 ? "Fair" : "Poor"}`}>
+            <div className="flex items-end gap-0.5 h-3.5">
+              <div className={`w-1 rounded-sm transition-all ${signalBars >= 1 ? "bg-emerald-400" : "bg-slate-600"} h-1.5`}></div>
+              <div className={`w-1 rounded-sm transition-all ${signalBars >= 2 ? "bg-emerald-400" : "bg-slate-600"} h-2.5`}></div>
+              <div className={`w-1 rounded-sm transition-all ${signalBars >= 3 ? "bg-emerald-400" : "bg-slate-600"} h-3`}></div>
+              <div className={`w-1 rounded-sm transition-all ${signalBars >= 4 ? "bg-emerald-400" : "bg-slate-600"} h-3.5`}></div>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-300 font-bold uppercase hidden sm:inline">
+              {signalBars === 4 ? "HD" : signalBars === 3 ? "Good" : signalBars === 2 ? "Fair" : "Poor"}
+            </span>
+          </div>
+
           {callType === "video" && (
             <div className="hidden lg:flex items-center space-x-1 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700">
               <span className="text-[10px] uppercase font-mono px-2 text-amber-400 font-bold flex items-center gap-1">

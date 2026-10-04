@@ -151,5 +151,16 @@ export const callSessionEngine = {
       }
     }
     return results;
+  },
+
+  endSession(callSessionId: string, params?: { durationSeconds?: number; status?: string; reportReason?: string }): CallSession | null {
+    const store = loadStore();
+    const session = store.sessions[callSessionId];
+    if (session) {
+      session.status = "ENDED";
+      saveStore(store);
+      return session;
+    }
+    return null;
   }
 };
