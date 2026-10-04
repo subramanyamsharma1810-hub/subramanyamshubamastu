@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, BookOpen } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, Phone } from "lucide-react";
 import { PandithConsultationModal } from "./PandithConsultationModal";
 import NotificationBell from "./NotificationBell";
 import { Profile } from "../types";
@@ -28,6 +28,7 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
     { id: "preferences", label: "Partner Criteria (అంచనాలు)", icon: User },
     { id: "upload", label: "Sacred Uploads (ఫోటోలు/పత్రాలు)", icon: Settings },
     { id: "calendar", label: "Calendar & Reminders (క్యాలెండర్)", icon: Calendar },
+    { id: "callHistory", label: "Call History & Logs (కాల్ హిస్టరీ)", icon: Phone },
     { id: "grievances", label: "Grievance Cell (గ్రీవెన్స్)", icon: AlertCircle },
   ];
 

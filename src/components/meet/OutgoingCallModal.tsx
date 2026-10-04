@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PhoneOff, Clock } from "lucide-react";
 import { Profile } from "../../types";
-import { ref, onValue, remove } from "firebase/database";
+import { ref, onValue, remove, update } from "firebase/database";
 import { rtdb } from "../../lib/firebase";
 
 interface OutgoingCallModalProps {
@@ -172,13 +172,18 @@ export default function OutgoingCallModal({
 
           <button
             onClick={async () => {
-              const sessionRef = ref(rtdb, `calls/${targetProfile.id}/${callSessionId}`);
-              await remove(sessionRef).catch(() => {});
-              localStorage.removeItem(`incoming_call_${targetProfile.id}`);
-              window.dispatchEvent(new Event("storage"));
-              window.dispatchEvent(new CustomEvent("call_status_signal", {
-                detail: { callSessionId, status: "CANCELLED" }
-              }));
+              try {
+                const sessionRef = ref(rtdb, `calls/${targetProfile.id}/${callSessionId}`);
+                await update(sessionRef, { status: "CANCELLED" }).catch(() => {});
+                await remove(sessionRef).catch(() => {});
+                localStorage.removeItem(`incoming_call_${targetProfile.id}`);
+                localStorage.setItem(`call_cancelled_${callSessionId}`, String(Date.now()));
+                window.dispatchEvent(new Event("storage"));
+                window.dispatchEvent(new CustomEvent("call_status_signal", {
+                  detail: { callSessionId, status: "CANCELLED" }
+                }));
+                window.dispatchEvent(new CustomEvent("incoming_call_signal"));
+              } catch (e) {}
               onCancelCall();
             }}
             className="w-full py-3.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"

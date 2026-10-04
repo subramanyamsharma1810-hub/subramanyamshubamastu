@@ -115,28 +115,36 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
     // Also listen to storage events for instant local ringing
     const handleStorage = () => {
       const localCall = localStorage.getItem(`incoming_call_${currentProfile.id}`);
-      if (localCall) {
-        try {
-          const parsed = JSON.parse(localCall);
-          if (parsed.status === "RINGING") {
-            setIncomingSession(parsed);
-            const found = allProfiles.find(p => p.id === parsed.callerId);
-            setCallerProfile(found || {
-              id: parsed.callerId,
-              name: parsed.callerName || "Member",
-              reg_number: parsed.callerRegNumber || "SHUBH",
-              gender: "Male",
-              dob: "1995-01-01",
-              height_feet: 5.8,
-              sub_caste: "Brahmin",
-              profession: "Professional",
-              salary_lpa: 10,
-              contact_number: "",
-              status: "Verified"
-            });
-          }
-        } catch (e) {}
+      if (!localCall) {
+        setIncomingSession(null);
+        setCallerProfile(null);
+        return;
       }
+      try {
+        const parsed = JSON.parse(localCall);
+        if (parsed.callSessionId && localStorage.getItem(`call_cancelled_${parsed.callSessionId}`)) {
+          setIncomingSession(null);
+          setCallerProfile(null);
+          return;
+        }
+        if (parsed.status === "RINGING") {
+          setIncomingSession(parsed);
+          const found = allProfiles.find(p => p.id === parsed.callerId);
+          setCallerProfile(found || {
+            id: parsed.callerId,
+            name: parsed.callerName || "Member",
+            reg_number: parsed.callerRegNumber || "SHUBH",
+            gender: "Male",
+            dob: "1995-01-01",
+            height_feet: 5.8,
+            sub_caste: "Brahmin",
+            profession: "Professional",
+            salary_lpa: 10,
+            contact_number: "",
+            status: "Verified"
+          });
+        }
+      } catch (e) {}
     };
     window.addEventListener("storage", handleStorage);
     window.addEventListener("incoming_call_signal", handleStorage);

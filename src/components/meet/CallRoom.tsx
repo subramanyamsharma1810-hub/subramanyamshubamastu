@@ -781,29 +781,20 @@ export default function CallRoom({
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-3 pt-2">
-              <button
-                onClick={() => {
-                  setShowFeedbackModal(false);
-                  onEndCall();
-                }}
-                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer transition"
-              >
-                Skip
-              </button>
+            {/* Action Buttons (Mandatory Feedback for both users) */}
+            <div className="pt-2">
               <button
                 onClick={handleSubmitFeedback}
                 disabled={isSubmittingFeedback}
-                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg transition flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg transition flex items-center justify-center gap-2"
               >
                 {isSubmittingFeedback ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
+                    <span>Saving Feedback...</span>
                   </>
                 ) : (
-                  <span>Submit & Return</span>
+                  <span>Submit Star Feedback & Return</span>
                 )}
               </button>
             </div>

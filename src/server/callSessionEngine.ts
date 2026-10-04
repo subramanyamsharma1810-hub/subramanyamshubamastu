@@ -93,16 +93,7 @@ export const callSessionEngine = {
     if (session.status === "RINGING" && Date.now() > session.expiresAt) {
       session.status = "MISSED";
       saveStore(store);
-      // Trigger missed call email asynchronously
-      if (session.receiverEmail) {
-        sendMissedCallEmail({
-          callerId: session.callerId,
-          callerName: session.callerName,
-          callerRegNumber: session.callerRegNumber,
-          recipientEmail: session.receiverEmail,
-          recipientName: session.receiverName || "Member",
-        }).catch((err) => console.error("Failed to send timeout missed call email:", err));
-      }
+      // Email sending disabled per user instruction
     }
     return session;
   },
@@ -137,17 +128,7 @@ export const callSessionEngine = {
     } else {
       session.status = "DECLINED";
       saveStore(store);
-
-      // Trigger missed call email when declined
-      if (session.receiverEmail) {
-        sendMissedCallEmail({
-          callerId: session.callerId,
-          callerName: session.callerName,
-          callerRegNumber: session.callerRegNumber,
-          recipientEmail: session.receiverEmail,
-          recipientName: session.receiverName || "Member",
-        }).catch((err) => console.error("Failed to send decline missed call email:", err));
-      }
+      // Email sending disabled per user instruction
 
       return { success: true, session };
     }

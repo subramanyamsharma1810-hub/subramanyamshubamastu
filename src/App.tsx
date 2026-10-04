@@ -25,6 +25,8 @@ import ReferralDashboard from "./components/ReferralDashboard";
 import { useUserPresence } from "./lib/presence";
 import IncomingCallModal from "./components/meet/IncomingCallModal";
 import CallRoom from "./components/meet/CallRoom";
+import CallHistory from "./components/meet/CallHistory";
+import { registerCallPushNotifications } from "./lib/pushNotifications";
 import { ref, get } from "firebase/database";
 import { rtdb } from "./lib/firebase";
 import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
@@ -111,6 +113,7 @@ export default function App() {
               }
             }
             setCurrentProfile(activeProfile);
+            registerCallPushNotifications(activeProfile.id).catch(() => {});
             const prefs = await databaseService.getPartnerPreferences(activeProfile.id);
             setPreferences(prefs);
             
@@ -146,6 +149,7 @@ export default function App() {
 
   const handleLoginSuccess = (profile: Profile) => {
     setCurrentProfile(profile);
+    registerCallPushNotifications(profile.id).catch(() => {});
     const isSystemAdmin = 
       profile.id === "prof-subbu" || 
       profile.id === "prof-subba-reddy" || 
@@ -528,6 +532,20 @@ export default function App() {
                     {currentTab === "referral" && (
                       <ReferralDashboard
                         currentProfile={currentProfile}
+                      />
+                    )}
+                    {currentTab === "callHistory" && currentProfile && (
+                      <CallHistory
+                        currentProfile={currentProfile}
+                        allProfiles={allProfiles}
+                        onCallBack={(target, type) => {
+                          setActiveCallSession({
+                            callSessionId: `shubh_${Date.now()}`,
+                            receiver: target,
+                            callType: type
+                          });
+                          setCurrentTab("matches");
+                        }}
                       />
                     )}
                   </>
