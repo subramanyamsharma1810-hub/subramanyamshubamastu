@@ -91,6 +91,7 @@ export default function App() {
     async function loadInitialData() {
       setLoading(true);
       try {
+        await databaseService.purgeFakeData().catch(() => {});
         const loggedInId = localStorage.getItem("bramhana_logged_in_user_id");
         if (loggedInId) {
           const profiles = await databaseService.getProfiles(true);

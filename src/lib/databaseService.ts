@@ -150,76 +150,27 @@ const PRE_SEEDED_PROFILES: Profile[] = [
       spiritualScore: 92
     },
     created_at: "2026-07-07T16:00:00Z"
-  }
-];
-
-// Generate 100 Male test profiles (ABC-M1001 to ABC-M1100) and 100 Female test profiles (ABC-F1001 to ABC-F1100)
-const gotramsList = ["Bharadwaja", "Srivatsa", "Kausika", "Harithasa", "Vasista", "Atreya", "Kasyapa", "Jamadagni", "Gautama", "Viswamitra"];
-const surnamesList = ["Sastry", "Sharma", "Reddy", "Avadhani", "Somayajula", "Bhattar", "Pragada", "Chivukula", "Puranapanda", "Garimella"];
-const maleFirstNames = ["Aditya", "Anand", "Arjun", "Bhaskar", "Chaitanya", "Dheeraj", "Ganesh", "Gopala", "Harsha", "Karthik", "Kiran", "Krishna", "Lokesh", "Mohan", "Murali", "Nagesh", "Nanda", "Naresh", "Naveen", "Nikhil", "Pradeep", "Prakash", "Prasad", "Praveen", "Raghavendra", "Raja", "Rajesh", "Rakesh", "Ramesh", "Ravi", "Sainath", "Sandeep", "Santosh", "Satish", "Shiva", "Srinivas", "Sriram", "Subrahmanya", "Sudheer", "Suresh", "Tarun", "Uday", "Varun", "Venkatesh", "Vijay", "Vinod", "Vishnu", "Vivek", "Yashwanth", "Yogendra"];
-const femaleFirstNames = ["Aishwarya", "Ananya", "Anusha", "Bhavana", "Deepika", "Divya", "Gayatri", "Haritha", "Jahnavi", "Jyothsna", "Kalyani", "Keerthana", "Lavanya", "Madhuri", "Meenakshi", "Mounika", "Nandini", "Neelima", "Padma", "Pallavi", "Pooja", "Pratyusha", "Priyanka", "Radha", "Rajani", "Ramya", "Revathi", "Roopini", "Sahitya", "Sai", "Sandhya", "Sangeeta", "Saranya", "Satyavathi", "Shailaja", "Shanti", "Shilpa", "Shruthi", "Sitadevi", "Sowmya", "Sravani", "Sridevi", "Subhasini", "Sudha", "Suneetha", "Supriya", "Swathi", "Tejaswini", "Uma", "Varalakshmi"];
-const subcastesList = ["Vaidiki Velanadu", "Vaidiki Telaganya", "Mulukanadu", "Smartha", "Sri Vaishnava", "Madhwa", "Niyogi", "Aruvela Niyogi", "Vaidiki Kamma", "Dravida"];
-const professionsList = ["Software Engineer", "Cloud Architect", "Data Scientist", "Chartered Accountant", "Doctor", "Civil Servant", "Bank Manager", "Professor", "Product Manager", "Mechanical Engineer", "Research Scientist", "Electronics Engineer", "Financial Analyst", "Architect", "Legal Advisor"];
-const citiesList = ["Bengaluru", "Hyderabad", "Chennai", "Mumbai", "Delhi", "Visakhapatnam", "Vijayawada", "Tirupati", "Warangal", "Pune", "San Francisco, USA", "New York, USA", "London, UK", "Sydney, Australia"];
-
-// 100 Males
-for (let i = 1; i <= 100; i++) {
-  const idNum = 1000 + i;
-  const id = `ABC-M${idNum}`;
-  const firstName = maleFirstNames[(i - 1) % maleFirstNames.length];
-  const surname = surnamesList[(i * 3) % surnamesList.length];
-  const gothram = gotramsList[(i * 7) % gotramsList.length];
-  const subCaste = subcastesList[(i * 5) % subcastesList.length];
-  const profession = professionsList[(i * 2) % professionsList.length];
-  const city = citiesList[(i * 4) % citiesList.length];
-  const age = 24 + (i % 12);
-  const birthYear = 2026 - age;
-  const month = String(((i % 12) + 1)).padStart(2, "0");
-  const day = String(((i % 28) + 1)).padStart(2, "0");
-  const dob = `${birthYear}-${month}-${day}`;
-  const height = 5.6 + ((i % 5) * 0.1);
-  const salary = 12.0 + (i % 38) + ((i % 10) * 0.1);
-  const mobile = `+91 98${String(i).padStart(8, "0")}`;
-  let email = `${firstName.toLowerCase()}.${surname.toLowerCase()}${idNum}@test-matrimony.org`;
-  if (id === "ABC-M1001") {
-    email = "subramanyamghadiyaram@gmail.com";
-  }
-
-  PRE_SEEDED_PROFILES.push({
-    id,
-    reg_number: id,
-    role: "candidate",
-    name: `${firstName} ${surname}`,
-    surname,
+  },
+  {
+    id: "prof-karna-tejaswar",
+    reg_number: "BVM-1010",
+    password: "grievance123",
+    name: "Mr. Karna Tejaswar Reddy (Chief Grievance Redressal Officer & Statutory Nodal Contact Person)",
+    dob: "1992-05-20",
     gender: "Male",
-    dob,
-    height_feet: Number(height.toFixed(1)),
-    gothram,
-    sub_caste: subCaste,
-    education: "B.Tech / M.Tech",
-    profession,
-    company_name: "Global Tech Solutions",
-    salary_lpa: Number(salary.toFixed(2)),
-    current_city: city,
-    contact_number: mobile,
-    email,
-    isEmailVerified: true,
+    height_feet: 5.11,
+    sub_caste: "Smartha",
+    profession: "Chief Grievance Redressal Officer",
+    salary_lpa: 18.0,
+    contact_number: "9123456780",
+    email: "grievance@shubhamastu.in",
     status: "Verified",
     subscription_status: "paid_900",
-    payment_received: true,
-    isTestUser: true,
-    is_test_user: true,
-    password: generateDefaultDobPassword(dob),
     photo_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400",
-    photo_url_2: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=400",
-    photo_url_3: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=400",
-    kundali_url: "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=800",
-    birth_time: "07:30",
-    birth_location: city,
-    birth_pincode: "500081",
-    registered_by: "Admin System Test",
-    registered_at_time: "01 Jul 2026, 10:00 AM",
-    created_at: "2026-07-01T10:00:00Z",
+    birth_time: "10:30",
+    birth_location: "Hyderabad, India",
+    gothram: "Bharadwaja",
+    surname: "Karna",
     astrology: {
       nakshatra: "Pushya",
       nakshatraLord: "Saturn",
@@ -227,93 +178,21 @@ for (let i = 1; i <= 100; i++) {
       rashi: "Karkataka (Cancer)",
       tithi: "Shukla Saptami",
       deity: "Brihaspati",
-      spiritualAnalysis: "Balanced spiritual and material outlook, faithful and devoted partner.",
-      compatibilityTraits: ["Loyal", "Career oriented", "Respectful of tradition"],
-      spiritualScore: 85
-    }
-  });
-}
-
-// 100 Females
-for (let i = 1; i <= 100; i++) {
-  const idNum = 1000 + i;
-  const id = `ABC-F${idNum}`;
-  const firstName = femaleFirstNames[(i - 1) % femaleFirstNames.length];
-  const surname = surnamesList[(i * 3 + 1) % surnamesList.length];
-  const gothram = gotramsList[(i * 3) % gotramsList.length];
-  const subCaste = subcastesList[(i * 7) % subcastesList.length];
-  const profession = professionsList[(i * 3) % professionsList.length];
-  const city = citiesList[(i * 2) % citiesList.length];
-  const age = 21 + (i % 10);
-  const birthYear = 2026 - age;
-  const month = String(((i % 12) + 1)).padStart(2, "0");
-  const day = String(((i % 28) + 1)).padStart(2, "0");
-  const dob = `${birthYear}-${month}-${day}`;
-  const height = 5.2 + ((i % 5) * 0.1);
-  const salary = 8.0 + (i % 25) + ((i % 10) * 0.1);
-  const mobile = `+91 97${String(i).padStart(8, "0")}`;
-  let email = `${firstName.toLowerCase()}.${surname.toLowerCase()}${idNum}@test-matrimony.org`;
-  if (id === "ABC-F1012") {
-    email = "subramanyamsharma1810@gmail.com";
+      spiritualAnalysis: "Dedicated legal and grievance redressal officer committed to absolute transparency and platform integrity.",
+      compatibilityTraits: ["Lawful", "Diligent", "Protective guardian"],
+      spiritualScore: 95
+    },
+    created_at: "2026-08-15T10:00:00Z"
   }
+];
 
-  PRE_SEEDED_PROFILES.push({
-    id,
-    reg_number: id,
-    role: "candidate",
-    name: `${firstName} ${surname}`,
-    surname,
-    gender: "Female",
-    dob,
-    height_feet: Number(height.toFixed(1)),
-    gothram,
-    sub_caste: subCaste,
-    education: "B.Tech / M.Sc / MBA",
-    profession,
-    company_name: "Global Tech Solutions",
-    salary_lpa: Number(salary.toFixed(2)),
-    current_city: city,
-    contact_number: mobile,
-    email,
-    isEmailVerified: true,
-    status: "Verified",
-    subscription_status: "paid_900",
-    payment_received: true,
-    isTestUser: true,
-    is_test_user: true,
-    password: generateDefaultDobPassword(dob),
-    photo_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400",
-    photo_url_2: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400",
-    photo_url_3: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400",
-    kundali_url: "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=800",
-    birth_time: "09:15",
-    birth_location: city,
-    birth_pincode: "500081",
-    registered_by: "Admin System Test",
-    registered_at_time: "01 Jul 2026, 10:00 AM",
-    created_at: "2026-07-01T10:00:00Z",
-    astrology: {
-      nakshatra: "Rohini",
-      nakshatraLord: "Moon",
-      pada: 1,
-      rashi: "Vrishabha (Taurus)",
-      tithi: "Shukla Dashami",
-      deity: "Brahma",
-      spiritualAnalysis: "Graceful, artistic, and deeply devoted to family and traditional samskaras.",
-      compatibilityTraits: ["Artistic", "Kind-hearted", "Supportive homemaker and career professional"],
-      spiritualScore: 89
-    }
-  });
-}
-
-// Initialize localStorage DB if empty (fallback)
+// Initialize localStorage DB with only the admin profiles (Subramanyam, Subba Reddy, and Karna Tejaswar Reddy)
 if (typeof window !== "undefined") {
-  const localProf = localStorage.getItem("matrimonial_profiles");
-  if (!localProf) {
-    localStorage.setItem("matrimonial_profiles", JSON.stringify(PRE_SEEDED_PROFILES));
-    const initialPrefs = [
-      { user_id: "prof-subbu", age_gap: 5, height_range: "5.0 - 5.7", preferred_sub_caste: "Any" }
-    ];
+  localStorage.setItem("matrimonial_profiles", JSON.stringify(PRE_SEEDED_PROFILES));
+  const initialPrefs = [
+    { user_id: "prof-subbu", age_gap: 5, height_range: "5.0 - 5.7", preferred_sub_caste: "Any" }
+  ];
+  if (!localStorage.getItem("partner_preferences")) {
     localStorage.setItem("partner_preferences", JSON.stringify(initialPrefs));
   }
 }
@@ -733,27 +612,15 @@ export const databaseService = {
       const querySnapshot = await getDocs(q);
       for (const docSnap of querySnapshot.docs) {
         const id = docSnap.id;
-        if (id !== "prof-subbu" && id !== "prof-subba-reddy") {
-          await deleteDoc(doc(db, "profiles", id));
+        if (id !== "prof-subbu" && id !== "prof-subba-reddy" && id !== "prof-karna-tejaswar") {
+          await deleteDoc(doc(db, "profiles", id)).catch(() => {});
         }
       }
     } catch (err) {
       console.error("Error purging profiles from Firestore:", err);
     }
 
-    const local = localStorage.getItem("matrimonial_profiles");
-    let current: Profile[] = local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
-    const preserved = current.filter(p => p.id === "prof-subbu" || p.id === "prof-subba-reddy");
-    
-    if (!preserved.some(p => p.id === "prof-subbu")) {
-      const subbu = PRE_SEEDED_PROFILES.find(p => p.id === "prof-subbu");
-      if (subbu) preserved.push(subbu);
-    }
-    if (!preserved.some(p => p.id === "prof-subba-reddy")) {
-      const subba = PRE_SEEDED_PROFILES.find(p => p.id === "prof-subba-reddy");
-      if (subba) preserved.push(subba);
-    }
-    
+    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "prof-subbu" || p.id === "prof-subba-reddy" || p.id === "prof-karna-tejaswar");
     localStorage.setItem("matrimonial_profiles", JSON.stringify(preserved));
     return preserved;
   },
