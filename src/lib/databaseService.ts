@@ -20,12 +20,12 @@ export const ROOT_ADMINS: AdminUser[] = [
   {
     id: "admin-subba-reddy",
     name: "Mr. Posham Venkata Subba Reddy",
-    mobile: "9494949494",
-    password: "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9",
-    email: "Subbareddyposham@gmail.com",
-    role: "revenue_admin",
+    mobile: "9989079372",
+    password: "SubbaReddy@2026!#",
+    email: "subbareddyposham@gmail.com",
+    role: "super_admin",
     stage: 2,
-    designation: "Chief Manager & Operational Head, Glark Solutions / shubhamastu.in (Stage 2 Operations Admin)",
+    designation: "Stage 2 Super Admin & Operational Head, Glark Solutions / shubhamastu.in",
     createdAt: "2026-07-07T16:00:00Z",
     status: "active",
     isRoot: true
@@ -33,17 +33,64 @@ export const ROOT_ADMINS: AdminUser[] = [
   {
     id: "admin-grievance",
     name: "Mr. Karna Tejaswar Reddy",
-    mobile: "9123456780",
+    mobile: "9392551166",
     password: "grievance123",
-    email: "K.tejaswar567@gmail.com",
-    role: "grievance_admin",
-    stage: 4,
-    designation: "Chief Grievance Redressal Officer & Statutory Nodal Contact Person (Stage 4 Grievance Admin)",
+    email: "k.tejaswar567@gmail.com",
+    role: "super_admin",
+    stage: 2,
+    designation: "Stage 2 Super Admin & Chief Grievance Redressal Officer",
     createdAt: "2026-08-15T10:00:00Z",
     status: "active",
     isRoot: true
   }
 ];
+
+export interface AdminNotification {
+  id: string;
+  adminId: string;
+  adminName: string;
+  action: string;
+  details: string;
+  timestamp: string;
+  read: boolean;
+}
+
+export const adminNotificationService = {
+  getNotifications(): AdminNotification[] {
+    try {
+      const data = localStorage.getItem("admin_notifications");
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+  logAction(adminId: string, adminName: string, action: string, details: string) {
+    try {
+      const notifs = this.getNotifications();
+      const newNotif: AdminNotification = {
+        id: "notif-" + Date.now() + "-" + Math.floor(Math.random()*1000),
+        adminId,
+        adminName,
+        action,
+        details,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      notifs.unshift(newNotif);
+      if (notifs.length > 100) notifs.pop();
+      localStorage.setItem("admin_notifications", JSON.stringify(notifs));
+    } catch (e) {
+      console.error("Failed to log admin action:", e);
+    }
+  },
+  markAllRead() {
+    try {
+      const notifs = this.getNotifications();
+      const updated = notifs.map(n => ({ ...n, read: true }));
+      localStorage.setItem("admin_notifications", JSON.stringify(updated));
+    } catch {}
+  }
+};
 
 export function generateRandomPassword(): string {
   const letters = "abcdefghijklmnopqrstuvwxyz";

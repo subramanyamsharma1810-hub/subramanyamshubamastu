@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, AdminRole, Pandit } from "../types";
-import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
+import { databaseService, adminNotificationService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
 import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
 import AdminGrievanceChatsDesk from "./AdminGrievanceChatsDesk";
@@ -12,7 +12,7 @@ import SearchableSelect from "./SearchableSelect";
 import { BRAHMIN_SUB_CASTES, BRAHMIN_GOTRAMS } from "../lib/brahminMetadata";
 import ExecutiveAnalyticsDashboard from "./ExecutiveAnalyticsDashboard";
 import QualityTrendsChart from "./QualityTrendsChart";
-import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle, Lock, MessageSquare, Star } from "lucide-react";
+import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle, Lock, MessageSquare, Star, Bell } from "lucide-react";
 import {
   ShieldCheck,
   Search,
@@ -242,6 +242,19 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const [subbaReddyUpiInput, setSubbaReddyUpiInput] = useState("");
   const [subbaReddyQrInput, setSubbaReddyQrInput] = useState("");
 
+  const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
+  const [showAdminNotifModal, setShowAdminNotifModal] = useState(false);
+
+  useEffect(() => {
+    setAdminNotifications(adminNotificationService.getNotifications());
+    const interval = setInterval(() => {
+      setAdminNotifications(adminNotificationService.getNotifications());
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadNotifCount = adminNotifications.filter(n => !n.read).length;
+
   useEffect(() => {
     setSubramanyamUpiInput(adminSettings.subramanyamUpi);
     setSubramanyamQrInput(adminSettings.subramanyamQr);
@@ -415,6 +428,13 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       };
 
       await databaseService.saveGrievance(updatedGrievance);
+
+      adminNotificationService.logAction(
+        currentAdmin?.id || "admin",
+        adminName,
+        "Grievance Resolved",
+        `Resolved grievance ticket #${updatedGrievance.id} with status ${resolutionAction}. Verdict: ${resolutionVerdict.substring(0, 45)}...`
+      );
 
       if (verifyingGrievance.accusedId && verifyingGrievance.accusedId !== "N/A") {
         const cleanAccusedId = verifyingGrievance.accusedId.trim().toLowerCase();
@@ -2635,16 +2655,36 @@ Ph: ${adminPhone}`;
           </p>
         </div>
 
-        {/* Sync Indicator */}
-        <div className="bg-white/5 border border-white/10 p-4 rounded-2xl relative z-10 text-right shrink-0">
-          <span className="text-[10px] text-blue-200/60 uppercase tracking-widest block font-bold">Storage Integration Status</span>
-          <p className="text-sm font-bold text-emerald-400 flex items-center justify-end gap-1.5 mt-1">
-            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-            <span>Database Live & Synced</span>
-          </p>
-          <span className="text-[10px] text-amber-200/80 font-mono mt-1 block">
-            Stage {stageInfo.stage} • {stageInfo.canManageAdmins ? "Admin Controller" : "Protected Scope"}
-          </span>
+        {/* Sync Indicator & Admin Bell */}
+        <div className="flex flex-col sm:flex-row items-end gap-3 relative z-10">
+          <button
+            onClick={() => {
+              setShowAdminNotifModal(true);
+              adminNotificationService.markAllRead();
+              setAdminNotifications(adminNotificationService.getNotifications());
+            }}
+            className="relative bg-white/15 hover:bg-white/25 border border-white/30 px-4 py-2.5 rounded-2xl transition flex items-center gap-2.5 text-white font-bold text-xs shadow-lg cursor-pointer"
+            title="Cross-Admin Notification Bell - See changes made by any admin"
+          >
+            <Bell className="w-5 h-5 text-amber-300 animate-bounce" />
+            <span>Admin Audit Bell</span>
+            {unreadNotifCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md animate-pulse">
+                {unreadNotifCount}
+              </span>
+            )}
+          </button>
+
+          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl text-right shrink-0">
+            <span className="text-[10px] text-blue-200/60 uppercase tracking-widest block font-bold">Storage Integration Status</span>
+            <p className="text-sm font-bold text-emerald-400 flex items-center justify-end gap-1.5 mt-1">
+              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
+              <span>Database Live & Synced</span>
+            </p>
+            <span className="text-[10px] text-amber-200/80 font-mono mt-1 block">
+              Stage {stageInfo.stage} • {stageInfo.canManageAdmins ? "Admin Controller" : "Protected Scope"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -8776,6 +8816,64 @@ Ph: ${adminPhone}`;
                 className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg"
               >
                 Close Audit Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Activity Notification Bell Modal */}
+      {showAdminNotifModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#2A2146] text-white border border-purple-500/30 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto animate-scale-up">
+            <div className="flex items-center justify-between border-b border-purple-500/20 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-amber-400/20 text-amber-300 rounded-2xl">
+                  <Bell className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Cross-Admin Activity & Notification Bell</h3>
+                  <p className="text-xs text-purple-200">Track all modifications and actions performed across all administrators (Subramanyam, Subba Reddy, Tejaswar).</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowAdminNotifModal(false)}
+                className="p-2 text-purple-300 hover:text-white bg-white/5 rounded-xl hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {adminNotifications.length === 0 ? (
+                <div className="text-center py-12 text-purple-300">
+                  <p className="text-sm">No admin activity notifications logged yet.</p>
+                  <p className="text-xs text-purple-400 mt-1">Actions performed by any admin will appear here instantly for all other admins.</p>
+                </div>
+              ) : (
+                adminNotifications.map((notif: any) => (
+                  <div key={notif.id} className={`p-4 rounded-2xl border ${notif.read ? 'bg-white/5 border-white/10' : 'bg-purple-900/40 border-amber-400/40'} space-y-1.5`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                        👤 {notif.adminName}
+                      </span>
+                      <span className="text-[10px] text-purple-300 font-mono">
+                        {new Date(notif.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-white">{notif.action}</p>
+                    <p className="text-xs text-purple-200 leading-relaxed">{notif.details}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-purple-500/20">
+              <button
+                onClick={() => setShowAdminNotifModal(false)}
+                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl shadow-lg transition cursor-pointer"
+              >
+                Close Notification Bell
               </button>
             </div>
           </div>

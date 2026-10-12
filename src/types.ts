@@ -171,8 +171,8 @@ export function getAdminStageInfo(role?: string, explicitStage?: number): AdminS
   if (explicitStage === 2 || role === "revenue_admin" || role === "admin") {
     return {
       stage: 2,
-      stageName: "Stage 2: Revenue & Operations Admin",
-      stageNameTelugu: "రెవెన్యూ & కార్యనిర్వాహక అడ్మిన్",
+      stageName: "Stage 2: Super Admin",
+      stageNameTelugu: "స్టేజ్ 2 సూపర్ అడ్మిన్",
       badgeColor: "bg-emerald-100 text-emerald-900 border-emerald-300",
       canManageAdmins: false,
       canViewAllRevenue: true,
