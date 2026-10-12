@@ -22,7 +22,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     name: "Mr. Posham Venkata Subba Reddy",
     mobile: "9494949494",
     password: "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9",
-    email: "subbareddy@gmail.com",
+    email: "Subbareddyposham@gmail.com",
     role: "revenue_admin",
     stage: 2,
     designation: "Chief Manager & Operational Head, Glark Solutions / shubhamastu.in (Stage 2 Operations Admin)",
@@ -31,30 +31,17 @@ export const ROOT_ADMINS: AdminUser[] = [
     isRoot: true
   },
   {
-    id: "admin-coordinator",
-    name: "Sri K. Ramanuja Chary",
-    mobile: "9876543210",
-    password: "coordinator123",
-    email: "coordinator@shubhamastu.in",
-    role: "candidate_admin",
-    stage: 3,
-    designation: "Field Coordinator & Matchmaker (Stage 3 Candidate Admin)",
-    createdAt: "2026-08-01T10:00:00Z",
-    status: "active",
-    isRoot: false
-  },
-  {
     id: "admin-grievance",
     name: "Mr. Karna Tejaswar Reddy",
     mobile: "9123456780",
     password: "grievance123",
-    email: "grievance@shubhamastu.in",
+    email: "K.tejaswar567@gmail.com",
     role: "grievance_admin",
     stage: 4,
     designation: "Chief Grievance Redressal Officer & Statutory Nodal Contact Person (Stage 4 Grievance Admin)",
     createdAt: "2026-08-15T10:00:00Z",
     status: "active",
-    isRoot: false
+    isRoot: true
   }
 ];
 
@@ -100,6 +87,8 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     salary_lpa: 14.5,
     contact_number: "9347359489",
     status: "Verified",
+    role: "admin",
+    email: "subramanyamghadiyaram@gmail.com",
     subscription_status: "paid_900",
     photo_url: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400",
     birth_time: "06:15",
@@ -132,6 +121,7 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     salary_lpa: 30.0,
     contact_number: "9494949494",
     status: "Verified",
+    role: "admin",
     subscription_status: "paid_900",
     photo_url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=400",
     birth_time: "08:00",
@@ -149,7 +139,8 @@ const PRE_SEEDED_PROFILES: Profile[] = [
       compatibilityTraits: ["Dignified leadership", "Traditional values", "Reliable coordinator"],
       spiritualScore: 92
     },
-    created_at: "2026-07-07T16:00:00Z"
+    created_at: "2026-07-07T16:00:00Z",
+    email: "Subbareddyposham@gmail.com"
   },
   {
     id: "prof-karna-tejaswar",
@@ -163,9 +154,9 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     profession: "Chief Grievance Redressal Officer",
     salary_lpa: 18.0,
     contact_number: "9123456780",
-    email: "grievance@shubhamastu.in",
+    email: "K.tejaswar567@gmail.com",
     status: "Verified",
-    subscription_status: "paid_900",
+    role: "admin",
     photo_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400",
     birth_time: "10:30",
     birth_location: "Hyderabad, India",
