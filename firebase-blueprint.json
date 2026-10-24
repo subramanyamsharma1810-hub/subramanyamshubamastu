@@ -1,0 +1,91 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "Public-facing matrimonial profile data.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "surname": { "type": "string" },
+        "gender": { "type": "string", "enum": ["Male", "Female"] },
+        "dob": { "type": "string" },
+        "sub_caste": { "type": "string" },
+        "gothram": { "type": "string" },
+        "profession": { "type": "string" },
+        "salary_lpa": { "type": "number" },
+        "photo_url": { "type": "string" },
+        "status": { "type": "string", "enum": ["Verified", "Pending", "Declined", "Married"] },
+        "subscription_status": { "type": "string", "enum": ["free", "paid_100", "paid_900"] }
+      },
+      "required": ["id", "name", "gender", "dob"]
+    },
+    "PrivateData": {
+      "title": "Private User Data",
+      "description": "Sensitive information like contact numbers.",
+      "type": "object",
+      "properties": {
+        "contact_number": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["contact_number"]
+    },
+    "ContactReveal": {
+      "title": "Contact Reveal Request",
+      "description": "A record tracking contact reveal permissions between two users.",
+      "type": "object",
+      "properties": {
+        "requesterId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "requestedAt": { "type": "string", "format": "date-time" },
+        "respondedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requesterId", "targetId", "status"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "System audit records for IT Act compliance.",
+      "type": "object",
+      "properties": {
+        "log_id": { "type": "string" },
+        "timestamp_ist": { "type": "string" },
+        "action": { "type": "string" },
+        "adminId": { "type": "string" },
+        "details": { "type": "string" }
+      }
+    },
+    "PendingVerification": {
+       "title": "Pending Verification",
+       "description": "Fallback for OTP delivery failures.",
+       "type": "object",
+       "properties": {
+         "email": { "type": "string" },
+         "otp": { "type": "string" },
+         "timestamp": { "type": "string" }
+       }
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Matrimonial profiles."
+    },
+    "/profiles/{profileId}/private/data": {
+      "schema": "PrivateData",
+      "description": "PII for profiles."
+    },
+    "/contact_reveals/{revealId}": {
+      "schema": "ContactReveal",
+      "description": "Permissions for contact viewing."
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "System-wide audit logs."
+    },
+    "/pending_verifications/{email}": {
+      "schema": "PendingVerification",
+      "description": "OTP fallback for admins."
+    }
+  }
+}

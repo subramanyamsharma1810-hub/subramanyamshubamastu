@@ -6,14 +6,16 @@ const url = "https://api.zeptomail.in/v1.1/email";
 const rawToken =
   process.env.ZEPTOMAIL_API_TOKEN ||
   process.env.ZOHO_ZEPTOMAIL_API_KEY ||
-  "Zoho-enczapikey PHtE6r1bEL/uimYpoxMJsaLuFsXwZ40u/+luLAUR4opFCPJVHU0Ar919kDKz+BwqUPAXRaSfz4g7tLmf57mAJD25M2kdDmqyqK3sx/VYSPOZsbq6x00btF8ecUXeUoTtctBs1ibeu9rfNA==";
+  "";
 
 // Ensure token contains the required Zoho-enczapikey prefix expected by ZeptoMail API
-const token = rawToken.toLowerCase().startsWith("zoho-enczapikey ")
-  ? rawToken.trim()
-  : `Zoho-enczapikey ${rawToken.trim()}`;
+const token = rawToken
+  ? (rawToken.toLowerCase().startsWith("zoho-enczapikey ")
+      ? rawToken.trim()
+      : `Zoho-enczapikey ${rawToken.trim()}`)
+  : "";
 
-export const client = new SendMailClient({ url, token });
+export const client = new SendMailClient({ url, token: token || "dummy_token" });
 
 export interface EmailLogEntry {
   id: string;

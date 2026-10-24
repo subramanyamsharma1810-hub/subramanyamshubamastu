@@ -12,7 +12,7 @@ import CalendarReminders from "./components/CalendarReminders";
 import { LegalFooter } from "./components/LegalModals";
 import { SuspensionNotice } from "./components/SuspensionNotice";
 import { Profile, PartnerPreferences } from "./types";
-import { databaseService } from "./lib/databaseService";
+import { databaseService, adminNotificationService } from "./lib/databaseService";
 import PublicReceiptViewer from "./components/PublicReceiptViewer";
 import CompactKebabCardView from "./components/CompactKebabCardView";
 import TermsPage from "./components/TermsPage";
@@ -28,7 +28,8 @@ import CallRoom from "./components/meet/CallRoom";
 import CallHistory from "./components/meet/CallHistory";
 import { registerCallPushNotifications } from "./lib/pushNotifications";
 import { ref, get } from "firebase/database";
-import { rtdb } from "./lib/firebase";
+import { rtdb, ensureAuth, auth, googleProvider } from "./lib/firebase";
+import { signInWithPopup } from "firebase/auth";
 import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
 
 export default function App() {
@@ -90,13 +91,12 @@ export default function App() {
 
   // Activate Real-Time Presence heartbeat
   useUserPresence(currentProfile?.id);
-
   // Load active user profile and their preferences on mount
   useEffect(() => {
     async function loadInitialData() {
       setLoading(true);
       try {
-        await databaseService.purgeFakeData().catch(() => {});
+        await ensureAuth();
         const loggedInId = localStorage.getItem("bramhana_logged_in_user_id");
         if (loggedInId) {
           const profiles = await databaseService.getProfiles(true);
@@ -124,16 +124,20 @@ export default function App() {
             setPreferences(prefs);
             
             const isSystemAdmin = 
-              activeProfile.id === "prof-subbu" || 
-              activeProfile.id === "prof-subba-reddy" || 
+              activeProfile.id === "admin-subbu" || 
+              activeProfile.id === "admin-subba-reddy" || 
+              activeProfile.id === "admin-tejaswar" ||
               activeProfile.role === "employee" ||
               activeProfile.role === "admin" ||
               activeProfile.contact_number?.replace(/\D/g, "").includes("9347359489") || 
-              activeProfile.contact_number?.replace(/\D/g, "").includes("9494949494");
+              activeProfile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+              activeProfile.contact_number?.replace(/\D/g, "").includes("9392551166");
             
             if (isSystemAdmin) {
               localStorage.setItem("bramhana_admin_session", "true");
               setIsAdmin(true);
+              // Only purge if specifically logged in as admin to avoid permission noise for guests
+              await databaseService.purgeFakeData().catch(() => {});
             } else {
               setIsAdmin(false);
             }
@@ -145,7 +149,7 @@ export default function App() {
           setCurrentProfile(null);
         }
       } catch (err) {
-        console.error("Failed to load initial profile data:", err);
+        console.warn("Non-fatal startup warning:", err);
       } finally {
         setLoading(false);
       }
@@ -157,12 +161,14 @@ export default function App() {
     setCurrentProfile(profile);
     registerCallPushNotifications(profile.id).catch(() => {});
     const isSystemAdmin = 
-      profile.id === "prof-subbu" || 
-      profile.id === "prof-subba-reddy" || 
+      profile.id === "admin-subbu" || 
+      profile.id === "admin-subba-reddy" || 
+      profile.id === "admin-tejaswar" ||
       profile.role === "employee" ||
       profile.role === "admin" ||
       profile.contact_number?.replace(/\D/g, "").includes("9347359489") || 
-      profile.contact_number?.replace(/\D/g, "").includes("9494949494");
+      profile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+      profile.contact_number?.replace(/\D/g, "").includes("9392551166");
     
     if (isSystemAdmin) {
       localStorage.setItem("bramhana_admin_session", "true");
@@ -207,7 +213,7 @@ export default function App() {
       }
     } else {
       // Verify OTP entered by admin
-      if (!adminOtpInput || (adminOtpInput !== generatedAdminOtp && adminOtpInput !== "70439771" && adminOtpInput !== "123456")) {
+      if (!adminOtpInput || adminOtpInput !== generatedAdminOtp) {
         setAdminLoginError("Invalid OTP code. Please enter the correct 6-digit OTP sent to your email.");
         return;
       }
@@ -223,12 +229,14 @@ export default function App() {
       
       const profiles = await databaseService.getProfiles(true);
       const isSubbu = verifiedAdmin.id === "admin-subbu" || mobileClean.includes("9347359489");
-      const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9494949494");
+      const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9989079372");
+      const isKarna = verifiedAdmin.id === "admin-tejaswar" || mobileClean.includes("9392551166");
       
       let adminProf = profiles.find(p => 
         p.id === verifiedAdmin.id || 
-        (isSubbu && p.id === "prof-subbu") || 
-        (isSubba && p.id === "prof-subba-reddy") ||
+        (isSubbu && p.id === "admin-subbu") || 
+        (isSubba && p.id === "admin-subba-reddy") ||
+        (isKarna && p.id === "admin-tejaswar") ||
         p.contact_number?.replace(/\D/g, "").slice(-10) === mobileClean.slice(-10)
       );
 
@@ -253,6 +261,18 @@ export default function App() {
       
       localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
       localStorage.setItem("bramhana_current_admin", JSON.stringify(verifiedAdmin));
+      
+      // CRITICAL: Elevate anonymous session to admin in Firestore to enable isAdmin() rules
+      if (auth.currentUser) {
+        await adminNotificationService.elevateToAdmin(auth.currentUser.uid, {
+          adminId: verifiedAdmin.id,
+          name: verifiedAdmin.name,
+          role: verifiedAdmin.role,
+          stage: verifiedAdmin.stage,
+          mobile: verifiedAdmin.mobile
+        });
+      }
+
       setCurrentProfile({
         ...adminProf,
         role: (verifiedAdmin.role as any) || adminProf.role || "admin"
@@ -376,10 +396,12 @@ export default function App() {
   }
 
   const isLoggedInUserAdmin = 
-    currentProfile?.id === "prof-subbu" || 
-    currentProfile?.id === "prof-subba-reddy" || 
+    currentProfile?.id === "admin-subbu" || 
+    currentProfile?.id === "admin-subba-reddy" || 
+    currentProfile?.id === "admin-tejaswar" ||
     currentProfile?.contact_number?.replace(/\D/g, "").includes("9347359489") || 
-    currentProfile?.contact_number?.replace(/\D/g, "").includes("9494949494");
+    currentProfile?.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+    currentProfile?.contact_number?.replace(/\D/g, "").includes("9392551166");
 
   return (
     <div className="min-h-screen bg-[#EBF6FF] text-[#362B5A] font-sans flex flex-col">
@@ -692,7 +714,7 @@ export default function App() {
                       type="text"
                       required
                       maxLength={6}
-                      placeholder="e.g. 704397"
+                      placeholder="XXXXXX"
                       value={adminOtpInput}
                       onChange={(e) => setAdminOtpInput(e.target.value)}
                       className="w-full bg-gray-50 border-2 border-[#362B5A] rounded-xl py-3 px-4 text-[#362B5A] text-center font-mono tracking-widest text-lg font-black focus:outline-none shadow-sm"
@@ -718,6 +740,72 @@ export default function App() {
             >
               <Sparkles className="w-4 h-4 text-orange-200" />
               <span>{adminOtpSent ? "Verify OTP & Login" : "Send Verification OTP"}</span>
+            </button>
+
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-400 bg-white px-2">Security Fallback</div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const result = await signInWithPopup(auth, googleProvider);
+                  const user = result.user;
+                  if (user) {
+                    const authorizedEmails = [
+                      "subramanyamghadiyaram@gmail.com",
+                      "subbareddyposham@gmail.com",
+                      "k.tejaswar567@gmail.com"
+                    ];
+                    if (authorizedEmails.includes(user.email || "")) {
+                      const isSubbu = user.email === "subramanyamghadiyaram@gmail.com";
+                      const isSubba = user.email === "subbareddyposham@gmail.com";
+                      const isKarna = user.email === "k.tejaswar567@gmail.com";
+
+                      const adminProf = {
+                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : "admin-tejaswar",
+                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : "BVM-1010",
+                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : "Mr. Karna Tejaswar Reddy"),
+                        dob: "1990-01-01",
+                        gender: "Male" as const,
+                        height_feet: 5.8,
+                        sub_caste: "Smartha",
+                        profession: "Administrator",
+                        salary_lpa: 15,
+                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : "9392551166",
+                        email: user.email!,
+                        status: "Verified" as const,
+                        role: "admin" as const,
+                        subscription_status: "paid_900" as const
+                      };
+
+                      await adminNotificationService.elevateToAdmin(user.uid, {
+                        adminId: adminProf.id,
+                        name: adminProf.name,
+                        role: "admin",
+                        stage: isSubbu ? 1 : 2,
+                        mobile: adminProf.contact_number
+                      });
+
+                      localStorage.setItem("bramhana_admin_session", "true");
+                      localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
+                      setCurrentProfile(adminProf);
+                      setIsAdmin(true);
+                      setShowAdminLoginModal(false);
+                    } else {
+                      setAdminLoginError("This Google account is not authorized for Administrative access.");
+                    }
+                  }
+                } catch (err: any) {
+                  setAdminLoginError(err.message);
+                }
+              }}
+              className="w-full py-2.5 bg-white border border-gray-200 text-[#362B5A] font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-all rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-2"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
+              <span>Admin Login with Google</span>
             </button>
           </form>
         </div>

@@ -6,3 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+.tempmediaStorage/
+
+# Exclude temporary agent metadata and studio assets
+*.metadata.json
+**/aistudio/**
+
+# Exclude local binary image files to keep repository lightweight
+*.png
+*.jpg
+*.jpeg

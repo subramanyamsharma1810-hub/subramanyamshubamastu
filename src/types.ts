@@ -36,7 +36,7 @@ export interface Profile {
   id: string;
   reg_number?: string; // e.g., BVM-1001
   password?: string;   // defaults to dob if not explicitly specified
-  role?: "candidate" | "employee" | "admin"; // Account level role
+  role?: "candidate" | "employee" | AdminRole; // Account level role
   name: string;
   dob: string;
   salary_lpa: number;
@@ -103,6 +103,7 @@ export interface Profile {
   is_test_user?: boolean; // Test user flag
   liked_profiles?: string[];  // Array of profile IDs this user has liked (swiped right)
   disliked_profiles?: string[]; // Array of profile IDs this user has skipped (swiped left)
+  otp_code?: string; // OTP code sent for verification
 }
 
 export interface CalendarReminder {

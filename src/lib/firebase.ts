@@ -1,22 +1,52 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, getDocFromServer, doc } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAnjL2miJOB-Ir-37151IoVMwiu-cIQNYU",
-  authDomain: "hazel-ward-lt3g1.firebaseapp.com",
-  projectId: "hazel-ward-lt3g1",
-  storageBucket: "hazel-ward-lt3g1.firebasestorage.app",
-  messagingSenderId: "655374362116",
-  appId: "1:655374362116:web:208a9ba12e3e40097cf751",
-  databaseURL: "https://hazel-ward-lt3g1-default-rtdb.firebaseio.com"
-};
-
-const databaseId = "ai-studio-bramhanavivahave-e0c4cd3c-62b7-411c-b376-c3b4f5d7b695";
+import { getAuth, signInAnonymously, GoogleAuthProvider } from "firebase/auth";
+import firebaseConfig from "../../firebase-applet-config.json" with { type: "json" };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, databaseId);
-export const rtdb = getDatabase(app, "https://hazel-ward-lt3g1-default-rtdb.firebaseio.com");
+
+// The database ID is typically in the config or we use the default
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const rtdb = getDatabase(app);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+
+export const ensureAuth = async () => {
+  if (!auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+      console.log("Firebase Anonymous Auth success:", auth.currentUser?.uid);
+    } catch (e: any) {
+      if (e.code === 'auth/admin-restricted-operation' || e.code === 'auth/operation-not-allowed') {
+        // Anonymous Auth provider is not enabled in Firebase Console.
+        // App safely continues in direct/guest mode or via Google Sign-In.
+        return;
+      }
+      console.warn("Firebase Auth status:", e?.message || e);
+    }
+  }
+};
+
+// CRITICAL CONSTRAINT: Validate Connection to Firestore on boot
+async function testConnection() {
+  try {
+    // Attempt a simple read to verify connection
+    await getDocFromServer(doc(db, 'system', 'health'));
+    console.log("Firestore connection verified.");
+  } catch (error: any) {
+    if (error.message?.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration: Client is offline.");
+    } else if (error.code === 'permission-denied') {
+      console.warn("Firestore connection test: Permission denied (expected if not authed/rules strict).");
+    } else {
+      console.warn("Firestore connection test note:", error.message);
+    }
+  }
+}
+testConnection();
+
 
 
 

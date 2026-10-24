@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Profile, Pandit } from "../types";
-import { databaseService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
+import { databaseService, generateRandomPassword, generateDefaultDobPassword, adminNotificationService } from "../lib/databaseService";
 import PhonePeQRCode from "./PhonePeQRCode";
 import { KundaliChart } from "./KundaliChart";
 import { calculatePanchangam, lookupByStartingLetter, TELUGU_PHONETIC_MAPPINGS } from "../lib/panchangam";
+import { ensureAuth, auth, googleProvider } from "../lib/firebase";
+import { signInWithPopup } from "firebase/auth";
 import { 
   BRAHMIN_SUB_CASTES, 
   BRAHMIN_GOTRAMS, 
@@ -89,7 +91,7 @@ export default function LandingPage({
   const [pendingAdminProfile, setPendingAdminProfile] = useState<Profile | null>(null);
   const [showAdminOtpModal, setShowAdminOtpModal] = useState<boolean>(false);
   const [enteredAdminOtp, setEnteredAdminOtp] = useState<string>("");
-  const [targetAdminOtp, setTargetAdminOtp] = useState<string>("704397");
+  const [targetAdminOtp, setTargetAdminOtp] = useState<string>("");
   const [adminOtpNotice, setAdminOtpNotice] = useState<string>("");
   const [registeredProfile, setRegisteredProfile] = useState<Profile | null>(null);
   const [regTxnId, setRegTxnId] = useState("");
@@ -265,11 +267,11 @@ export default function LandingPage({
         setIsOtpSent(true);
         setOtpCooldown(120); // 2 minutes cooldown
         localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-        setOtpSuccessMsg(`✉️ 7-Digit OTP successfully sent to ${regEmail} via verification@shubhamastu.in. (OTP Code: ${code})`);
+        setOtpSuccessMsg(`✉️ 7-Digit OTP successfully sent to ${regEmail} via verification@shubhamastu.in. Please check your email inbox.`);
       } else {
         setIsOtpSent(true);
         setOtpCooldown(120);
-        setOtpSuccessMsg(`✉️ 7-Digit OTP generated for ${regEmail} via verification@shubhamastu.in. (OTP Code: ${code})`);
+        setOtpSuccessMsg(`✉️ 7-Digit OTP dispatched to ${regEmail} via verification@shubhamastu.in.`);
       }
     } catch (err) {
       console.error("Error sending email OTP:", err);
@@ -290,11 +292,7 @@ export default function LandingPage({
     }
     const cleanRegOtp = regOtp.trim();
     const cleanGenOtp = generatedOtp ? generatedOtp.trim() : "";
-    const isValidRegOtp = 
-      cleanRegOtp === cleanGenOtp || 
-      cleanRegOtp === "1234567" || 
-      cleanRegOtp === "123456" || 
-      cleanRegOtp.length >= 4;
+    const isValidRegOtp = cleanRegOtp === cleanGenOtp;
 
     if (isValidRegOtp) {
       setIsEmailVerified(true);
@@ -583,6 +581,9 @@ export default function LandingPage({
   const dispatchAdminOtpEmail = async (email: string, otp: string) => {
     setIsSendingAdminOtp(true);
     try {
+      // Log to Firestore pending_verifications collection for Admin OTP Monitor fallback
+      await adminNotificationService.logPendingVerification(email, otp);
+      
       const res = await fetch("/api/send-email-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -612,11 +613,17 @@ export default function LandingPage({
 
     const emailTrim = adminEmail.trim().toLowerCase();
     if (!emailTrim) {
-      setAdminError("Please enter authorized admin email ID (e.g. subramanyamghadiyaram@gmail.com).");
+      setAdminError("Please enter authorized admin email ID.");
       return;
     }
 
-    if (emailTrim !== "subramanyamghadiyaram@gmail.com" && emailTrim !== "subbareddyposham@gmail.com" && emailTrim !== "k.tejaswar567@gmail.com") {
+    const authorizedEmails = [
+      "subramanyamghadiyaram@gmail.com",
+      "subbareddyposham@gmail.com",
+      "k.tejaswar567@gmail.com"
+    ];
+
+    if (!authorizedEmails.includes(emailTrim)) {
       setAdminError("Access Denied: Only authorized administrators can access the Admin Sanctuary.");
       return;
     }
@@ -627,10 +634,10 @@ export default function LandingPage({
     const result = await dispatchAdminOtpEmail(emailTrim, otp);
     if (result.success) {
       setIsAdminOtpSent(true);
-      setAdminOtpSuccessMsg(`✉️ 6-Digit OTP successfully dispatched to ${emailTrim} via verification@shubhamastu.in. (OTP Code: ${otp})`);
+      setAdminOtpSuccessMsg(`✉️ 6-Digit OTP successfully dispatched to ${emailTrim} via verification@shubhamastu.in. Please check your inbox.`);
     } else {
       setIsAdminOtpSent(true);
-      setAdminOtpSuccessMsg(`✉️ 6-Digit OTP generated for ${emailTrim} via verification@shubhamastu.in. (OTP Code: ${otp})`);
+      setAdminOtpSuccessMsg(`✉️ 6-Digit OTP dispatched to ${emailTrim} via verification@shubhamastu.in.`);
     }
   };
 
@@ -643,9 +650,9 @@ export default function LandingPage({
     setAdminGeneratedOtp(otp);
     const result = await dispatchAdminOtpEmail(emailTrim, otp);
     if (result.success) {
-      setAdminOtpSuccessMsg(`🔄 6-Digit OTP re-sent successfully to ${emailTrim} via verification@shubhamastu.in. (OTP Code: ${otp})`);
+      setAdminOtpSuccessMsg(`🔄 6-Digit OTP re-sent successfully to ${emailTrim} via verification@shubhamastu.in.`);
     } else {
-      setAdminOtpSuccessMsg(`🔄 6-Digit OTP generated for ${emailTrim} via verification@shubhamastu.in. (OTP Code: ${otp})`);
+      setAdminOtpSuccessMsg(`🔄 6-Digit OTP sent to ${emailTrim} via verification@shubhamastu.in.`);
     }
   };
 
@@ -669,12 +676,7 @@ export default function LandingPage({
 
     const isValidAdminOtp = 
       cleanAdminOtp === cleanGenAdminOtp || 
-      (cleanGenAdminOtp && cleanAdminOtp === cleanGenAdminOtp.slice(-6)) ||
-      cleanAdminOtp === "70439771" || 
-      cleanAdminOtp === "123456" || 
-      cleanAdminOtp === "789123" || 
-      cleanAdminOtp === "704397" ||
-      cleanAdminOtp.length >= 4;
+      (cleanGenAdminOtp && cleanAdminOtp === cleanGenAdminOtp.slice(-6));
 
     if (!cleanAdminOtp || !isValidAdminOtp) {
       setAdminError("Invalid OTP code. Please enter the correct 6-digit OTP sent to your email.");
@@ -682,6 +684,7 @@ export default function LandingPage({
     }
 
     try {
+      await ensureAuth();
       const profiles = await databaseService.getProfiles(true);
       const isSubbu = emailTrim === "subramanyamghadiyaram@gmail.com";
       const isSubba = emailTrim === "subbareddyposham@gmail.com";
@@ -689,14 +692,14 @@ export default function LandingPage({
       
       let adminProf = profiles.find((p) => 
         p.email?.toLowerCase() === emailTrim ||
-        (isSubbu && p.id === "prof-subbu") || 
-        (isSubba && p.id === "prof-subba-reddy") ||
-        (isKarna && p.id === "prof-karna-tejaswar")
+        (isSubbu && p.id === "admin-subbu") || 
+        (isSubba && p.id === "admin-subba-reddy") ||
+        (isKarna && p.id === "admin-tejaswar")
       );
 
       if (!adminProf) {
         adminProf = {
-          id: isSubbu ? "prof-subbu" : isSubba ? "prof-subba-reddy" : "prof-karna-tejaswar",
+          id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : "admin-tejaswar",
           reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : "BVM-1010",
           name: isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : "Mr. Karna Tejaswar Reddy",
           dob: "1990-01-01",
@@ -705,12 +708,23 @@ export default function LandingPage({
           sub_caste: "Smartha",
           profession: "Administrator",
           salary_lpa: 15,
-          contact_number: adminMobile.trim() || (isSubbu ? "9347359489" : isSubba ? "9494949494" : "9123456780"),
+          contact_number: adminMobile.trim() || (isSubbu ? "9347359489" : isSubba ? "9989079372" : "9392551166"),
           email: emailTrim,
           status: "Verified",
           role: "admin",
           subscription_status: "paid_900"
         };
+      }
+
+      await ensureAuth();
+      const currentUid = (await import("../lib/firebase")).auth.currentUser?.uid;
+      if (currentUid) {
+        await adminNotificationService.elevateToAdmin(currentUid, {
+          id: adminProf.id,
+          name: adminProf.name,
+          email: emailTrim,
+          role: adminProf.role
+        });
       }
 
       localStorage.setItem("bramhana_admin_session", "true");
@@ -753,24 +767,10 @@ export default function LandingPage({
     }
 
     try {
-      const profiles = await databaseService.getProfiles(true);
-      
-      let matchedProfiles = [];
-      if (inputClean.includes("@")) {
-        matchedProfiles = profiles.filter((p) => (p.email && p.email.toLowerCase() === inputClean) || (p.reg_number && p.reg_number.toLowerCase() === inputClean));
-      } else if (inputClean.startsWith("abc-") || inputClean.startsWith("bvm-") || inputClean.startsWith("adm-") || inputClean.includes("-")) {
-        matchedProfiles = profiles.filter((p) => (p.reg_number && p.reg_number.toLowerCase() === inputClean) || (p.id && p.id.toLowerCase() === inputClean));
-      } else {
-        const cleanInput = inputClean.replace(/\D/g, "");
-        matchedProfiles = profiles.filter((p) => {
-          const cleanStored = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
-          const regNum = p.reg_number ? p.reg_number.toLowerCase() : "";
-          const idStr = p.id ? p.id.toLowerCase() : "";
-          return (cleanStored && cleanInput && (cleanStored === cleanInput || cleanStored.slice(-10) === cleanInput.slice(-10) || cleanInput.slice(-10) === cleanStored.slice(-10))) || regNum.includes(inputClean) || idStr.includes(inputClean);
-        });
-      }
+      // Use the specialized lookup method that handles masked profiles and private data
+      const match = await databaseService.getProfileByPhone(inputClean);
 
-      if (matchedProfiles.length > 0) {
+      if (match) {
         // Helper to check if entered password matches the profile password or any DOB formats
         const checkPasswordMatch = (p: any, enteredPass: string): boolean => {
           const pass = enteredPass.trim();
@@ -814,27 +814,25 @@ export default function LandingPage({
           return dobStr === pass || dobStr.replace(/[-/]/g, "") === cleanPass;
         };
 
-        // Find if any matched profile has a matching password (helps choose correct duplicate profile)
-        const match = matchedProfiles.find((p) => checkPasswordMatch(p, passClean)) || matchedProfiles[0];
-
         // Match password with stored password OR child's DOB as password
         const passwordMatches = checkPasswordMatch(match, passClean);
 
         if (passwordMatches) {
           const cleanNum = match.contact_number ? match.contact_number.replace(/\D/g, "") : "";
-          const isAdminAcc = match.id === "prof-subbu" || match.id === "prof-subba-reddy" || match.id === "prof-karna-tejaswar" || match.role === "admin" || match.role === "employee" || cleanNum.includes("9347359489") || cleanNum.includes("9494949494") || cleanNum.includes("9123456780") || match.email?.toLowerCase().includes("subramanyam") || match.email?.toLowerCase().includes("tejaswar") || match.email?.toLowerCase().includes("subbareddy");
+          const isAdminAcc = match.role === "admin" || match.role === "super_admin" || match.role === "employee" || ["admin-subbu", "admin-subba-reddy", "admin-tejaswar"].includes(match.id);
 
           if (isAdminAcc) {
-            const adminEmailToUse = match.email || (match.id === "prof-subbu" ? "subramanyamghadiyaram@gmail.com" : match.id === "prof-subba-reddy" ? "Subbareddyposham@gmail.com" : "K.tejaswar567@gmail.com");
+            const adminEmailToUse = match.email || (match.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : match.id === "admin-subba-reddy" ? "subbareddyposham@gmail.com" : "k.tejaswar567@gmail.com");
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             setTargetAdminOtp(otp);
             setPendingAdminProfile(match);
             await dispatchAdminOtpEmail(adminEmailToUse, otp);
-            setAdminOtpNotice(`Admin Security Verification: An OTP has been successfully dispatched to your respective email ID (${adminEmailToUse}) via Zoho ZeptoMail.`);
+            setAdminOtpNotice(`Security Verification: An OTP has been successfully dispatched to your registered admin email (${adminEmailToUse.replace(/(.{3})(.*)(@.*)/, "$1***$3")}).`);
             setShowAdminOtpModal(true);
             return;
           }
 
+          await ensureAuth();
           localStorage.setItem("bramhana_logged_in_user_id", match.id);
           onLoginSuccess(match);
         } else {
@@ -1029,10 +1027,12 @@ export default function LandingPage({
       const adminId = localStorage.getItem("bramhana_logged_in_user_id");
       let registeredBy = regRegisteredBy;
       if (localStorage.getItem("bramhana_admin_session") === "true") {
-        if (adminId === "prof-subbu") {
+        if (adminId === "admin-subbu") {
           registeredBy = "GV Subramanyam";
-        } else if (adminId === "prof-subba-reddy") {
+        } else if (adminId === "admin-subba-reddy") {
           registeredBy = "PV Subba Reddy";
+        } else if (adminId === "admin-tejaswar") {
+          registeredBy = "Karna Tejaswar Reddy";
         } else {
           registeredBy = "Bramhana Admin";
         }
@@ -1699,14 +1699,14 @@ export default function LandingPage({
 
                 <div className="space-y-2 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">Candidate Email ID & OTP Verification</label>
+                    <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">Candidate Email ID (Optional Verification)</label>
                     {isEmailVerified ? (
                       <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/30">
                         ✓ Verified
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded">
-                        Recommended
+                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] font-bold rounded">
+                        Optional (ఐచ్ఛికం)
                       </span>
                     )}
                   </div>
@@ -2203,38 +2203,11 @@ export default function LandingPage({
                 <button
                   type="button"
                   onClick={() => {
-                    if (regStep === 1 && (!regSurname || !regName)) {
-                      alert("దయచేసి ఇంటి పేరు మరియు పేరు నమోదు చేయండి.");
-                      return;
-                    }
-                    if (regStep === 2) {
-                      if (!regPhone) {
-                        alert("దయచేసి మొబైల్ నంబర్ నమోదు చేయండి.");
-                        return;
-                      }
-                      if (!regEmail || !regEmail.includes("@")) {
-                        alert("దయచేసి సరైన ఈమెయిల్ చిరునామాను నమోదు చేయండి.");
-                        return;
-                      }
-                      if (!isEmailVerified) {
-                        alert("దయచేసి మీ ఈమెయిల్ మరియు OTP ని ధృవీకరించండి.\nPlease enter the correct OTP and verify your email before proceeding to the next step.");
-                        return;
-                      }
-                    }
-                    if (regStep === 4 && !regDob) {
-                      alert("దయచేసి పుట్టిన తేదీ నమోదు చేయండి.");
-                      return;
-                    }
                     setRegStep(regStep + 1);
                   }}
-                  disabled={regStep === 2 && !isEmailVerified}
-                  className={`px-6 py-2.5 rounded-xl font-extrabold uppercase tracking-wider text-xs shadow-md transition-all ${
-                    regStep === 2 && !isEmailVerified
-                      ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-70"
-                      : "bg-gradient-to-r from-amber-400 to-yellow-500 text-black cursor-pointer hover:from-amber-500 hover:to-yellow-600"
-                  }`}
+                  className="px-6 py-2.5 rounded-xl font-extrabold uppercase tracking-wider text-xs shadow-md transition-all bg-gradient-to-r from-amber-400 to-yellow-500 text-black cursor-pointer hover:from-amber-500 hover:to-yellow-600"
                 >
-                  {regStep === 2 && !isEmailVerified ? "Verify Email to Continue 🔒" : "Next Step (తదుపరి) →"}
+                  Next Step (తదుపరి) →
                 </button>
               ) : (
                 <button
@@ -2592,7 +2565,7 @@ export default function LandingPage({
                         type="text"
                         required
                         maxLength={6}
-                        placeholder="e.g. 704397"
+                        placeholder="XXXXXX"
                         value={adminOtp}
                         onChange={(e) => setAdminOtp(e.target.value)}
                         className="w-full bg-black border-2 border-amber-400 rounded-xl py-3 pl-9 pr-3 text-white focus:outline-none font-mono tracking-widest text-center text-lg font-black shadow-lg"
@@ -2629,6 +2602,70 @@ export default function LandingPage({
                   <span>{isAdminOtpSent ? "Verify OTP & Enter Admin Sanctuary" : "Send Admin OTP to Email"}</span>
                 </>
               )}
+            </button>
+
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-zinc-800"></span></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-500 bg-zinc-900 px-2">Security Fallback</div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const result = await signInWithPopup(auth, googleProvider);
+                  const user = result.user;
+                  if (user) {
+                    const authorizedEmails = [
+                      "subramanyamghadiyaram@gmail.com",
+                      "subbareddyposham@gmail.com",
+                      "k.tejaswar567@gmail.com"
+                    ];
+                    if (authorizedEmails.includes(user.email || "")) {
+                      const isSubbu = user.email === "subramanyamghadiyaram@gmail.com";
+                      const isSubba = user.email === "subbareddyposham@gmail.com";
+                      const isKarna = user.email === "k.tejaswar567@gmail.com";
+
+                      const adminProf = {
+                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : "admin-tejaswar",
+                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : "BVM-1010",
+                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : "Mr. Karna Tejaswar Reddy"),
+                        dob: "1990-01-01",
+                        gender: "Male" as const,
+                        height_feet: 5.8,
+                        sub_caste: "Smartha",
+                        profession: "Administrator",
+                        salary_lpa: 15,
+                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : "9392551166",
+                        email: user.email!,
+                        status: "Verified" as const,
+                        role: "admin" as const,
+                        subscription_status: "paid_900" as const
+                      };
+
+                      await adminNotificationService.elevateToAdmin(user.uid, {
+                        id: adminProf.id,
+                        name: adminProf.name,
+                        email: user.email,
+                        role: adminProf.role
+                      });
+
+                      localStorage.setItem("bramhana_admin_session", "true");
+                      localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
+                      onLoginSuccess(adminProf);
+                      setShowAdminModal(false);
+                    } else {
+                      setAdminError("This Google account is not authorized for Administrative access.");
+                    }
+                  }
+                } catch (err: any) {
+                  setAdminError(err.message);
+                }
+              }}
+              className="w-full py-2.5 bg-black border border-zinc-800 text-white font-bold text-xs uppercase tracking-wider hover:bg-zinc-800 transition-all rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-2"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
+              <span>Admin Login with Google</span>
             </button>
           </form>
         </div>
@@ -2787,7 +2824,7 @@ export default function LandingPage({
               <input
                 type="text"
                 maxLength={6}
-                placeholder="e.g. 704397"
+                placeholder="XXXXXX"
                 value={enteredAdminOtp}
                 onChange={(e) => setEnteredAdminOtp(e.target.value)}
                 className="w-full bg-black border-2 border-amber-400 rounded-xl py-3 px-4 text-white text-center font-mono tracking-widest text-lg font-black focus:outline-none shadow-lg"
@@ -2799,7 +2836,7 @@ export default function LandingPage({
                 type="button"
                 onClick={async () => {
                   if (pendingAdminProfile) {
-                    const emailToResend = pendingAdminProfile.email || (pendingAdminProfile.id === "prof-subbu" ? "subramanyamghadiyaram@gmail.com" : pendingAdminProfile.id === "prof-subba-reddy" ? "Subbareddyposham@gmail.com" : "K.tejaswar567@gmail.com");
+                    const emailToResend = pendingAdminProfile.email || (pendingAdminProfile.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : pendingAdminProfile.id === "admin-subba-reddy" ? "subbareddyposham@gmail.com" : "k.tejaswar567@gmail.com");
                     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
                     setTargetAdminOtp(newOtp);
                     await dispatchAdminOtpEmail(emailToResend, newOtp);
@@ -2816,7 +2853,7 @@ export default function LandingPage({
             <button
               type="button"
               onClick={() => {
-                if (!enteredAdminOtp || (enteredAdminOtp !== targetAdminOtp && enteredAdminOtp !== "70439771" && enteredAdminOtp !== "123456")) {
+                if (!enteredAdminOtp || enteredAdminOtp !== targetAdminOtp) {
                   setAdminError("Incorrect OTP code. Please enter the valid 6-digit OTP sent to your admin email.");
                   return;
                 }

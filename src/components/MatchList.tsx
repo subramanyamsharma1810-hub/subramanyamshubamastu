@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { List } from "react-window";
 import { Profile, PartnerPreferences, Grievance } from "../types";
 import { databaseService } from "../lib/databaseService";
 import PhonePeQRCode from "./PhonePeQRCode";
@@ -63,6 +64,23 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     const found = NAKSHATRAS.find(n => n.english.toLowerCase() === engName.toLowerCase());
     return found ? found.telugu : engName;
   };
+
+  const ShimmerCard = () => (
+    <div className="bg-white rounded-3xl border border-gray-100 p-0 overflow-hidden shadow-sm animate-pulse flex flex-col h-[560px]">
+      <div className="h-56 bg-gray-100 w-full" />
+      <div className="p-6 flex-1 space-y-6">
+        <div className="space-y-3">
+          <div className="h-6 bg-gray-100 rounded-lg w-3/4" />
+          <div className="h-3 bg-gray-50 rounded-lg w-1/2" />
+        </div>
+        <div className="bg-blue-50/50 h-10 rounded-xl w-full" />
+        <div className="pt-4 border-t border-gray-50 space-y-2">
+          <div className="h-10 bg-gray-100 rounded-xl w-full" />
+          <div className="h-10 bg-gray-50 rounded-xl w-full" />
+        </div>
+      </div>
+    </div>
+  );
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,9 +352,10 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         const matches = allProfiles.filter(
           (p) => {
             const isOwn = p.id === currentProfile.id;
-            const isSubbu = p.id === "prof-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
-            const isSubbaReddy = p.id === "prof-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9494949494");
-            return !isOwn && !isSubbu && !isSubbaReddy;
+            const isSubbu = p.id === "admin-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
+            const isSubbaReddy = p.id === "admin-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9989079372");
+            const isKarna = p.id === "admin-tejaswar" || p.contact_number?.replace(/\D/g, "").includes("9392551166");
+            return !isOwn && !isSubbu && !isSubbaReddy && !isKarna;
           }
         );
         setProfiles(matches);
@@ -892,12 +911,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
       )}
 
       {loading ? (
-        <div className="py-20 text-center space-y-4">
-          <svg className="animate-spin h-8 w-8 text-[#C2242C] mx-auto" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <p className="text-sm text-gray-500 font-bold font-mono">Consulting the Constellations...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {[...Array(6)].map((_, i) => <ShimmerCard key={i} />)}
         </div>
       ) : sortedMatches.length === 0 ? (
         <div className="py-12 bg-[#362B5A] text-white rounded-3xl border-2 border-amber-400 text-center max-w-2xl mx-auto p-8 sm:p-12 space-y-6 relative overflow-hidden shadow-xl animate-fade-in">
@@ -999,203 +1014,123 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {sortedMatches.map((match) => {
-                const scoreDetails = calculateMatchScore(currentProfile, match);
-                const matchScore = scoreDetails.totalScore;
-                const age = calculateAge(match.dob);
+            <div className="w-full">
+              {/* Virtualized List Container */}
+              <List
+                height={800}
+                rowCount={Math.ceil(sortedMatches.length / (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1))}
+                rowHeight={600}
+                width="100%"
+                className="scrollbar-hide"
+                rowProps={{}}
+                rowComponent={({ index, style }) => {
+                  const columns = window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1;
+                  const rowMatches = sortedMatches.slice(index * columns, (index + 1) * columns);
+                  
+                  return (
+                    <div style={style} className="px-1 sm:px-4 lg:px-6">
+                      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-8`}>
+                        {rowMatches.map((match) => {
+                        const scoreDetails = calculateMatchScore(currentProfile, match);
+                        const matchScore = scoreDetails.totalScore;
+                        const age = calculateAge(match.dob);
 
-                return (
-                  <div
-                    key={match.id}
-                    className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative"
-                  >
-                    {/* Image Section */}
-                    <div className="h-56 w-full relative overflow-hidden bg-gray-50">
-                      <img
-                        src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
-                        alt={match.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {/* Score Overlap */}
-                      <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
-                        <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
-                        <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
-                      </div>
+                        return (
+                          <div
+                            key={match.id}
+                            className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative h-[560px]"
+                          >
+                            {/* Image Section */}
+                            <div className="h-56 w-full relative overflow-hidden bg-gray-50">
+                              <img
+                                src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
+                                alt={match.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              {/* Score Overlap */}
+                              <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
+                                <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
+                                <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
+                              </div>
 
-                      {/* Gender and Subcaste badge */}
-                      <div className="absolute bottom-4 left-4 flex gap-1.5">
-                        <span className="bg-[#362B5A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
-                          {match.sub_caste}
-                        </span>
-                        <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
-                          {match.height_feet} Ft
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Info Details */}
-                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="text-xl font-bold text-[#362B5A] leading-tight flex items-center gap-1.5">
-                              {match.name}
-                              {match.status === "Premium" && (
-                                <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
-                              )}
-                            </h4>
-                            <div className="text-xs text-[#C2242C] font-extrabold mt-0.5">
-                              {getGenderLabel(match.gender)}
+                              {/* Gender and Subcaste badge */}
+                              <div className="absolute bottom-4 left-4 flex gap-1.5">
+                                <span className="bg-[#362B5A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                                  {match.sub_caste}
+                                </span>
+                                <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                                  {match.height_feet} Ft
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-sm text-gray-600 font-semibold mt-1">{match.profession}</p>
-                          </div>
-                          <span className="text-lg font-extrabold text-[#362B5A] font-sans shrink-0">{age} yrs</span>
-                        </div>
 
-                        {/* Astrological Micro Indicators */}
-                        {match.astrology && (
-                          <div className="bg-[#EBF6FF] p-3 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
-                            <div>
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">నక్షత్రం (Nakshatra)</span>
-                              <span className="font-bold text-[#362B5A]">{getNakshatraTelugu(match.astrology.nakshatra)} ({match.astrology.nakshatra})</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">తిథి (Lunar Tithi)</span>
-                              <span className="font-bold text-[#C2242C] truncate max-w-[120px] inline-block">{match.astrology.tithi.split(" (")[0]}</span>
-                            </div>
-                          </div>
-                        )}
+                            {/* Info Details */}
+                            <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-lg font-bold text-[#362B5A] leading-tight flex items-center gap-1.5 truncate">
+                                      {match.name}
+                                      {match.status === "Premium" && (
+                                        <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
+                                      )}
+                                    </h4>
+                                    <div className="text-[10px] text-[#C2242C] font-extrabold mt-0.5 uppercase">
+                                      {getGenderLabel(match.gender)}
+                                    </div>
+                                    <p className="text-xs text-gray-600 font-semibold mt-1 truncate">{match.profession}</p>
+                                  </div>
+                                  <span className="text-sm font-extrabold text-[#362B5A] font-sans shrink-0 ml-2">{age} yrs</span>
+                                </div>
 
-                        {/* Salary & Location stats */}
-                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-semibold pt-1">
-                          <div className="flex items-center gap-1">
-                            <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span>₹ {match.salary_lpa} LPA</span>
-                          </div>
-                          <div className="flex items-center gap-1 justify-end text-right">
-                            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span className="truncate">{match.birth_location || "Varanasi"}</span>
-                          </div>
-                        </div>
-                      </div>
+                                {/* Astrological Micro Indicators */}
+                                {match.astrology && (
+                                  <div className="bg-[#EBF6FF] p-2.5 rounded-xl border border-blue-100 flex items-center justify-between text-[10px]">
+                                    <div>
+                                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">నక్షత్రం</span>
+                                      <span className="font-bold text-[#362B5A]">{getNakshatraTelugu(match.astrology.nakshatra)}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">తిథి</span>
+                                      <span className="font-bold text-[#C2242C] truncate max-w-[80px] inline-block">{match.astrology.tithi.split(" (")[0]}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
 
-                      {/* Actions */}
-                      <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
-                        {(currentProfile.liked_profiles?.includes(match.id) || localSwiped[match.id] === 'right') ? (
-                          <div className="space-y-2">
-                            <div className="bg-pink-50 border border-pink-200 text-pink-700 px-3 py-1.5 rounded-xl text-xs font-black flex items-center justify-between">
-                              <span className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5 fill-pink-600 text-pink-600 animate-pulse" /> Interest Expressed</span>
-                              <span className="text-[10px] font-mono font-bold text-pink-500">3 Actions Active</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-1.5">
-                              <button
-                                onClick={() => setShowPandithModal(true)}
-                                className="py-2 px-1 bg-amber-500 hover:bg-amber-400 text-black font-bold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs"
-                                title="Consult Vedic Priest for Jatakas"
-                              >
-                                <span>📿 Consult</span>
-                                <span className="text-[9px] font-normal font-mono">Priest</span>
-                              </button>
-                              <button
-                                onClick={() => setMeetDateTarget(match)}
-                                className="py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs"
-                                title="Ask for Meet & Date"
-                              >
-                                <span>☕ Meet &</span>
-                                <span className="text-[9px] font-normal font-mono">Date</span>
-                              </button>
-                              <button
-                                onClick={() => setPelliChupuluTarget(match)}
-                                className="py-2 px-1 bg-[#C2242C] hover:bg-red-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs"
-                                title="Ask for Pellikupulu Ceremony"
-                              >
-                                <span>🪔 Pelli</span>
-                                <span className="text-[9px] font-normal font-mono">Chupulu</span>
-                              </button>
+                              {/* Actions */}
+                              <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSwipe(match, "right")}
+                                    className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                  >
+                                    <Heart className="w-3.5 h-3.5 fill-white" />
+                                    <span>Express Interest</span>
+                                  </button>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setSelectedMatch(match)}
+                                    className="flex-1 py-2 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
+                                  >
+                                    View Sacred Details
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSwipe(match, "left")}
-                              className="py-2.5 px-3 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
-                              title="Not Interested"
-                            >
-                              <X className="w-4 h-4" />
-                              <span>Not Interested</span>
-                            </button>
-                            <button
-                              onClick={() => handleSwipe(match, "right")}
-                              className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                              title="Express Interest"
-                            >
-                              <Heart className="w-4 h-4 fill-white animate-pulse" />
-                              <span>Express Interest</span>
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            onClick={() => setSelectedMatch(match)}
-                            className="flex-1 py-2 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
-                          >
-                            Sacred Details
-                          </button>
-                          <a
-                            href={`tel:${match.contact_number}`}
-                            className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                          >
-                            <Phone className="w-3.5 h-3.5 animate-pulse" />
-                            <span>{maskMobileNumber(match.contact_number)}</span>
-                          </a>
-                        </div>
-                        {/* Instant Chat & Video/Audio Call Action Bar */}
-                        <div className="grid grid-cols-3 gap-1.5 pt-1">
-                          <button
-                            onClick={() => {
-                              markAsRead(match.id);
-                              setActiveChatMatch(match);
-                            }}
-                            className="py-2 px-1 bg-[#362B5A] hover:bg-[#4A3D78] text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer relative"
-                            title="Instant Real-Time Chat"
-                          >
-                            <MessageSquare className="w-3 h-3 text-amber-300" />
-                            <span>Chat</span>
-                            {getUnreadCount(match.id) > 0 && (
-                              <span className="absolute -top-2 -right-1 bg-emerald-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full animate-bounce border-2 border-white shadow-lg font-mono flex items-center gap-0.5">
-                                {getUnreadCount(match.id)}
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleStartCallRequest(match, "audio")}
-                            disabled={isCallingLoading}
-                            className="py-2 px-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                            title="Request Audio Call with Email Alert"
-                          >
-                            <Phone className="w-3 h-3" />
-                            <span>Audio</span>
-                          </button>
-                          <button
-                            onClick={() => handleStartCallRequest(match, "video")}
-                            disabled={isCallingLoading}
-                            className="py-2 px-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                            title="Request Video Call with Email Alert"
-                          >
-                            <Video className="w-3 h-3" />
-                            <span>Video</span>
-                          </button>
-                        </div>
+                        );
+                      })}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }}
+              />
             </div>
           )}
-      </div>
-    )}
+        </div>
+      )}
 
       {/* Mutual Match Modal */}
       <AnimatePresence>
