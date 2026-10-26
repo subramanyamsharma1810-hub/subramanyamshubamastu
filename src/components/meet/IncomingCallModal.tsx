@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import { Profile } from "../../types";
 import { ref, onValue, update, remove } from "firebase/database";
@@ -8,73 +8,60 @@ interface IncomingCallModalProps {
   currentProfile: Profile | null;
   onAcceptCall: (callSessionId: string, callType: "audio" | "video") => void;
   allProfiles: Profile[];
+  isInActiveCall?: boolean;
 }
 
-export default function IncomingCallModal({ currentProfile, onAcceptCall, allProfiles }: IncomingCallModalProps) {
+export default function IncomingCallModal({ 
+  currentProfile, 
+  onAcceptCall, 
+  allProfiles,
+  isInActiveCall = false
+}: IncomingCallModalProps) {
   const [incomingSession, setIncomingSession] = useState<any | null>(null);
   const [callerProfile, setCallerProfile] = useState<Profile | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    if (!currentProfile?.id) return;
-
-    // Poll backend callSessionEngine API for real-time fast ringing across devices
-    const pollBackendCalls = async () => {
-      try {
-        const res = await fetch(`/api/calls/active/${currentProfile.id}`);
-        const data = await res.json();
-        if (data.success && data.sessions && data.sessions.length > 0) {
-          const activeRinging = data.sessions.find((s: any) => s.status === "RINGING");
-          if (activeRinging) {
-            setIncomingSession(activeRinging);
-            const found = allProfiles.find(p => p.id === activeRinging.callerId);
-            setCallerProfile(found || {
-              id: activeRinging.callerId,
-              name: activeRinging.callerName || "Member",
-              reg_number: activeRinging.callerRegNumber || "SHUBH",
-              gender: "Male",
-              dob: "1995-01-01",
-              height_feet: 5.8,
-              sub_caste: "Brahmin",
-              profession: "Professional",
-              salary_lpa: 10,
-              contact_number: "",
-              status: "Verified"
-            });
-            return;
-          }
-        }
-      } catch (err) {}
+  // Helper to map caller details
+  const resolveCaller = useCallback((callerId: string, fallbackName?: string, fallbackReg?: string) => {
+    const found = allProfiles.find(p => p.id === callerId);
+    return found || {
+      id: callerId,
+      name: fallbackName || "Member",
+      reg_number: fallbackReg || "SHUBH",
+      gender: "Male" as const,
+      dob: "1995-01-01",
+      height_feet: 5.8,
+      sub_caste: "Brahmin",
+      profession: "Professional",
+      salary_lpa: 10,
+      contact_number: "",
+      status: "Verified" as const
     };
+  }, [allProfiles]);
 
-    pollBackendCalls();
-    const pollInterval = setInterval(pollBackendCalls, 1500);
+  useEffect(() => {
+    // Stop if user is not authenticated, has no valid dynamic ID, or is already inside an active call
+    if (!currentProfile?.id || isInActiveCall) {
+      setIncomingSession(null);
+      setCallerProfile(null);
+      return;
+    }
 
-    const myCallsRef = ref(rtdb, `calls/${currentProfile.id}`);
-    const unsubscribe = onValue(myCallsRef, (snapshot) => {
+    const userId = currentProfile.id;
+
+    // 1. WebSocket / Realtime Database Listener (Real-time push, zero HTTP polling)
+    const myCallsRef = ref(rtdb, `calls/${userId}`);
+    const unsubscribeRtdb = onValue(myCallsRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {
-        // Fallback check localStorage for cross-device/tab testing
-        const localCall = localStorage.getItem(`incoming_call_${currentProfile.id}`);
+        // Fallback check localStorage for cross-tab signals
+        const localCall = localStorage.getItem(`incoming_call_${userId}`);
         if (localCall) {
           try {
             const parsed = JSON.parse(localCall);
             if (parsed.status === "RINGING") {
               setIncomingSession(parsed);
-              const found = allProfiles.find(p => p.id === parsed.callerId);
-              setCallerProfile(found || {
-                id: parsed.callerId,
-                name: parsed.callerName || "Member",
-                reg_number: parsed.callerRegNumber || "SHUBH",
-                gender: "Male",
-                dob: "1995-01-01",
-                height_feet: 5.8,
-                sub_caste: "Brahmin",
-                profession: "Professional",
-                salary_lpa: 10,
-                contact_number: "",
-                status: "Verified"
-              });
+              setCallerProfile(resolveCaller(parsed.callerId, parsed.callerName, parsed.callerRegNumber));
               return;
             }
           } catch (e) {}
@@ -92,29 +79,16 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
       const activeRinging = sessions.find((s: any) => s.status === "RINGING");
       if (activeRinging) {
         setIncomingSession(activeRinging);
-        const found = allProfiles.find(p => p.id === activeRinging.callerId);
-        setCallerProfile(found || {
-          id: activeRinging.callerId,
-          name: activeRinging.callerName || "Member",
-          reg_number: activeRinging.callerRegNumber || "SHUBH",
-          gender: "Male",
-          dob: "1995-01-01",
-          height_feet: 5.8,
-          sub_caste: "Brahmin",
-          profession: "Professional",
-          salary_lpa: 10,
-          contact_number: "",
-          status: "Verified"
-        });
+        setCallerProfile(resolveCaller(activeRinging.callerId, activeRinging.callerName, activeRinging.callerRegNumber));
       } else {
         setIncomingSession(null);
         setCallerProfile(null);
       }
     });
 
-    // Also listen to storage events for instant local ringing
-    const handleStorage = () => {
-      const localCall = localStorage.getItem(`incoming_call_${currentProfile.id}`);
+    // 2. Cross-tab & local signal listener (event-driven, zero polling)
+    const handleStorageEvent = () => {
+      const localCall = localStorage.getItem(`incoming_call_${userId}`);
       if (!localCall) {
         setIncomingSession(null);
         setCallerProfile(null);
@@ -129,35 +103,53 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
         }
         if (parsed.status === "RINGING") {
           setIncomingSession(parsed);
-          const found = allProfiles.find(p => p.id === parsed.callerId);
-          setCallerProfile(found || {
-            id: parsed.callerId,
-            name: parsed.callerName || "Member",
-            reg_number: parsed.callerRegNumber || "SHUBH",
-            gender: "Male",
-            dob: "1995-01-01",
-            height_feet: 5.8,
-            sub_caste: "Brahmin",
-            profession: "Professional",
-            salary_lpa: 10,
-            contact_number: "",
-            status: "Verified"
-          });
+          setCallerProfile(resolveCaller(parsed.callerId, parsed.callerName, parsed.callerRegNumber));
         }
       } catch (e) {}
     };
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("incoming_call_signal", handleStorage);
-    const interval = setInterval(handleStorage, 1000);
 
-    return () => {
-      unsubscribe();
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("incoming_call_signal", handleStorage);
-      clearInterval(interval);
+    window.addEventListener("storage", handleStorageEvent);
+    window.addEventListener("incoming_call_signal", handleStorageEvent);
+
+    // 3. Sensible HTTP check: Only runs ONCE on mount or when window gains focus
+    const checkActiveCallsOnce = async () => {
+      if (!userId || isInActiveCall) return;
+      try {
+        const res = await fetch(`/api/calls/active/${encodeURIComponent(userId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.sessions && data.sessions.length > 0) {
+          const activeRinging = data.sessions.find((s: any) => s.status === "RINGING");
+          if (activeRinging) {
+            setIncomingSession(activeRinging);
+            setCallerProfile(resolveCaller(activeRinging.callerId, activeRinging.callerName, activeRinging.callerRegNumber));
+          }
+        }
+      } catch (err) {
+        // Non-blocking network error
+      }
     };
-  }, [currentProfile, allProfiles]);
 
+    // Check once on mount
+    checkActiveCallsOnce();
+
+    // Check once when tab gains focus
+    window.addEventListener("focus", checkActiveCallsOnce);
+
+    // Sensible low-frequency background check (every 60 seconds, NOT a runaway 1.5s loop)
+    const sensibleInterval = setInterval(checkActiveCallsOnce, 60000);
+
+    // Clean up all listeners and intervals
+    return () => {
+      unsubscribeRtdb();
+      window.removeEventListener("storage", handleStorageEvent);
+      window.removeEventListener("incoming_call_signal", handleStorageEvent);
+      window.removeEventListener("focus", checkActiveCallsOnce);
+      clearInterval(sensibleInterval);
+    };
+  }, [currentProfile?.id, isInActiveCall, resolveCaller]);
+
+  // Ringtone synthesizer
   useEffect(() => {
     if (!incomingSession) return;
     let audioCtx: AudioContext | null = null;
@@ -190,7 +182,7 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
     };
   }, [incomingSession]);
 
-  // Browser Push Notification trigger for incoming calls even when tab is out of focus
+  // Browser Push Notification trigger for incoming calls
   useEffect(() => {
     if (!incomingSession || !callerProfile) return;
 
@@ -216,7 +208,7 @@ export default function IncomingCallModal({ currentProfile, onAcceptCall, allPro
   }, [incomingSession, callerProfile]);
 
   const handleRespond = async (action: "ACCEPT" | "DECLINE") => {
-    if (!incomingSession || !currentProfile) return;
+    if (!incomingSession || !currentProfile?.id) return;
     setProcessing(true);
     try {
       localStorage.removeItem(`incoming_call_${currentProfile.id}`);

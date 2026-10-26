@@ -5,6 +5,7 @@ import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
 import AdminGrievanceChatsDesk from "./AdminGrievanceChatsDesk";
 import CallRecordingsDesk from "./CallRecordingsDesk";
+import AdminAuditModal from "./AdminAuditModal";
 import { calculatePanchangam } from "../lib/panchangam";
 import { KundaliChart } from "./KundaliChart";
 import { getGenderLabel } from "../lib/genderHelper";
@@ -112,6 +113,17 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     await databaseService.savePandit(newPandit);
     const updated = await databaseService.getPandits();
     setPandits(updated);
+
+    const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+    const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+    await adminNotificationService.logAction(
+      activeAdminId,
+      activeAdminName,
+      editingPandit ? `Updated Vedic Pandit: ${newPandit.name}` : `Added New Vedic Pandit: ${newPandit.name}`,
+      `Specialization: ${newPandit.specialization}, Phone: ${newPandit.phone}, Availability: ${newPandit.availableDays}`,
+      { category: "pandit" }
+    );
+
     setIsAddPanditModalOpen(false);
     setEditingPandit(null);
     setPanditName("");
@@ -128,6 +140,17 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       await databaseService.deletePandit(id);
       const updated = await databaseService.getPandits();
       setPandits(updated);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        activeAdminName,
+        `Removed Vedic Pandit Record`,
+        `Deleted Pandit profile (ID: ${id}) from the public consultation directory.`,
+        { category: "pandit" }
+      );
+
       alert("✓ Pandit removed successfully.");
     }
   };
@@ -935,6 +958,21 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       if (success) {
         setUpdateMsg(`Profile verification status changed to '${newStatus}'.`);
         setTimeout(() => setUpdateMsg(""), 3500);
+
+        const targetProfile = profiles.find((p) => p.id === profileId);
+        const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+        const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+        await adminNotificationService.logAction(
+          activeAdminId,
+          activeAdminName,
+          `Changed Candidate Status to '${newStatus}'`,
+          `Candidate: ${targetProfile?.name || 'Candidate'} (${targetProfile?.reg_number || profileId}), Sub-Caste: ${targetProfile?.sub_caste || 'Brahmin'}, Phone: ${targetProfile?.contact_number || 'N/A'}`,
+          {
+            targetCandidateId: profileId,
+            targetCandidateRegNumber: targetProfile?.reg_number,
+            category: "status"
+          }
+        );
       }
     } catch (err) {
       console.error("Failed to change profile status:", err);
@@ -1035,6 +1073,20 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
         setUpdateMsg(`Suspension schedule updated: Auto-lift configured in ${label} for ${target.name}!`);
       }
       setTimeout(() => setUpdateMsg(""), 4500);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        activeAdminName,
+        `Suspension Action: ${durationType === 'now' ? 'Revoked (Mercy Granted)' : durationType === 'permanent' ? 'Permanent Lifetime Ban' : 'Modified Hold'}`,
+        `Candidate: ${target.name} (${target.reg_number || target.id}), Action: ${durationType}`,
+        {
+          targetCandidateId: target.id,
+          targetCandidateRegNumber: target.reg_number,
+          category: "suspension"
+        }
+      );
     } catch (err) {
       console.error("Failed to revoke profile suspension:", err);
     }
@@ -1368,6 +1420,19 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
         setIsPaymentModalOpen(false);
         setIsReceiptModalOpen(true);
         setTimeout(() => setUpdateMsg(""), 3500);
+
+        // Cross-Admin Notification Log
+        await adminNotificationService.logAction(
+          currentAdmin?.id || adminId || "admin",
+          adminName,
+          `Verified Payment ₹${amount} (${paymentTargetStatus === "paid_900" ? "Full 28-Day Membership" : "₹100 Registration Fee"})`,
+          `Candidate: ${paymentProfile.name} (${paymentProfile.reg_number || paymentProfile.id}), Txn ID: ${paymentTxnId.trim()}, UPI: ${finalReceiverUpi || "bramhanavedika@ybl"}, Phone: ${paymentProfile.contact_number || 'N/A'}`,
+          {
+            targetCandidateId: paymentProfile.id,
+            targetCandidateRegNumber: paymentProfile.reg_number,
+            category: "payment"
+          }
+        );
       }
     } catch (err) {
       console.error("Failed to update payment status:", err);
@@ -1747,6 +1812,20 @@ Ph: ${adminPhone}`;
       setProfileToEdit(null);
       setEditPrefsToEdit(null);
       setTimeout(() => setUpdateMsg(""), 3500);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        activeAdminName,
+        `Edited Profile for ${saved.name}`,
+        `Candidate: ${saved.name} (${saved.reg_number || saved.id}), Gothram: ${saved.gothram || 'N/A'}, Phone: ${saved.contact_number || 'N/A'}, Salary: ₹${saved.salary_lpa || 'N/A'} LPA`,
+        {
+          targetCandidateId: saved.id,
+          targetCandidateRegNumber: saved.reg_number,
+          category: "profile"
+        }
+      );
     } catch (err) {
       console.error("Failed to save edited profile:", err);
     }
@@ -1981,6 +2060,20 @@ Ph: ${adminPhone}`;
       setProfiles((prev) => [saved, ...prev]);
       setUpdateMsg(`Successfully registered new candidate: ${saved.name} (${saved.reg_number})`);
       setIsRegisterModalOpen(false);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        registeredBy || activeAdminName,
+        `Registered New Candidate: ${saved.name}`,
+        `Registration #: ${saved.reg_number}, Gender: ${saved.gender}, Gothram: ${saved.gothram}, Mobile: ${saved.contact_number}, Tier: ${saved.subscription_status}`,
+        {
+          targetCandidateId: saved.id,
+          targetCandidateRegNumber: saved.reg_number,
+          category: "profile"
+        }
+      );
       
       // Reset state
       setNewProfile({
@@ -2695,28 +2788,28 @@ Ph: ${adminPhone}`;
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
       {/* Dashboard Banner with 4-Stage Hierarchy Clearance */}
-      <div className="bg-[#362B5A] text-white p-8 rounded-3xl shadow-xl border border-orange-500/10 relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="absolute top-0 right-0 transform translate-x-12 -translate-y-12 opacity-10">
-          <ShieldCheck className="w-64 h-64 text-orange-400" />
+      <div className="bg-[#362B5A] text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-orange-500/10 relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+        <div className="absolute top-0 right-0 transform translate-x-8 -translate-y-8 opacity-10 pointer-events-none">
+          <ShieldCheck className="w-32 h-32 sm:w-64 sm:h-64 text-orange-400" />
         </div>
         <div className="relative z-10 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-[#C2242C]/20 border border-red-500/20 text-orange-300 w-fit px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 bg-[#C2242C]/20 border border-red-500/20 text-orange-300 w-fit px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold tracking-wider uppercase">
               <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
               <span>Spiritual Ingress Gatekeeper</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/30 text-amber-200 px-3 py-1 rounded-full text-xs font-bold">
+            <div className="flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/30 text-amber-200 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold">
               <span>{stageInfo.stageBadge}</span>
               <span>Stage {stageInfo.stage}: {stageInfo.stageName}</span>
             </div>
             {currentAdmin && (
-              <span className="text-xs font-medium text-amber-100/90 bg-white/10 px-2.5 py-1 rounded-full border border-white/15">
+              <span className="text-[10px] sm:text-xs font-medium text-amber-100/90 bg-white/10 px-2.5 py-0.5 sm:py-1 rounded-full border border-white/15">
                 👤 {currentAdmin.name} ({currentAdmin.mobile})
               </span>
             )}
           </div>
-          <h2 className="text-3xl font-bold tracking-tight">Admin Sanctuary Dashboard</h2>
-          <p className="text-blue-100 max-w-xl leading-relaxed text-sm">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight">Admin Sanctuary Dashboard</h2>
+          <p className="text-blue-100 max-w-xl leading-relaxed text-xs sm:text-sm">
             {stageInfo.stage === 1
               ? "Full Supreme Authority: Candidate management, administrative controls, financial auditing, and grievance resolution."
               : stageInfo.stage === 2
@@ -2728,49 +2821,48 @@ Ph: ${adminPhone}`;
         </div>
 
         {/* Sync Indicator & Admin Bell */}
-        <div className="flex flex-col sm:flex-row items-end gap-3 relative z-10">
+        <div className="flex flex-row md:flex-col sm:flex-row items-center md:items-end justify-between gap-3 relative z-10 pt-2 md:pt-0 border-t md:border-t-0 border-white/10">
           <button
+            type="button"
             onClick={() => {
               setShowAdminNotifModal(true);
-              adminNotificationService.markAllRead();
-              setAdminNotifications(adminNotificationService.getNotifications());
             }}
-            className="relative bg-white/15 hover:bg-white/25 border border-white/30 px-4 py-2.5 rounded-2xl transition flex items-center gap-2.5 text-white font-bold text-xs shadow-lg cursor-pointer"
+            className="relative bg-white/15 hover:bg-white/25 border border-white/30 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl transition flex items-center gap-2 text-white font-bold text-[11px] sm:text-xs shadow-lg cursor-pointer min-h-[40px]"
             title="Cross-Admin Notification Bell - See changes made by any admin"
           >
-            <Bell className="w-5 h-5 text-amber-300 animate-bounce" />
-            <span>Admin Audit Bell</span>
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 animate-bounce" />
+            <span>Audit Bell</span>
             {unreadNotifCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md animate-pulse">
                 {unreadNotifCount}
               </span>
             )}
           </button>
 
-          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl text-right shrink-0">
-            <span className="text-[10px] text-blue-200/60 uppercase tracking-widest block font-bold">Storage Integration Status</span>
-            <p className="text-sm font-bold text-emerald-400 flex items-center justify-end gap-1.5 mt-1">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-              <span>Database Live & Synced</span>
+          <div className="bg-white/5 border border-white/10 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-right shrink-0">
+            <span className="text-[9px] sm:text-[10px] text-blue-200/60 uppercase tracking-widest block font-bold">Storage Status</span>
+            <p className="text-xs sm:text-sm font-bold text-emerald-400 flex items-center justify-end gap-1.5 mt-0.5">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+              <span>Live & Synced</span>
             </p>
-            <span className="text-[10px] text-amber-200/80 font-mono mt-1 block">
+            <span className="text-[9px] text-amber-200/80 font-mono mt-0.5 block">
               Stage {stageInfo.stage} • {stageInfo.canManageAdmins ? "Admin Controller" : "Protected Scope"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Quick Action Navigation Bar (No Scrolling Required) */}
-      <div className="bg-white rounded-3xl p-4 shadow-sm border border-indigo-100 flex flex-wrap items-center justify-between gap-3 sticky top-4 z-30 backdrop-blur-md bg-white/95">
-        <div className="flex items-center gap-2">
+      {/* Quick Action Navigation Bar - Responsive Horizontal Scrollable Tabs */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 shadow-sm border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 sticky top-14 sm:top-20 z-30 backdrop-blur-md bg-white/95">
+        <div className="flex items-center justify-between gap-2 shrink-0">
           <span className="text-[10px] bg-[#362B5A] text-white font-black px-2.5 py-1 rounded-full uppercase tracking-wider">⚡ Quick Jump Bar</span>
-          <span className="text-xs font-extrabold text-[#362B5A] hidden sm:inline">Live Controls:</span>
+          <span className="text-[10px] text-gray-500 font-medium sm:hidden">Swipe tabs ➔</span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 w-full sm:w-auto -mx-1 px-1 sm:mx-0 sm:px-0">
           <button
             type="button"
             onClick={() => setActiveAdminTab("registrations")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "registrations" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
@@ -2784,13 +2876,13 @@ Ph: ${adminPhone}`;
                 setActiveAdminTab("registrations");
                 window.scrollTo({ top: 350, behavior: "smooth" });
               }}
-              className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 shadow-xs"
+              className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 shadow-xs shrink-0 min-h-[38px]"
             >
               <span>📊 Revenue: ₹{revenueStats.total.total.toLocaleString()}</span>
             </button>
           ) : (
             <div
-              className="px-3 py-2 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 flex items-center gap-1.5"
+              className="px-3 py-2 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 flex items-center gap-1.5 shrink-0 min-h-[38px]"
               title="Revenue metrics restricted to Stage 1 & Stage 2 Admins"
             >
               <Lock className="w-3.5 h-3.5 text-gray-400" />
@@ -2804,7 +2896,7 @@ Ph: ${adminPhone}`;
               setActiveAdminTab("registrations");
               window.scrollTo({ top: 250, behavior: "smooth" });
             }}
-            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-50 hover:bg-amber-100 text-amber-900 transition-all cursor-pointer flex items-center gap-1.5 border border-amber-200 shadow-xs"
+            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-50 hover:bg-amber-100 text-amber-900 transition-all cursor-pointer flex items-center gap-1.5 border border-amber-200 shadow-xs shrink-0 min-h-[38px]"
           >
             <span>📈 Registration Graphs</span>
           </button>
@@ -2815,7 +2907,7 @@ Ph: ${adminPhone}`;
               setActiveAdminTab("matchEngine");
               setMatchEngineMode("list");
             }}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "matchEngine" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
@@ -2825,7 +2917,7 @@ Ph: ${adminPhone}`;
           <button
             type="button"
             onClick={() => setActiveAdminTab("grievances")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "grievances" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
@@ -2835,7 +2927,7 @@ Ph: ${adminPhone}`;
           <button
             type="button"
             onClick={() => setActiveAdminTab("otp_monitor")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "otp_monitor" ? "bg-[#362B5A] text-white" : "bg-red-50 hover:bg-red-100 text-red-900 border border-red-200"
             }`}
           >
@@ -2851,7 +2943,7 @@ Ph: ${adminPhone}`;
           <button
             type="button"
             onClick={() => setActiveAdminTab("coupons_referrals")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "coupons_referrals"
                 ? "bg-[#362B5A] text-white"
                 : "bg-amber-100/80 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold"
@@ -2863,47 +2955,47 @@ Ph: ${adminPhone}`;
           <button
             type="button"
             onClick={() => setActiveAdminTab("chatGrievanceDesk")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "chatGrievanceDesk" ? "bg-[#362B5A] text-white" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200"
             }`}
           >
-            <span>💬 Chat & Grievance Audit Desk</span>
+            <span>💬 Chat Audit Desk</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveAdminTab("recordings")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "recordings" ? "bg-amber-600 text-white" : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300"
             }`}
           >
-            <span>🎙️ Call Recordings Desk</span>
+            <span>🎙️ Recordings</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownloadCandidatesPasswordsCSV}
-            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 shrink-0 min-h-[38px]"
             title="Download Excel Sheet with Candidates and Passwords"
           >
-            <span>📥 Excel Passwords</span>
+            <span>📥 Excel</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsAdminListModalOpen(true)}
-            className="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 shrink-0 min-h-[38px]"
             title="View Authorized Admins List"
           >
-            <span>👑 Admins List</span>
+            <span>👑 Admins</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsRegisterModalOpen(true)}
-            className="px-3.5 py-2 bg-[#C2242C] hover:bg-opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-[#C2242C] hover:bg-opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 shrink-0 min-h-[38px]"
           >
-            <span>+ Add Profile</span>
+            <span>+ Add</span>
           </button>
         </div>
       </div>
@@ -9209,62 +9301,15 @@ Ph: ${adminPhone}`;
         </div>
       )}
 
-      {/* Admin Activity Notification Bell Modal */}
-      {showAdminNotifModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#2A2146] text-white border border-purple-500/30 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto animate-scale-up">
-            <div className="flex items-center justify-between border-b border-purple-500/20 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-amber-400/20 text-amber-300 rounded-2xl">
-                  <Bell className="w-6 h-6 animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Cross-Admin Activity & Notification Bell</h3>
-                  <p className="text-xs text-purple-200">Track all modifications and actions performed across all administrators.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowAdminNotifModal(false)}
-                className="p-2 text-purple-300 hover:text-white bg-white/5 rounded-xl hover:bg-white/10 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {adminNotifications.length === 0 ? (
-                <div className="text-center py-12 text-purple-300">
-                  <p className="text-sm">No admin activity notifications logged yet.</p>
-                </div>
-              ) : (
-                adminNotifications.map((notif: any) => (
-                  <div key={notif.id} className={`p-4 rounded-2xl border ${notif.read ? 'bg-white/5 border-white/10' : 'bg-purple-900/40 border-amber-400/40'} space-y-1.5`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                        👤 {notif.adminName}
-                      </span>
-                      <span className="text-[10px] text-purple-300 font-mono">
-                        {new Date(notif.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-white">{notif.action}</p>
-                    <p className="text-xs text-purple-200 leading-relaxed">{notif.details}</p>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-purple-500/20">
-              <button
-                onClick={() => setShowAdminNotifModal(false)}
-                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold rounded-xl shadow-lg transition cursor-pointer"
-              >
-                Close Notification Bell
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 3-Admin Activity & Cross-Audit Bell Modal */}
+      <AdminAuditModal 
+        isOpen={showAdminNotifModal} 
+        onClose={() => setShowAdminNotifModal(false)} 
+        onNavigateCandidate={(regOrId) => {
+          setSearchQuery(regOrId);
+          setShowAdminNotifModal(false);
+        }}
+      />
 
     </div>
   );

@@ -418,12 +418,43 @@ export default function App() {
       />
 
       {/* Main Content Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-8 md:py-12 pb-24 md:pb-12">
+        {/* Mobile Compact User Status Bar */}
+        {!isAdmin && (
+          <div className="block lg:hidden bg-white rounded-2xl p-3 shadow-xs border border-[#362B5A]/10 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#362B5A]/15 shrink-0">
+                  <img
+                    src={currentProfile.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=200"}
+                    alt={currentProfile.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-[#362B5A] text-xs sm:text-sm truncate leading-tight">{currentProfile.name}</h3>
+                  <p className="text-[10px] text-gray-500 font-medium truncate font-mono">
+                    {currentProfile.reg_number || "BVM-Member"} • {currentProfile.sub_caste}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTabChange("profile")}
+                className="px-2.5 py-1.5 bg-[#362B5A] text-white rounded-xl text-[10px] font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 active:scale-95"
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span>Kundali</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
-          {/* Quick Active User Profile Card on the left (Except in Admin mode) */}
+          {/* Active User Profile Card (Desktop Sidebar) */}
           {!isAdmin && (
-            <div className="lg:col-span-3 bg-white rounded-3xl p-6 shadow-md border border-[#362B5A]/5 space-y-6">
+            <div className="hidden lg:block lg:col-span-3 bg-white rounded-3xl p-6 shadow-md border border-[#362B5A]/5 space-y-6 sticky top-24">
               <div className="text-center space-y-3">
                 <div className="relative w-24 h-24 mx-auto rounded-full overflow-hidden border-4 border-[#362B5A]/10 shadow-lg">
                   <img
@@ -1057,11 +1088,12 @@ export default function App() {
         )}
       </div>
 
-      {/* Global Incoming Call Listener & Modal */}
-      {currentProfile && (
+      {/* Global Incoming Call Listener & Modal - Only active when user is logged in and not in a call */}
+      {currentProfile && !activeCallSession && (
         <IncomingCallModal
           currentProfile={currentProfile}
           allProfiles={allProfiles}
+          isInActiveCall={Boolean(activeCallSession)}
           onAcceptCall={(callSessionId, callType) => {
             const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${callSessionId}`);
             get(sessionRef).then(snap => {

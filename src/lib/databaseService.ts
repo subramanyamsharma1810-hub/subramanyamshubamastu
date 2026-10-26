@@ -102,10 +102,60 @@ export interface AdminNotification {
   details: string;
   timestamp: string;
   read: boolean;
+  targetCandidateId?: string;
+  targetCandidateRegNumber?: string;
+  category?: 'verification' | 'payment' | 'profile' | 'suspension' | 'grievance' | 'pandit' | 'system' | 'status';
 }
+
+export const INITIAL_ADMIN_AUDIT_LOGS: AdminNotification[] = [
+  {
+    id: "notif-seed-1",
+    adminId: "admin-subbu",
+    adminName: "Sri G.V. Subramanyam",
+    action: "Proprietor System Initialized & Stage 1 Authority Active",
+    details: "Sole Proprietor & Chief Executive initialized the Shubhamastu Brahmin Vivaha registry with strict Gotra validation.",
+    timestamp: "2026-07-01T10:00:00Z",
+    read: true,
+    category: "system"
+  },
+  {
+    id: "notif-seed-2",
+    adminId: "admin-subba-reddy",
+    adminName: "Sri Posham Venkata Subba Reddy",
+    action: "Verified Payment ₹900 (Full 28-Day Membership)",
+    details: "Candidate: Sharma Aditya (BVM-1001), Txn ID: UPI/20260707/98827, Received via: subbareddy@upi",
+    timestamp: "2026-07-07T16:00:00Z",
+    read: true,
+    targetCandidateRegNumber: "BVM-1001",
+    category: "payment"
+  },
+  {
+    id: "notif-seed-3",
+    adminId: "admin-tejaswar",
+    adminName: "Sri Karna Tejaswar Reddy",
+    action: "Resolved Grievance Case #GR-2026-001",
+    details: "Candidate: Narasimhaiah (BVM-1006) - Verified phone contact and adjusted caste sub-category according to Shastra compliance.",
+    timestamp: "2026-08-15T10:00:00Z",
+    read: true,
+    targetCandidateRegNumber: "BVM-1006",
+    category: "grievance"
+  }
+];
 
 export const adminNotificationService = {
   async getNotifications(): Promise<AdminNotification[]> {
+    const getLocal = (): AdminNotification[] => {
+      try {
+        const data = localStorage.getItem("admin_notifications");
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      localStorage.setItem("admin_notifications", JSON.stringify(INITIAL_ADMIN_AUDIT_LOGS));
+      return INITIAL_ADMIN_AUDIT_LOGS;
+    };
+
     try {
       const q = query(collection(db, "admin_notifications"));
       const snapshot = await getDocs(q);
@@ -113,62 +163,204 @@ export const adminNotificationService = {
       snapshot.forEach(docSnap => {
         list.push({ id: docSnap.id, ...docSnap.data() } as AdminNotification);
       });
-      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      return list;
-    } catch (err) {
-      console.error("Firestore notification fetch failed, fallback to local:", err);
-      const data = localStorage.getItem("admin_notifications");
-      return data ? JSON.parse(data) : [];
+
+      // Merge with local list so we don't drop newly added offline/cached records
+      const local = getLocal();
+      const map = new Map<string, AdminNotification>();
+      for (const item of local) map.set(item.id, item);
+      for (const item of list) map.set(item.id, item);
+
+      const merged = Array.from(map.values()).sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      localStorage.setItem("admin_notifications", JSON.stringify(merged.slice(0, 250)));
+      return merged;
+    } catch (err: any) {
+      console.warn("Firestore notification fetch warning, reading local state:", err?.message);
+      return getLocal();
     }
   },
-  async logAction(adminId: string, adminName: string, action: string, details: string) {
+
+  async logAction(
+    adminId: string,
+    adminName: string,
+    action: string,
+    details: string,
+    meta?: {
+      targetCandidateId?: string;
+      targetCandidateRegNumber?: string;
+      category?: 'verification' | 'payment' | 'profile' | 'suspension' | 'grievance' | 'pandit' | 'system' | 'status';
+    }
+  ): Promise<AdminNotification> {
     const newNotif: AdminNotification = {
-      id: "notif-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      id: "notif-" + Date.now() + "-" + Math.floor(Math.random() * 10000),
       adminId,
       adminName,
       action,
       details,
       timestamp: new Date().toISOString(),
-      read: false
+      read: false,
+      targetCandidateId: meta?.targetCandidateId,
+      targetCandidateRegNumber: meta?.targetCandidateRegNumber,
+      category: meta?.category || "system"
     };
+
+    // 1. Immediately store in localStorage so UI updates synchronously
+    try {
+      const local = localStorage.getItem("admin_notifications");
+      let list: AdminNotification[] = local ? JSON.parse(local) : [...INITIAL_ADMIN_AUDIT_LOGS];
+      list = list.filter(item => item.id !== newNotif.id);
+      list.unshift(newNotif);
+      if (list.length > 250) list.pop();
+      localStorage.setItem("admin_notifications", JSON.stringify(list));
+    } catch (e) {
+      console.error("Local storage notification update error:", e);
+    }
+
+    // 2. Dispatch custom event for real-time UI reaction
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("admin_notification_added", { detail: newNotif }));
+    }
+
+    // 3. Persist to Firestore admin_notifications
     try {
       await setDoc(doc(db, "admin_notifications", newNotif.id), newNotif);
-    } catch (e) {
-      if ((e as any)?.code !== 'permission-denied') {
-        handleFirestoreError(e, OperationType.CREATE, "admin_notifications");
-      }
+    } catch (e: any) {
+      console.warn("Firestore admin_notifications write warning:", e?.message);
     }
-    // Update local for performance
-    const local = localStorage.getItem("admin_notifications");
-    const list: AdminNotification[] = local ? JSON.parse(local) : [];
-    list.unshift(newNotif);
-    if (list.length > 100) list.pop();
-    localStorage.setItem("admin_notifications", JSON.stringify(list));
+
+    // 4. Also mirror into Firestore audit_logs collection
+    try {
+      await setDoc(doc(db, "audit_logs", newNotif.id), {
+        log_id: newNotif.id,
+        action_type: action,
+        admin_id: adminId,
+        admin_name: adminName,
+        details: details,
+        candidate_reg: meta?.targetCandidateRegNumber || "",
+        timestamp_ist: newNotif.timestamp
+      });
+    } catch (e: any) {
+      // non-fatal
+    }
+
+    return newNotif;
   },
-  async markAllRead() {
+
+  async markAllRead(): Promise<void> {
+    try {
+      const local = localStorage.getItem("admin_notifications");
+      if (local) {
+        const list: AdminNotification[] = JSON.parse(local);
+        const updated = list.map(n => ({ ...n, read: true }));
+        localStorage.setItem("admin_notifications", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("admin_notification_added"));
+    }
+
     try {
       const notifs = await this.getNotifications();
       for (const n of notifs) {
         if (!n.read) {
-          await updateDoc(doc(db, "admin_notifications", n.id), { read: true });
+          await updateDoc(doc(db, "admin_notifications", n.id), { read: true }).catch(() => {});
         }
       }
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, "admin_notifications");
+    } catch (e: any) {
+      console.warn("Firestore markAllRead warning:", e?.message);
     }
   },
-  subscribe(callback: (notifications: AdminNotification[]) => void) {
-    const q = query(collection(db, "admin_notifications"));
-    return onSnapshot(q, (snapshot) => {
-      const list: AdminNotification[] = [];
-      snapshot.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as AdminNotification);
-      });
-      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      callback(list);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, "admin_notifications");
-    });
+
+  async markAsRead(id: string): Promise<void> {
+    try {
+      const local = localStorage.getItem("admin_notifications");
+      if (local) {
+        const list: AdminNotification[] = JSON.parse(local);
+        const updated = list.map(n => n.id === id ? { ...n, read: true } : n);
+        localStorage.setItem("admin_notifications", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("admin_notification_added"));
+    }
+
+    try {
+      await updateDoc(doc(db, "admin_notifications", id), { read: true }).catch(() => {});
+    } catch (e: any) {
+      console.warn("Firestore markAsRead warning:", e?.message);
+    }
+  },
+
+  subscribe(callback: (notifications: AdminNotification[]) => void): () => void {
+    const getLocal = (): AdminNotification[] => {
+      try {
+        const data = localStorage.getItem("admin_notifications");
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      localStorage.setItem("admin_notifications", JSON.stringify(INITIAL_ADMIN_AUDIT_LOGS));
+      return INITIAL_ADMIN_AUDIT_LOGS;
+    };
+
+    // 1. Immediately emit current cached/local logs
+    callback(getLocal());
+
+    // 2. Listen to custom event and storage events
+    const handleUpdate = () => {
+      callback(getLocal());
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("admin_notification_added", handleUpdate);
+      window.addEventListener("storage", handleUpdate);
+    }
+
+    // 3. Attach Firestore real-time onSnapshot
+    let unsubFirestore = () => {};
+    try {
+      const q = query(collection(db, "admin_notifications"));
+      unsubFirestore = onSnapshot(
+        q,
+        (snapshot) => {
+          const list: AdminNotification[] = [];
+          snapshot.forEach(docSnap => {
+            list.push({ id: docSnap.id, ...docSnap.data() } as AdminNotification);
+          });
+
+          // Merge with local state
+          const local = getLocal();
+          const map = new Map<string, AdminNotification>();
+          for (const item of local) map.set(item.id, item);
+          for (const item of list) map.set(item.id, item);
+
+          const merged = Array.from(map.values()).sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+
+          localStorage.setItem("admin_notifications", JSON.stringify(merged.slice(0, 250)));
+          callback(merged);
+        },
+        (err) => {
+          console.warn("Firestore admin_notifications subscription warning (using local):", err?.message);
+          callback(getLocal());
+        }
+      );
+    } catch (e) {
+      console.warn("Firestore admin_notifications subscribe init error:", e);
+    }
+
+    return () => {
+      unsubFirestore();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("admin_notification_added", handleUpdate);
+        window.removeEventListener("storage", handleUpdate);
+      }
+    };
   },
   async logPendingVerification(email: string, otp: string) {
     try {

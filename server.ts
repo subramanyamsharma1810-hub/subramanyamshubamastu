@@ -257,13 +257,16 @@ app.post("/api/calls/initiate", (req, res) => {
 });
 
 // Check active incoming calls for a user
-app.get("/api/calls/active/:userId", (req, res) => {
+app.get(["/api/calls/active", "/api/calls/active/", "/api/calls/active/:userId?"], (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.userId || (req.query.userId as string);
+    if (!userId || userId === "undefined" || userId === "null") {
+      return res.json({ success: true, sessions: [] });
+    }
     const activeSessions = callSessionEngine.getActiveSessionsForUser(userId);
-    res.json({ success: true, sessions: activeSessions });
+    return res.json({ success: true, sessions: activeSessions || [] });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1056,11 +1059,14 @@ app.post("/api/calls/respond", (req, res) => {
   }
 });
 
-app.get("/api/calls/incoming/:userId", (req, res) => {
+app.get(["/api/calls/incoming", "/api/calls/incoming/", "/api/calls/incoming/:userId?"], (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.userId || (req.query.userId as string);
+    if (!userId || userId === "undefined" || userId === "null") {
+      return res.json({ success: true, sessions: [] });
+    }
     const incomingSessions = callSessionEngine.getActiveSessionsForUser(userId);
-    return res.json({ success: true, sessions: incomingSessions });
+    return res.json({ success: true, sessions: incomingSessions || [] });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message || "Failed to fetch incoming calls" });
   }

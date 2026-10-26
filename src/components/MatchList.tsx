@@ -1038,34 +1038,34 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                         return (
                           <div
                             key={match.id}
-                            className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative h-[560px]"
+                            className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative min-h-[500px] sm:h-[560px]"
                           >
                             {/* Image Section */}
-                            <div className="h-56 w-full relative overflow-hidden bg-gray-50">
+                            <div className="h-48 sm:h-56 w-full relative overflow-hidden bg-gray-50">
                               <img
                                 src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
                                 alt={match.name}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                               />
                               {/* Score Overlap */}
-                              <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
+                              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-white/95 backdrop-blur-sm shadow-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
                                 <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
-                                <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
+                                <span className="text-[11px] sm:text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
                               </div>
 
                               {/* Gender and Subcaste badge */}
-                              <div className="absolute bottom-4 left-4 flex gap-1.5">
-                                <span className="bg-[#362B5A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                              <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 flex gap-1.5">
+                                <span className="bg-[#362B5A] text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
                                   {match.sub_caste}
                                 </span>
-                                <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                                <span className="bg-[#C2242C] text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
                                   {match.height_feet} Ft
                                 </span>
                               </div>
                             </div>
 
                             {/* Info Details */}
-                            <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                            <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
                               <div className="space-y-2">
                                 <div className="flex justify-between items-start">
                                   <div className="min-w-0 flex-1">

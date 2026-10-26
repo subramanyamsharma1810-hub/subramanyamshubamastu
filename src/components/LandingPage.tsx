@@ -1182,57 +1182,57 @@ export default function LandingPage({
       {/* Top Header Bar */}
       <header className="relative z-30 w-full bg-black/60 backdrop-blur-md border-b border-amber-500/15">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           
           {/* Webpage Name */}
-          <div className="flex items-center gap-3">
-            <div className="bg-[#C2242C] p-2.5 rounded-full flex items-center justify-center shadow-lg border border-amber-500/30">
-              <Heart className="w-5 h-5 text-amber-300 fill-amber-300 animate-pulse" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="bg-[#C2242C] p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-lg border border-amber-500/30 shrink-0">
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 fill-amber-300 animate-pulse" />
             </div>
-            <div className="text-left">
-              <span className="text-base sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 uppercase font-sans">
-                Subhamastu Matrimony
+            <div className="text-left min-w-0">
+              <span className="text-sm sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 uppercase font-sans truncate block">
+                Subhamastu
               </span>
-              <p className="text-[9px] text-amber-400 font-mono tracking-widest mt-0.5 uppercase">A unit of Glark Solutions</p>
+              <p className="text-[8px] sm:text-[9px] text-amber-400 font-mono tracking-widest uppercase truncate">A unit of Glark Solutions</p>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-xs font-bold rounded-xl transition-all border border-amber-500/30 uppercase tracking-wider shadow-md shadow-[#C2242C]/10 cursor-pointer"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-[11px] sm:text-xs font-bold rounded-xl transition-all border border-amber-500/30 uppercase tracking-wider shadow-md shadow-[#C2242C]/10 cursor-pointer min-h-[38px] flex items-center justify-center"
             >
               Register
             </button>
             <button
               onClick={() => setShowContactModal(true)}
-              className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-amber-500/30 hover:border-amber-500/60 text-amber-300 text-xs font-bold rounded-xl transition-all uppercase tracking-wider cursor-pointer"
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-zinc-900 hover:bg-zinc-800 border border-amber-500/30 hover:border-amber-500/60 text-amber-300 text-[11px] sm:text-xs font-bold rounded-xl transition-all uppercase tracking-wider cursor-pointer min-h-[38px] flex items-center justify-center"
             >
-              Contact Us
+              Contact
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Hero & Login Split Content */}
-      <main className="relative z-20 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 flex flex-col lg:flex-row items-center justify-center gap-12 md:gap-16">
+      <main className="relative z-20 flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-16 flex flex-col lg:flex-row items-center justify-center gap-8 md:gap-16">
         
         {/* Left Side: Welcoming / Spiritual Message */}
-        <div className="flex-1 text-left space-y-6 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-widest">
+        <div className="flex-1 text-left space-y-4 sm:space-y-6 max-w-2xl w-full">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-[10px] sm:text-xs font-mono font-bold uppercase tracking-widest">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>Divine Marital Alignment</span>
           </div>
 
           {/* Core Welcome Prompted */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight text-white">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight text-white">
             Welcome Warmly. <br />
             We will find a <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400">Best Partner</span> for you.
           </h1>
 
-          <div className="border-l-4 border-[#C2242C] pl-4 space-y-2">
-            <p className="text-sm sm:text-base text-gray-300 leading-relaxed italic">
+          <div className="border-l-4 border-[#C2242C] pl-3 sm:pl-4 space-y-2">
+            <p className="text-xs sm:text-base text-gray-300 leading-relaxed italic">
               "Just as Sati Devi was united in eternal spiritual matrimony with Lord Shiva under the auspicious blessings of the cosmos, we invoke sacred planetary alignments to unite your soul with its divine reflection."
             </p>
           </div>
@@ -1242,7 +1242,7 @@ export default function LandingPage({
           </p>
 
           {/* Aesthetic Marigold decoration pointer */}
-          <div className="flex items-center gap-3 pt-4 text-xs font-mono text-amber-400">
+          <div className="flex items-center gap-2 pt-2 text-[10px] sm:text-xs font-mono text-amber-400">
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -1253,7 +1253,7 @@ export default function LandingPage({
 
         {/* Right Side: Sacred Login Card */}
         <div className="w-full max-w-md shrink-0">
-          <div className="bg-gradient-to-b from-zinc-900 to-black p-6 sm:p-8 rounded-3xl border border-amber-500/20 shadow-2xl relative overflow-hidden space-y-6">
+          <div className="bg-gradient-to-b from-zinc-900 to-black p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-amber-500/20 shadow-2xl relative overflow-hidden space-y-4 sm:space-y-6">
             
             {/* Background glowing sphere */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#C2242C]/10 rounded-full filter blur-xl pointer-events-none" />
