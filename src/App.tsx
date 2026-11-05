@@ -70,17 +70,17 @@ export default function App() {
 
   const [devBrandName, setDevBrandName] = useState<string>(() => {
     const saved = localStorage.getItem("bramhana_dev_brand_name");
-    if (!saved || saved.includes("Murugan")) {
-      localStorage.setItem("bramhana_dev_brand_name", "Glark Solutions");
-      return "Glark Solutions";
+    if (!saved || saved.includes("Murugan") || saved === "Glark Solutions") {
+      localStorage.setItem("bramhana_dev_brand_name", "Galark Solutions (Ghadiyaram Venkata Subramanyam)");
+      return "Galark Solutions (Ghadiyaram Venkata Subramanyam)";
     }
     return saved;
   });
   const [devBrandSlogan, setDevBrandSlogan] = useState<string>(() => {
     const saved = localStorage.getItem("bramhana_dev_brand_slogan");
-    if (!saved || saved.includes("flawless craftsmanship")) {
-      localStorage.setItem("bramhana_dev_brand_slogan", "A Product of Glark Solutions - Modern digital, web, and enterprise solutions.");
-      return "A Product of Glark Solutions - Modern digital, web, and enterprise solutions.";
+    if (!saved || saved.includes("flawless craftsmanship") || saved.includes("A Product of Glark Solutions")) {
+      localStorage.setItem("bramhana_dev_brand_slogan", "A Product of Galark Solutions (Ghadiyaram Venkata Subramanyam) - Modern digital, web, and enterprise solutions.");
+      return "A Product of Galark Solutions (Ghadiyaram Venkata Subramanyam) - Modern digital, web, and enterprise solutions.";
     }
     return saved;
   });

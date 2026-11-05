@@ -67,12 +67,12 @@ export function LegalFooter({ darkTheme = false }: LegalModalsProps) {
           </button>
         </div>
 
-        <div className="pt-4 border-t border-zinc-800/20 max-w-lg mx-auto text-[10px] space-y-1">
+        <div className="pt-4 border-t border-zinc-800/20 max-w-xl mx-auto text-[10px] space-y-1">
           <p className="font-semibold uppercase tracking-widest text-[#362B5A] dark:text-amber-300/80">
-            SHUBHAMASTU MATRIMONY • A UNIT OF GLARK SOLUTIONS
+            SHUBHAMASTU MATRIMONY • ALL RIGHTS RESERVED BY GALARK SOLUTIONS (GHADIYARAM VENKATA SUBRAMANYAM)
           </p>
           <p className="text-gray-400 dark:text-zinc-500 font-sans tracking-normal leading-relaxed">
-            Owned & operated by Glark Solutions. Registered Intermediary under Section 2(1)(w) and Section 79 of the Information Technology Act, 2000. All profile data is self-reported by candidates or families.
+            © {new Date().getFullYear()} shubhamastu.in. All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam). Registered Intermediary under Section 2(1)(w) and Section 79 of the Information Technology Act, 2000. All profile data is self-reported by candidates or families.
           </p>
         </div>
 

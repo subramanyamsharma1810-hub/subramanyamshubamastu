@@ -110,7 +110,7 @@ export default function Payment() {
     setIsProcessing(true);
     try {
       const isUpgrade = selectedPlan === "paid_900";
-      const amount = isUpgrade ? 900 : 100;
+      const amount = isUpgrade ? 1599 : 100;
       const cleanTxn = utrNumber.trim().toUpperCase();
 
       // AUTOMATED ACTIVATION: update profile immediately in database
@@ -132,7 +132,7 @@ export default function Payment() {
       setReceiptDetails({
         txnId: cleanTxn,
         amount,
-        plan: isUpgrade ? "Full Communication Upgrade (₹900)" : "Match Registration Fee (₹100)",
+        plan: isUpgrade ? "Full 31 Days Premium Membership (₹1,599)" : "Match Discovery Pass (₹100)",
         timestamp: new Date().toLocaleString(),
       });
 
@@ -352,11 +352,11 @@ export default function Payment() {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-extrabold text-white">Full Communication Upgrade</h4>
-                      <p className="text-[11px] text-zinc-400">Unlocks direct phone numbers & full candidate profiles</p>
-                      <span className="text-[10px] text-zinc-500 font-semibold block mt-1">Strictly Non-Refundable</span>
+                      <h4 className="text-sm font-extrabold text-white">Full 31 Days Premium Membership</h4>
+                      <p className="text-[11px] text-zinc-400">Unlocks direct phone numbers, WhatsApp & 31 days unlimited access</p>
+                      <span className="text-[10px] text-amber-400 font-semibold block mt-1">31 Days Complete Access</span>
                     </div>
-                    <span className="text-base font-mono font-black text-amber-400">₹900</span>
+                    <span className="text-base font-mono font-black text-amber-400">₹1,599</span>
                   </div>
                 </div>
               </div>
@@ -366,7 +366,7 @@ export default function Payment() {
                 <Link to="/refund" target="_blank" className="text-emerald-400 underline font-semibold hover:text-emerald-300">
                   Cancellation and Refund Policy
                 </Link>
-                <span> (₹100 refundable if zero viable matches within 60 days; ₹900 non-refundable upon activation).</span>
+                <span> (₹100 refundable if zero viable matches within 60 days; ₹1,599 non-refundable upon activation).</span>
               </div>
             </div>
 
@@ -377,12 +377,12 @@ export default function Payment() {
                   Official PhonePe / UPI QR Code
                 </span>
                 <p className="text-xs text-zinc-300">
-                  Pay <strong className="text-amber-300 text-sm">₹{selectedPlan === "paid_100" ? 100 : 900}</strong> to <strong className="text-white">Sri G.V. Subramanyam</strong> (UPI: <strong className="font-mono text-amber-300">9347359489@ybl</strong>)
+                  Pay <strong className="text-amber-300 text-sm">₹{selectedPlan === "paid_100" ? 100 : 1599}</strong> to <strong className="text-white">Sri G.V. Subramanyam</strong> (UPI: <strong className="font-mono text-amber-300">9347359489@ybl</strong>)
                 </p>
               </div>
 
               <div className="max-w-xs mx-auto">
-                <PhonePeQRCode amount={selectedPlan === "paid_100" ? 100 : 900} className="w-full shadow-lg" />
+                <PhonePeQRCode amount={selectedPlan === "paid_100" ? 100 : 1599} className="w-full shadow-lg" />
               </div>
 
               {/* Automated Verification Input */}
@@ -441,7 +441,7 @@ export default function Payment() {
             Register Candidate
           </Link>
         </div>
-        <p>© {new Date().getFullYear()} Shubhamastu Brahmin Matrimony (www.shubhamastu.in) • Glark Solutions. All payments automated.</p>
+        <p>© {new Date().getFullYear()} Shubhamastu Brahmin Matrimony (www.shubhamastu.in) • All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam).</p>
       </footer>
     </div>
   );

@@ -847,7 +847,7 @@ export default function Register() {
             Payment & Activation
           </Link>
         </div>
-        <p>© {new Date().getFullYear()} Shubhamastu Brahmin Matrimony (www.shubhamastu.in) • Glark Solutions. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Shubhamastu Brahmin Matrimony (www.shubhamastu.in) • All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam).</p>
         <p className="text-[10px] text-zinc-600">
           Strict 2-Rule Matching: Different Gotras & Groom 1 to 3 Years Elder. All candidate information is self-submitted.
         </p>

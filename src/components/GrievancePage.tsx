@@ -489,7 +489,7 @@ export default function GrievancePage() {
                 Home →
               </Link>
             </div>
-            <p>© 2026 shubhamastu.in • Glark Solutions. All Rights Reserved.</p>
+            <p>© 2026 shubhamastu.in • All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam).</p>
           </div>
         </div>
 
