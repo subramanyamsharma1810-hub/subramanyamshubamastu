@@ -6,7 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
-.tempmediaStorage/
+.temp
+mediaStorage/
 
 # Exclude temporary agent metadata and studio assets
 *.metadata.json
@@ -16,3 +17,6 @@ coverage/
 *.png
 *.jpg
 *.jpeg
+
+# Exclude generated archives
+*.zip

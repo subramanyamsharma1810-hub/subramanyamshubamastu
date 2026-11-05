@@ -2972,6 +2972,16 @@ Ph: ${adminPhone}`;
             <span>🎙️ Recordings</span>
           </button>
 
+          {/* 🧪 14 Mandatory Play Store Pre-Flight QA Suite */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-playstore-testing"))}
+            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-md shrink-0 min-h-[38px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white active:scale-95"
+            title="Open 14 Mandatory Google Play Store Pre-Flight Tests"
+          >
+            <span>🧪 14 Play Store Tests</span>
+          </button>
+
           <button
             type="button"
             onClick={handleDownloadCandidatesPasswordsCSV}

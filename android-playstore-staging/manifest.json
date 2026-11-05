@@ -1,0 +1,65 @@
+{
+  "name": "Shubhamastu Brahmin Vivaha Vedika",
+  "short_name": "Shubhamastu",
+  "description": "Sacred Brahmin matrimonial matchmaking with Gothra separation and traditional age alignment.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#362B5A",
+  "theme_color": "#362B5A",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Matches",
+      "url": "/matches",
+      "description": "View compatible matrimonial matches"
+    },
+    {
+      "name": "Spiritual Kundali",
+      "url": "/profile",
+      "description": "View your Vedic horoscope coordinates"
+    },
+    {
+      "name": "Admin Desk",
+      "url": "/admin",
+      "description": "Admin verification and grievance desk"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "in.shubhamastu.matrimony",
+      "url": "https://play.google.com/store/apps/details?id=in.shubhamastu.matrimony"
+    }
+  ],
+  "prefer_related_applications": false
+}

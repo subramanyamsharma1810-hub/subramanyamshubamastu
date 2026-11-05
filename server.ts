@@ -50,6 +50,48 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Direct download endpoint for complete frontend source code package
+app.get("/api/download-frontend", (req, res) => {
+  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-frontend-all-in-one.zip");
+  res.download(zipPath, "shubhamastu-all-frontend-files.zip", (err) => {
+    if (err && !res.headersSent) {
+      res.status(500).json({ error: "Failed to download frontend package" });
+    }
+  });
+});
+
+app.get("/api/download/raw-zip", (req, res) => {
+  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-raw-html-css-js.zip");
+  res.download(zipPath, "shubhamastu-raw-html-css-js.zip", (err) => {
+    if (err && !res.headersSent) {
+      res.status(500).json({ error: "Failed to download raw bundle package" });
+    }
+  });
+});
+
+app.get("/api/download/raw/index.html", (req, res) => {
+  res.download(path.resolve(process.cwd(), "public/raw/index.html"), "index.html");
+});
+
+app.get("/api/download/raw/style.css", (req, res) => {
+  res.download(path.resolve(process.cwd(), "public/raw/style.css"), "style.css");
+});
+
+app.get("/api/download/raw/script.js", (req, res) => {
+  res.download(path.resolve(process.cwd(), "public/raw/script.js"), "script.js");
+});
+
+// Download Android Google Play Store Deployment Bundle
+app.get(["/api/download-android-bundle", "/api/download/android-zip"], (req, res) => {
+  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-android-playstore-bundle.zip");
+  res.download(zipPath, "shubhamastu-android-playstore-bundle.zip", (err) => {
+    if (err && !res.headersSent) {
+      res.status(500).json({ error: "Failed to download Android Play Store package bundle" });
+    }
+  });
+});
+
+
 import { testR2Connectivity } from "./scripts/verify-r2-connection.ts";
 import { uploadCallRecording, getPresignedRecordingUrl, checkRecordingExists, listCallRecordings } from "./src/server/uploadCallRecording.ts";
 
@@ -1173,20 +1215,21 @@ app.post("/api/profile/privacy", (req, res) => {
 });
 
 // --- Cashfree Payment Gateway Integration Endpoints ---
-app.post("/api/cashfree/create-order", async (req, res) => {
+const handleCreateCashfreeOrder = async (req: express.Request, res: express.Response) => {
   try {
-    const { orderAmount, customerId, customerPhone, customerEmail, customerName } = req.body || {};
+    const { orderAmount, reqAmount, customerId, customerPhone, customerEmail, customerName } = req.body || {};
+    const effectiveAmount = orderAmount || reqAmount || req.body?.amount || 100;
     const appId = process.env.CASHFREE_APP_ID || "";
     const secretKey = process.env.CASHFREE_SECRET_KEY || "";
     const apiVersion = process.env.CASHFREE_API_VERSION || "2023-08-01";
     const baseUrl = process.env.CASHFREE_BASE_URL || "https://sandbox.cashfree.com/pg";
 
     const orderId = `ORD_SHUBH_${Date.now()}`;
-    const amount = orderAmount || 1599;
 
     try {
       const cfResponse = await fetch(`${baseUrl}/orders`, {
         method: "POST",
+        signal: AbortSignal.timeout(1500),
         headers: {
           "Content-Type": "application/json",
           "x-client-id": appId,
@@ -1195,7 +1238,7 @@ app.post("/api/cashfree/create-order", async (req, res) => {
         },
         body: JSON.stringify({
           order_id: orderId,
-          order_amount: amount,
+          order_amount: effectiveAmount,
           order_currency: "INR",
           customer_details: {
             customer_id: customerId || `cust_${Date.now()}`,
@@ -1235,7 +1278,10 @@ app.post("/api/cashfree/create-order", async (req, res) => {
     console.error("Cashfree order creation error:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to create Cashfree order" });
   }
-});
+};
+
+app.post("/api/cashfree/create-order", handleCreateCashfreeOrder);
+app.post("/api/payment/create-order", handleCreateCashfreeOrder);
 
 // Setup Vite Dev Server / Static Production Serving
 async function startServer() {

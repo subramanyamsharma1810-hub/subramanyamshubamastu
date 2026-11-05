@@ -30,7 +30,9 @@ import { registerCallPushNotifications } from "./lib/pushNotifications";
 import { ref, get } from "firebase/database";
 import { rtdb, ensureAuth, auth, googleProvider } from "./lib/firebase";
 import { signInWithPopup } from "firebase/auth";
-import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
+import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck, FolderArchive, Download, Share2 } from "lucide-react";
+import FrontendExportModal from "./components/FrontendExportModal";
+import BottomNav from "./components/BottomNav";
 
 export default function App() {
   const location = useLocation();
@@ -83,11 +85,20 @@ export default function App() {
     return saved;
   });
   const [isDevWidgetOpen, setIsDevWidgetOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [activeCallSession, setActiveCallSession] = useState<{
     callSessionId: string;
     receiver: Profile;
     callType: "audio" | "video";
   } | null>(null);
+  const [adminAuditUnread, setAdminAuditUnread] = useState<number>(0);
+
+  useEffect(() => {
+    const unsub = adminNotificationService.subscribe((list) => {
+      setAdminAuditUnread(list.filter((n) => !n.read).length);
+    });
+    return () => unsub();
+  }, []);
 
   // Activate Real-Time Presence heartbeat
   useUserPresence(currentProfile?.id);
@@ -842,12 +853,25 @@ export default function App() {
         </div>
       )}
 
-      {/* FLOATING DEVELOPER BRANDING HUB BADGE (Bottom-Left) */}
-      <div className="hidden lg:block fixed bottom-4 left-4 z-[99] font-sans">
-        {/* Pulsing Badge */}
+      {/* FLOATING QUICK ACTIONS & DEVELOPER SOURCE EXPORT (Bottom-Left) */}
+      <div className="fixed bottom-4 left-4 z-[99] font-sans flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        {/* DOWNLOAD & SHARE FRONTEND SOURCE BUTTON */}
+        <button
+          onClick={() => setIsExportModalOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl border border-emerald-400/40 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-black select-none cursor-pointer group shadow-emerald-950/50"
+          title="Download all frontend files or forward via WhatsApp and Mail"
+        >
+          <div className="relative">
+            <FolderArchive className="w-4 h-4 text-emerald-200 group-hover:rotate-6 transition-transform" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
+          </div>
+          <span className="tracking-wide">Download & Send Frontend (ZIP / WA / Mail)</span>
+        </button>
+
+        {/* Pulsing Glark Solutions Badge */}
         <button
           onClick={() => setIsDevWidgetOpen(true)}
-          className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl border border-amber-400/30 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-bold select-none cursor-pointer group shadow-amber-900/30"
+          className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl border border-amber-400/30 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-bold select-none cursor-pointer group shadow-amber-900/30"
         >
           <div className="relative">
             <Zap className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
@@ -855,6 +879,12 @@ export default function App() {
           </div>
           <span className="tracking-wide">A Product of Glark Solutions</span>
         </button>
+
+        {/* Frontend Source Export & Share Modal */}
+        <FrontendExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+        />
 
         {/* Branding Hub Modal / Bottom Drawer */}
         {isDevWidgetOpen && (
@@ -1129,6 +1159,21 @@ export default function App() {
           receiver={activeCallSession.receiver}
           callType={activeCallSession.callType}
           onEndCall={() => setActiveCallSession(null)}
+        />
+      )}
+
+      {/* Modern Native Mobile Bottom Navigation Bar */}
+      {currentProfile && (
+        <BottomNav
+          currentTab={currentTab}
+          setCurrentTab={handleTabChange}
+          isAdmin={isAdmin}
+          setIsAdmin={setIsAdmin}
+          isLoggedInUserAdmin={isLoggedInUserAdmin}
+          onOpenQuickMenu={() => window.dispatchEvent(new CustomEvent("open-portal-menu"))}
+          onOpenPandithModal={() => window.dispatchEvent(new CustomEvent("open-pandith-consultation"))}
+          onOpenAuditModal={() => window.dispatchEvent(new CustomEvent("open-admin-audit"))}
+          adminAuditUnread={adminAuditUnread}
         />
       )}
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, Phone, Grid, Bell } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, Phone, Grid, Bell, FolderArchive } from "lucide-react";
 import { PandithConsultationModal } from "./PandithConsultationModal";
 import NotificationBell from "./NotificationBell";
 import AdminAuditModal from "./AdminAuditModal";
+import FrontendExportModal from "./FrontendExportModal";
 import { Profile } from "../types";
 import { adminNotificationService } from "../lib/databaseService";
 
@@ -21,6 +22,7 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showPandithModal, setShowPandithModal] = useState(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [adminAuditUnread, setAdminAuditUnread] = useState(0);
 
   // Check if current user has root admin clearance (Subbu, Subba Reddy, Tejaswar or admin session)
@@ -40,6 +42,22 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
     });
     return () => unsub();
   }, [isUserAdmin]);
+
+  useEffect(() => {
+    const handleOpenMenu = () => setShowQuickMenu(true);
+    const handleOpenPandith = () => setShowPandithModal(true);
+    const handleOpenAudit = () => setShowAdminAuditModal(true);
+
+    window.addEventListener("open-portal-menu", handleOpenMenu);
+    window.addEventListener("open-pandith-consultation", handleOpenPandith);
+    window.addEventListener("open-admin-audit", handleOpenAudit);
+
+    return () => {
+      window.removeEventListener("open-portal-menu", handleOpenMenu);
+      window.removeEventListener("open-pandith-consultation", handleOpenPandith);
+      window.removeEventListener("open-admin-audit", handleOpenAudit);
+    };
+  }, []);
 
   const tabsList = [
     { id: "matches", label: "Matched Souls (మ్యాచెస్)", icon: Heart },
@@ -99,10 +117,10 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
                 <button
                   type="button"
                   onClick={() => setShowAdminAuditModal(true)}
-                  className="relative min-h-[38px] px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/50 text-amber-300 hover:text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 active:scale-95"
+                  className="relative min-h-[44px] px-2.5 sm:px-3 py-2 bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/50 text-amber-300 hover:text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 active:scale-95"
                   title="3-Admin Cross-Audit Bell: Real-time logs of actions by Sri Subramanyam, Sri Subba Reddy & Sri Tejaswar Reddy"
                 >
-                  <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300 animate-bounce" />
+                  <Bell className="w-4 h-4 text-amber-300 animate-bounce" />
                   <span className="hidden md:inline text-[11px] font-black uppercase tracking-wider">Audit Bell</span>
                   {adminAuditUnread > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-md animate-pulse">
@@ -119,20 +137,21 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
               <button
                 id="quick-menu-dots-btn"
                 onClick={() => setShowQuickMenu(true)}
-                className="min-h-[38px] px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 border border-white/15 active:scale-95"
+                className="min-h-[44px] min-w-[44px] px-2.5 sm:px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 border border-white/15 active:scale-95"
                 title="Open Navigation Menu"
+                aria-label="Open Navigation Menu"
               >
-                <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+                <MoreVertical className="w-5 h-5 text-amber-300" />
                 <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider hidden xs:inline">Menu</span>
               </button>
 
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  className="min-h-[38px] flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C2242C]/20 border border-red-500/30 text-rose-300 hover:bg-[#C2242C] hover:text-white transition-all cursor-pointer active:scale-95"
+                  className="min-h-[44px] flex items-center gap-1 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C2242C]/20 border border-red-500/30 text-rose-300 hover:bg-[#C2242C] hover:text-white transition-all cursor-pointer active:scale-95"
                   title="Sign Out"
                 >
-                  <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <LogOut className="w-4 h-4" />
                   <span className="hidden sm:inline">Sign Out</span>
                 </button>
               )}
@@ -140,107 +159,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
           </div>
         </div>
       </header>
-
-      {/* Modern Touch-First Mobile Bottom Navigation Bar (Thumb Reach Zone) */}
-      <nav 
-        aria-label="Mobile Navigation Bar"
-        className="block md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#292047]/95 backdrop-blur-md border-t border-amber-500/25 px-1 py-1 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.3)] select-none"
-      >
-        <div className="grid grid-cols-5 items-center justify-around h-14">
-          {/* 1. Matches */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isAdmin) setIsAdmin(false);
-              setCurrentTab("matches");
-            }}
-            className={`min-h-[44px] flex flex-col items-center justify-center rounded-xl transition-all ${
-              !isAdmin && currentTab === "matches"
-                ? "text-amber-400 font-extrabold"
-                : "text-blue-200/70 hover:text-white"
-            }`}
-          >
-            <Heart className={`w-5 h-5 ${!isAdmin && currentTab === "matches" ? "fill-amber-400" : ""}`} />
-            <span className="text-[9px] tracking-tight mt-0.5">Matches</span>
-          </button>
-
-          {/* 2. Anti-Scroll Kebab Mode */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isAdmin) setIsAdmin(false);
-              setCurrentTab("compact-kebab");
-            }}
-            className={`min-h-[44px] flex flex-col items-center justify-center rounded-xl transition-all ${
-              !isAdmin && currentTab === "compact-kebab"
-                ? "text-amber-400 font-extrabold"
-                : "text-blue-200/70 hover:text-white"
-            }`}
-          >
-            <Sparkles className="w-5 h-5" />
-            <span className="text-[9px] tracking-tight mt-0.5">Kebab UI</span>
-          </button>
-
-          {/* 3. Partner Criteria / Preferences */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isAdmin) setIsAdmin(false);
-              setCurrentTab("preferences");
-            }}
-            className={`min-h-[44px] flex flex-col items-center justify-center rounded-xl transition-all ${
-              !isAdmin && currentTab === "preferences"
-                ? "text-amber-400 font-extrabold"
-                : "text-blue-200/70 hover:text-white"
-            }`}
-          >
-            <User className="w-5 h-5" />
-            <span className="text-[9px] tracking-tight mt-0.5">Criteria</span>
-          </button>
-
-          {/* 4. Profile / Kundali */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isAdmin) setIsAdmin(false);
-              setCurrentTab("profile");
-            }}
-            className={`min-h-[44px] flex flex-col items-center justify-center rounded-xl transition-all ${
-              !isAdmin && currentTab === "profile"
-                ? "text-amber-400 font-extrabold"
-                : "text-blue-200/70 hover:text-white"
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            <span className="text-[9px] tracking-tight mt-0.5">Kundali</span>
-          </button>
-
-          {/* 5. More Menu / Admin Toggle */}
-          {isLoggedInUserAdmin ? (
-            <button
-              type="button"
-              onClick={() => setIsAdmin(!isAdmin)}
-              className={`min-h-[44px] flex flex-col items-center justify-center rounded-xl transition-all ${
-                isAdmin
-                  ? "text-amber-300 font-black"
-                  : "text-blue-200/70 hover:text-white"
-              }`}
-            >
-              <ShieldCheck className="w-5 h-5" />
-              <span className="text-[9px] tracking-tight mt-0.5">{isAdmin ? "Admin On" : "Admin"}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowQuickMenu(true)}
-              className="min-h-[44px] flex flex-col items-center justify-center text-blue-200/70 hover:text-white rounded-xl transition-all"
-            >
-              <Grid className="w-5 h-5 text-amber-300" />
-              <span className="text-[9px] tracking-tight mt-0.5">More</span>
-            </button>
-          )}
-        </div>
-      </nav>
 
       {/* Clean Bottom Sheet / Modal for Quick Menu on Mobile & Center on Desktop */}
       {showQuickMenu && (
@@ -314,6 +232,24 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
                     ) : (
                       <span className="text-[10px] text-slate-900 font-mono">Live</span>
                     )}
+                  </button>
+
+                  {/* 14 Mandatory Play Store Pre-Flight QA Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      window.dispatchEvent(new CustomEvent("open-playstore-testing"));
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white transition-all cursor-pointer shadow-md min-h-[44px]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🧪</span>
+                      <span className="uppercase tracking-wider">14 Play Store Mandatory Tests</span>
+                    </div>
+                    <span className="text-[9px] bg-black/20 text-blue-200 px-2 py-0.5 rounded-full font-mono font-bold">
+                      Pre-Flight
+                    </span>
                   </button>
 
                   {/* Switch between Admin Sanctuary and User Portal */}
@@ -434,6 +370,22 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
               </div>
             </button>
 
+            {/* Quick Menu Frontend Export Option */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowQuickMenu(false);
+                setShowExportModal(true);
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-2xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white transition-all cursor-pointer shadow-md min-h-[44px]"
+            >
+              <div className="flex items-center gap-2.5">
+                <FolderArchive className="w-4 h-4 text-emerald-200" />
+                <span className="uppercase">📦 Download & Share Frontend (WA / Mail)</span>
+              </div>
+              <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-mono text-emerald-200">ZIP</span>
+            </button>
+
             <button
               onClick={() => setShowQuickMenu(false)}
               className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer min-h-[44px]"
@@ -449,6 +401,9 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
 
       {/* 3-Admin Cross-Audit Bell Modal */}
       <AdminAuditModal isOpen={showAdminAuditModal} onClose={() => setShowAdminAuditModal(false)} />
+
+      {/* Complete Frontend Export & Share Modal */}
+      <FrontendExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} />
     </>
   );
 }

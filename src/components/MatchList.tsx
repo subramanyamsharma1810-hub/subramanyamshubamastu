@@ -37,8 +37,11 @@ import {
   Layers,
   LayoutGrid,
   MessageSquare,
-  Video
+  Video,
+  MoreVertical
 } from "lucide-react";
+import MobileActionSheet from "./MobileActionSheet";
+import PlayStoreTestingDesk from "./PlayStoreTestingDesk";
 
 interface MatchListProps {
   currentProfile: Profile;
@@ -99,6 +102,27 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const [meetDateForm, setMeetDateForm] = useState({ date: "", time: "11:00 AM", location: "Temple Premises / Family Lounge", note: "" });
   const [pelliChupuluForm, setPelliChupuluForm] = useState({ date: "", venue: "Bride's Residence / Function Hall", note: "" });
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const [kebabSelectedMatch, setKebabSelectedMatch] = useState<Profile | null>(null);
+  
+  const isUserAdmin = Boolean(
+    (typeof window !== "undefined" && localStorage.getItem("bramhana_admin_session") === "true") ||
+    currentProfile?.id === "admin-subbu" ||
+    currentProfile?.id === "admin-subba-reddy" ||
+    currentProfile?.id === "admin-tejaswar" ||
+    currentProfile?.role === "admin"
+  );
+
+  const [adminMatchMode, setAdminMatchMode] = useState<"all" | "simulate_groom" | "simulate_bride" | "strict">(() => {
+    return isUserAdmin ? "all" : "strict";
+  });
+  const [showPlayStoreTestingModal, setShowPlayStoreTestingModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleOpenPlayStore = () => setShowPlayStoreTestingModal(true);
+    window.addEventListener("open-playstore-testing", handleOpenPlayStore);
+    return () => window.removeEventListener("open-playstore-testing", handleOpenPlayStore);
+  }, []);
 
   // Chat & Call state
   const [activeChatMatch, setActiveChatMatch] = useState<Profile | null>(null);
@@ -385,6 +409,31 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     // Exclude married profiles
     if ((partner.status as string) === "Married") return false;
 
+    // --- 👑 ADMIN TESTING & MATCH SIMULATOR BYPASS ---
+    // Enables administrators (Sri Subramanyam, Sri Subba Reddy, Sri Tejaswar Reddy)
+    // to test candidate matching and controls before Play Store deployment
+    if (isUserAdmin) {
+      if (adminMatchMode === "all") {
+        return true; // Admins can audit and test all candidates
+      }
+      if (adminMatchMode === "simulate_groom") {
+        // Test as a 28-year-old Groom (Male, Bharadwaja Gotram)
+        if (partner.gender !== "Female") return false;
+        if (partner.gothram?.trim().toLowerCase() === "bharadwaja") return false;
+        const partnerAge = calculateAge(partner.dob);
+        const ageDiff = 28 - partnerAge;
+        return ageDiff >= 1 && ageDiff <= 3;
+      }
+      if (adminMatchMode === "simulate_bride") {
+        // Test as a 25-year-old Bride (Female, Kasyapa Gotram)
+        if (partner.gender !== "Male") return false;
+        if (partner.gothram?.trim().toLowerCase() === "kasyapa") return false;
+        const partnerAge = calculateAge(partner.dob);
+        const ageDiff = partnerAge - 25;
+        return ageDiff >= 1 && ageDiff <= 3;
+      }
+    }
+
     // Exclude disliked / not interested profiles reciprocally
     if (currentProfile.disliked_profiles?.includes(partner.id)) return false;
     if (partner.disliked_profiles?.includes(currentProfile.id)) return false;
@@ -590,6 +639,89 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   return (
     <>
       <div className="space-y-8">
+      {/* 👑 ADMIN TESTING & MATCH SIMULATOR DOCK */}
+      {isUserAdmin && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-yellow-500/15 border-2 border-amber-400 p-4 sm:p-5 rounded-3xl shadow-sm text-left space-y-3 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-400/30 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-400 text-slate-950 rounded-xl font-black text-xs shadow-xs">
+                👑
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-[#362B5A] uppercase tracking-tight flex items-center gap-1.5">
+                  <span>Admin Match Testing & QA Simulator</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-400/40 text-amber-950 font-black">
+                    Play Store Suite
+                  </span>
+                </h3>
+                <p className="text-[11px] text-amber-950 font-medium">
+                  Admins can bypass age/gender restrictions to test match discovery, 3-dots actions, and 14 Play Store pre-flight tests.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPlayStoreTestingModal(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-center active:scale-95"
+            >
+              <span>🧪 14 Mandatory Play Store Tests</span>
+            </button>
+          </div>
+
+          {/* Testing Mode Selector */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-wider">
+              Testing Mode:
+            </span>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "all"
+                  ? "bg-[#362B5A] text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              ✓ All Candidates ({profiles.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("simulate_groom")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "simulate_groom"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              🤵 Simulate Groom (28yo, Bharadwaja)
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("simulate_bride")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "simulate_bride"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              👰 Simulate Bride (25yo, Kasyapa)
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("strict")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "strict"
+                  ? "bg-amber-500 text-slate-950 shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              🔒 Strict Personal Rules
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Intro Match Screen */}
       <div className="bg-gradient-to-r from-[#362B5A] to-[#C2242C]/10 p-6 sm:p-8 rounded-3xl text-[#362B5A] bg-[#EBF6FF] border border-[#362B5A]/10 relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="space-y-2">
@@ -1002,6 +1134,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                     isFront={index === array.length - 1}
                     handleSwipe={handleSwipe}
                     calculateAge={calculateAge}
+                    onOpenOptions={(p) => setKebabSelectedMatch(p)}
                   />
                 ))}
               </AnimatePresence>
@@ -1047,6 +1180,21 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                                 alt={match.name}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                               />
+
+                              {/* 3-Dots Quick Actions Button (Modern Mobile & Desktop Trigger) */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setKebabSelectedMatch(match);
+                                }}
+                                className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-900/65 hover:bg-slate-900 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center justify-center cursor-pointer transition-transform active:scale-90"
+                                title="3-Dots Quick Controls (Admin & User)"
+                                aria-label={`3-dots actions for ${match.name}`}
+                              >
+                                <MoreVertical className="w-5 h-5 text-amber-300" />
+                              </button>
+
                               {/* Score Overlap */}
                               <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-white/95 backdrop-blur-sm shadow-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
                                 <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
@@ -1115,6 +1263,18 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                                     className="flex-1 py-2 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
                                   >
                                     View Sacred Details
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setKebabSelectedMatch(match);
+                                    }}
+                                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-100 text-[#362B5A] hover:text-amber-900 border border-gray-200 transition-all cursor-pointer flex items-center justify-center min-w-[44px]"
+                                    title="More quick options (WhatsApp, Shortlist, Admin verify)"
+                                    aria-label="More options"
+                                  >
+                                    <MoreVertical className="w-4 h-4 text-amber-600" />
                                   </button>
                                 </div>
                               </div>
@@ -2130,6 +2290,39 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
           </div>
         </div>
       )}
+
+      {/* Modern 3-Dots Mobile Action Sheet (Native App Style Drawer) */}
+      <MobileActionSheet
+        isOpen={Boolean(kebabSelectedMatch)}
+        onClose={() => setKebabSelectedMatch(null)}
+        match={kebabSelectedMatch}
+        currentProfile={currentProfile}
+        isAdmin={isUserAdmin}
+        onExpressInterest={(p) => handleSwipe(p, "right")}
+        onViewDetails={(p) => setSelectedMatch(p)}
+        onOpenDateProposal={(p) => {
+          setDateProposalTarget(p);
+          setDateProposalText(`Namaskaram 🙏, I am ${currentProfile.name}. I saw your profile expressed interest in mine. I want a date / meet with you, what do you feel? (మీతో డేట్ లేదా కలవాలని అనుకుంటున్నాను, మీ అభిప్రాయం ఏమిటి?)`);
+        }}
+        onOpenPandith={() => setShowPandithModal(true)}
+        onReportGrievance={() => {
+          alert("Opening Grievance Cell desk for report submission.");
+          window.location.href = "/grievances";
+        }}
+        onStatusUpdated={(updated) => {
+          setProfiles((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+          onUpdateProfile(updated);
+        }}
+      />
+
+      {/* 👑 Google Play Store 14 Mandatory Pre-Flight QA & Testing Cockpit */}
+      <PlayStoreTestingDesk
+        isOpen={showPlayStoreTestingModal}
+        onClose={() => setShowPlayStoreTestingModal(false)}
+        allProfiles={profiles}
+        currentProfile={currentProfile}
+        onActivateAdminTestingMode={(mode) => setAdminMatchMode(mode)}
+      />
     </>
   );
 }

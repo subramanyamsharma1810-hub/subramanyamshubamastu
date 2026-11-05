@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'in.shubhamastu.matrimony'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "in.shubhamastu.matrimony"
+        minSdk 21
+        targetSdk 34
+        versionCode 240
+        versionName "2.4.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        manifestPlaceholders = [
+            hostName: "ais-dev-jr7vjinyphtz42ys53amum-666488258388.asia-east1.run.app",
+            defaultUrl: "https://ais-dev-jr7vjinyphtz42ys53amum-666488258388.asia-east1.run.app",
+            launcherName: "Shubhamastu",
+            assetStatements: '[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"android_app\", \"package_name\": \"in.shubhamastu.matrimony\", \"sha256_cert_fingerprints\": [\"69:8F:D0:65:07:07:9F:8B:D4:FF:6A:11:80:61:9F:04:18:61:FF:63:93:CD:B3:68:5A:61:77:24:D9:6A:F9:6E\", \"FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C\"]} }]'
+        ]
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.browser:browser:1.8.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}
