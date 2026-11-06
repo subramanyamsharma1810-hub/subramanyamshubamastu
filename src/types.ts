@@ -66,8 +66,8 @@ export interface Profile {
   partner_lpa_pref?: string;   // e.g., "0-6 LPA", "7-13 LPA", "14-30 LPA", "30-60 LPA", "60+ LPA", "No Preference"
   partner_shift_pref?: string; // e.g., "Day Shift Only", "Any Shift", "Flexible"
   astrology?: AstrologyDetails;
-  subscription_status?: "free" | "paid_100" | "paid_900";
-  subscription_expires_at?: string; // 28-day subscription expiry date
+  subscription_status?: "free" | "paid_100" | "paid_900" | "paid_1599";
+  subscription_expires_at?: string; // 28/31-day subscription expiry date
   approved_matches?: string[]; // IDs of matches delivered/approved by admin (the kitchen plate)
   gothram?: string;            // Gotram (గోత్రం)
   surname?: string;            // Surname (ఇంటిపేరు / Family Name / Inti Peru)

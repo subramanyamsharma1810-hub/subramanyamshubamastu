@@ -568,7 +568,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
   const handleUnlockContact = (matchId: string) => {
     const subStatus = currentProfile.subscription_status || "free";
-    if (subStatus !== "paid_900") {
+    const isPaidMember = subStatus === "paid_900" || subStatus === "paid_1599";
+    if (!isPaidMember) {
       setShowUpgradeModal(true);
       return;
     }
@@ -862,7 +863,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         </div>
       </div>
 
-      {currentProfile.subscription_status !== "paid_900" && (
+      {currentProfile.subscription_status !== "paid_900" && currentProfile.subscription_status !== "paid_1599" && (
         <div className="bg-amber-50 border border-amber-200 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
@@ -876,7 +877,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 </span>
               </p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Only <span className="font-bold">Paid ₹900</span> members can retrieve verified phone numbers and sacred Kundali attachments. Upgrade now to unlock immediate access.
+                Only <span className="font-bold">Paid Premium (₹1,599 / ₹900)</span> members can retrieve verified phone numbers and sacred Kundali attachments. Upgrade now to unlock immediate access.
               </p>
             </div>
           </div>
@@ -884,20 +885,22 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             onClick={() => setShowUpgradeModal(true)}
             className="w-full sm:w-auto bg-[#C2242C] text-white hover:bg-opacity-95 active:scale-95 transition-all font-bold text-xs py-2.5 px-5 rounded-xl uppercase tracking-wider cursor-pointer shrink-0 shadow-sm"
           >
-            Upgrade to Paid_900
+            Upgrade to Full Access
           </button>
         </div>
       )}
 
-      {currentProfile.subscription_status === "paid_900" && (
+      {(currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599") && (
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-3xl flex items-center gap-3">
           <div className="p-2 bg-emerald-100 text-emerald-800 rounded-2xl shrink-0">
             <CheckCircle2 className="w-5 h-5 text-emerald-700" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-bold text-emerald-900">Supreme Alignment Active (Paid ₹900)</p>
+            <p className="text-sm font-bold text-emerald-900">
+              Supreme Alignment Active ({currentProfile.subscription_status === "paid_1599" ? "Paid ₹1,599 • 31 Days" : "Paid ₹900"})
+            </p>
             <p className="text-xs text-emerald-700 mt-0.5">
-              You have full, unrestricted access to unlock contact details and establish divine matrimonial connection lines.
+              You have full, unrestricted access to unlock contact details, initiate calls, and establish divine matrimonial connection lines.
             </p>
           </div>
         </div>

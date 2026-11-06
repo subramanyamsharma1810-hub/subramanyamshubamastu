@@ -584,8 +584,12 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     isEmailVerified: true,
     status: "Active",
     role: "candidate",
-    subscription_status: "paid_100",
+    subscription_status: "paid_1599",
     payment_received: true,
+    fee_received_by: "Sri G.V. Subramanyam (Galark Solutions)",
+    fee_transaction_id: "UPI/PHONEPE/1599/2026",
+    fee_received_at: "2026-11-06T10:00:00Z",
+    subscription_expires_at: "2026-12-07T23:59:59Z",
     photo_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400",
     birth_time: "07:30",
     birth_location: "Bengaluru, India",
@@ -1199,7 +1203,8 @@ export const databaseService = {
     const updateData: any = { subscription_status };
     if (subscription_status && subscription_status !== "free") {
       updateData.status = "Verified";
-      const expiryDate = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const days = subscription_status === "paid_1599" ? 31 : 28;
+      const expiryDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       updateData.subscription_expires_at = expiryDate;
     } else {
       updateData.subscription_expires_at = null;
@@ -1224,7 +1229,8 @@ export const databaseService = {
         current[index].subscription_status = subscription_status;
         if (subscription_status && subscription_status !== "free") {
           current[index].status = "Verified";
-          const expiryDate = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const days = subscription_status === "paid_1599" ? 31 : 28;
+          const expiryDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
           current[index].subscription_expires_at = expiryDate;
         } else {
           current[index].subscription_expires_at = undefined;
