@@ -4,7 +4,7 @@
   "packageId": "in.shubhamastu.matrimony",
   "appName": "Shubhamastu Brahmin Vivaha Vedika",
   "domain": "www.shubhamastu.in",
-  "testedAt": "2026-11-05T11:28:05.770Z",
+  "testedAt": "2026-11-06T11:56:17.312Z",
   "scorePercent": "100%",
   "summary": {
     "total": 30,
@@ -28,7 +28,7 @@
       "name": "Vedic Match Engine & Sagotra Prohibition",
       "category": "Vedic Engine",
       "status": "PASS",
-      "latencyMs": 0,
+      "latencyMs": 1,
       "details": "Sagotra correctly detected. Valid match scored 100%."
     },
     {
@@ -37,7 +37,7 @@
       "name": "Auth Session & Token Security",
       "category": "Security",
       "status": "PASS",
-      "latencyMs": 3,
+      "latencyMs": 2,
       "details": "Session isolation verified. Zero private keys exposed in source."
     },
     {
@@ -46,7 +46,7 @@
       "name": "Data Safety, Privacy Policy & IT Act 2021",
       "category": "Compliance",
       "status": "PASS",
-      "latencyMs": 69,
+      "latencyMs": 62,
       "details": "Privacy Policy, Terms of Service, and Intermediary Disclaimers accessible."
     },
     {
@@ -64,7 +64,7 @@
       "name": "Cashfree / PhonePe Payment Sandbox & Receipts",
       "category": "Payments",
       "status": "PASS",
-      "latencyMs": 1595,
+      "latencyMs": 733,
       "details": "Sandbox order created successfully. Order ID returned with Section 65B receipt readiness."
     },
     {
@@ -100,7 +100,7 @@
       "name": "Vedic Kundali Ephemeris Engine",
       "category": "Vedic Engine",
       "status": "PASS",
-      "latencyMs": 2,
+      "latencyMs": 1,
       "details": "Computed Nakshatra: Swati, Rasi: Tula, Tithi: sravana masam suklapaksham sasti (sravana sudda sasti)."
     },
     {
@@ -127,7 +127,7 @@
       "name": "Virtual Scrolling & Memory Leak Test",
       "category": "Performance",
       "status": "PASS",
-      "latencyMs": 2,
+      "latencyMs": 1,
       "details": "react-window virtual scrolling prevents DOM bloat under 500+ profiles."
     },
     {
@@ -136,7 +136,7 @@
       "name": "Google Play Production Certificate Readiness",
       "category": "Compliance",
       "status": "PASS",
-      "latencyMs": 1,
+      "latencyMs": 0,
       "details": "Web App Manifest and Android Digital Asset Links verified for Google Play Store."
     }
   ],
@@ -147,8 +147,8 @@
       "name": "Landing / Web App Entry Point",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 61,
-      "details": "HTTP 200 OK (60ms). Response size: 1402 bytes."
+      "latencyMs": 53,
+      "details": "HTTP 200 OK (53ms). Response size: 1402 bytes."
     },
     {
       "num": 21,
@@ -156,8 +156,8 @@
       "name": "Backend Health Check",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 5,
-      "details": "HTTP 200 OK (5ms). Response size: 54 bytes."
+      "latencyMs": 3,
+      "details": "HTTP 200 OK (3ms). Response size: 54 bytes."
     },
     {
       "num": 22,
@@ -165,8 +165,8 @@
       "name": "Vedic Astrology Calculator API",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 12,
-      "details": "HTTP 200 OK (11ms). Response size: 1491 bytes."
+      "latencyMs": 7,
+      "details": "HTTP 200 OK (7ms). Response size: 1491 bytes."
     },
     {
       "num": 23,
@@ -174,8 +174,8 @@
       "name": "Payment Sandbox Order API",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 445,
-      "details": "HTTP 200 OK (445ms). Response size: 170 bytes."
+      "latencyMs": 157,
+      "details": "HTTP 200 OK (157ms). Response size: 170 bytes."
     },
     {
       "num": 24,
@@ -183,8 +183,8 @@
       "name": "Cashfree Direct Order Gateway",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 196,
-      "details": "HTTP 200 OK (196ms). Response size: 170 bytes."
+      "latencyMs": 391,
+      "details": "HTTP 200 OK (390ms). Response size: 170 bytes."
     },
     {
       "num": 25,
@@ -192,8 +192,8 @@
       "name": "All-in-One Frontend ZIP",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 50,
-      "details": "HTTP 200 OK (50ms). Response size: 1605397 bytes."
+      "latencyMs": 118,
+      "details": "HTTP 200 OK (117ms). Response size: 1769111 bytes."
     },
     {
       "num": 26,
@@ -201,8 +201,8 @@
       "name": "Raw HTML/CSS/JS ZIP",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 40,
-      "details": "HTTP 200 OK (40ms). Response size: 1156216 bytes."
+      "latencyMs": 36,
+      "details": "HTTP 200 OK (35ms). Response size: 1156213 bytes."
     },
     {
       "num": 27,
@@ -210,8 +210,8 @@
       "name": "Android Play Store Package Bundle ZIP",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 5,
-      "details": "HTTP 200 OK (4ms). Response size: 8606 bytes."
+      "latencyMs": 3,
+      "details": "HTTP 200 OK (3ms). Response size: 8631 bytes."
     },
     {
       "num": 28,
@@ -228,8 +228,8 @@
       "name": "Raw style.css Stylesheet",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 5,
-      "details": "HTTP 200 OK (5ms). Response size: 197832 bytes."
+      "latencyMs": 4,
+      "details": "HTTP 200 OK (4ms). Response size: 197832 bytes."
     },
     {
       "num": 30,
@@ -237,8 +237,8 @@
       "name": "Raw script.js Bundle",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 56,
-      "details": "HTTP 200 OK (56ms). Response size: 4525237 bytes."
+      "latencyMs": 42,
+      "details": "HTTP 200 OK (42ms). Response size: 4525237 bytes."
     },
     {
       "num": 31,
@@ -246,8 +246,8 @@
       "name": "PWA Web App Manifest",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 7,
-      "details": "HTTP 200 OK (7ms). Response size: 1613 bytes."
+      "latencyMs": 9,
+      "details": "HTTP 200 OK (9ms). Response size: 1613 bytes."
     },
     {
       "num": 32,
@@ -255,7 +255,7 @@
       "name": "Service Worker Script",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 2,
+      "latencyMs": 3,
       "details": "HTTP 200 OK (2ms). Response size: 2945 bytes."
     },
     {
@@ -264,8 +264,8 @@
       "name": "Android Asset Links",
       "category": "API Endpoint",
       "status": "PASS",
-      "latencyMs": 3,
-      "details": "HTTP 200 OK (3ms). Response size: 439 bytes."
+      "latencyMs": 2,
+      "details": "HTTP 200 OK (2ms). Response size: 439 bytes."
     }
   ],
   "loadTests": [
@@ -276,7 +276,7 @@
       "category": "Load Test",
       "status": "PASS",
       "latencyMs": 3,
-      "details": "Computed 1,000 match scores in 2.30ms (average 0.002ms/match). High throughput sustained with 0 memory bloat."
+      "details": "Computed 1,000 match scores in 2.89ms (average 0.003ms/match). High throughput sustained with 0 memory bloat."
     },
     {
       "num": 51,
@@ -284,8 +284,8 @@
       "name": "50 Concurrent HTTP Requests Stress Test",
       "category": "Load Test",
       "status": "PASS",
-      "latencyMs": 60,
-      "details": "All 50/50 concurrent requests succeeded in 60ms (~833 req/sec)."
+      "latencyMs": 42,
+      "details": "All 50/50 concurrent requests succeeded in 42ms (~1190 req/sec)."
     }
   ],
   "complianceSignOff": {

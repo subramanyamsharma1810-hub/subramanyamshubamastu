@@ -44,6 +44,7 @@ import {
   Check,
   Zap,
   CreditCard,
+  Mail,
   ShieldCheck
 } from "lucide-react";
 
@@ -1729,7 +1730,7 @@ export default function LandingPage({
                 <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
                   Step {regStep} of 5: {
                     regStep === 1 ? "1. Names & Family Details" :
-                    regStep === 2 ? "2. Contact & Email OTP" :
+                    regStep === 2 ? "2. Contact Details (No OTP)" :
                     regStep === 3 ? "3. Caste, Gothram & Rasi" :
                     regStep === 4 ? "4. Birth Details" :
                     "5. Diet, Profession & Discounts"
@@ -1840,144 +1841,70 @@ export default function LandingPage({
               </div>
             )}
 
-            {/* STEP 2: CONTACT & OTP */}
+            {/* STEP 2: CONTACT & CREDENTIALS (NO OTP REQUIRED FOR CANDIDATE) */}
             {regStep === 2 && (
               <div className="space-y-4 pt-4 text-sm animate-in fade-in duration-200">
                 <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-xs text-amber-200">
-                  <span className="font-extrabold block mb-0.5">రెండవ దశ: సంప్రదింపు వివరాలు & ఇమెయిల్ OTP</span>
-                  Enter your mobile number and verify your email securely.
+                  <span className="font-extrabold block mb-0.5">రెండవ దశ: సంప్రదింపు వివరాలు (Contact Details)</span>
+                  Enter candidate mobile number and optional email. Direct and instant access — no OTP required for candidate registration!
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">Mobile Number / Contact Phone (మొబైల్ సంఖ్య) *</label>
+                  <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">
+                    Mobile Number / Contact Phone (మొబైల్ సంఖ్య - లాగిన్ ఐడి) *
+                  </label>
                   <div className="relative">
                     <Phone className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <input
-                      type="text"
+                      type="tel"
                       required
-                      placeholder="e.g. 9848012345"
+                      placeholder="e.g. 9876543210"
                       value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
+                      onChange={(e) => setRegPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
                       className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:outline-none font-mono font-bold"
                     />
                   </div>
-                  <p className="text-[10px] text-gray-400">This mobile number will be your Login ID to access your profile.</p>
+                  <p className="text-[10px] text-gray-400">
+                    This mobile number will be your Login ID to access your profile and matches.
+                  </p>
                 </div>
 
-                <div className="space-y-2 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">Candidate Email ID (Optional Verification)</label>
-                    {isEmailVerified ? (
-                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/30">
-                        ✓ Verified
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] font-bold rounded">
-                        Optional (ఐచ్ఛికం)
-                      </span>
-                    )}
+                <div className="space-y-1.5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                  <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">
+                    Candidate Email ID (ఈమెయిల్ ఐడి - Optional)
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-amber-400/70 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                    <input
+                      type="email"
+                      placeholder="e.g. candidate@example.com"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-bold"
+                    />
                   </div>
+                  <p className="text-[10px] text-emerald-400/90 font-medium">
+                    ✓ Direct registration — No OTP verification needed. (OTP is strictly restricted for admin login only).
+                  </p>
+                </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex gap-2">
-                      <input
-                        type="email"
-                        placeholder="e.g. subramanyam@gmail.com"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        disabled={isEmailVerified}
-                        className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none font-bold disabled:opacity-60"
-                      />
-                      {!isEmailVerified && (
-                        <button
-                          type="button"
-                          disabled={otpCooldown > 0 || isSendingOtp}
-                          onClick={handleSendEmailOtp}
-                          className={`px-4 py-2.5 font-black text-xs rounded-xl transition-all whitespace-nowrap shadow-md flex items-center gap-1.5 ${
-                            otpCooldown > 0 || isSendingOtp
-                              ? "bg-zinc-800 text-zinc-400 border border-zinc-700 cursor-not-allowed opacity-85"
-                              : isOtpSent
-                              ? "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
-                              : "bg-amber-500 hover:bg-amber-600 text-black cursor-pointer"
-                          }`}
-                        >
-                          {isSendingOtp ? (
-                            <>
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              <span>Sending...</span>
-                            </>
-                          ) : otpCooldown > 0 ? (
-                            <>
-                              <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                              <span>Resend in {formatCooldownTime(otpCooldown)}</span>
-                            </>
-                          ) : isOtpSent ? (
-                            <>
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>Resend OTP (మళ్లీ పంపండి)</span>
-                            </>
-                          ) : (
-                            <span>Send OTP (OTP పంపండి)</span>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                    {regEmail.trim().length > 0 && !isEmailVerified && (
-                      <div className="text-[11px] font-bold px-1">
-                        {!regEmail.includes("@") ? (
-                          <span className="text-red-400">⚠️ Email must include '@' symbol (e.g. user@domain.com)</span>
-                        ) : !regEmail.includes(".") || regEmail.indexOf(".") < regEmail.indexOf("@") ? (
-                          <span className="text-amber-300">⚠️ Incomplete email domain (e.g. missing .com, .in, .edu.in)</span>
-                        ) : regEmail.toLowerCase().includes("@gmil.") || regEmail.toLowerCase().includes("@gmai.") ? (
-                          <span className="text-amber-300">⚠️ Typo detected? Did you mean @gmail.com?</span>
-                        ) : (
-                          <span className="text-emerald-400">✓ Valid email format ready for OTP dispatch</span>
-                        )}
-                      </div>
-                    )}
+                <div className="space-y-1.5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                  <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">
+                    Custom Password (పాస్‌వర్డ్ - Optional)
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-amber-400/70 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Leave blank to use Date of Birth (DDMMYYYY) as password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-mono"
+                    />
                   </div>
-
-                  {otpErrorMsg && (
-                    <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 font-bold flex items-center gap-2 animate-in fade-in">
-                      <span>{otpErrorMsg}</span>
-                    </div>
-                  )}
-
-                  {otpSuccessMsg && (
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 font-bold flex items-center gap-2 animate-in fade-in">
-                      <span>{otpSuccessMsg}</span>
-                    </div>
-                  )}
-
-                  {otpCooldown > 0 && !isEmailVerified && (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
-                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>OTP sent to email. You can resend after the 2-minute timer: <strong>{formatCooldownTime(otpCooldown)}</strong> remaining.</span>
-                    </div>
-                  )}
-
-                  {isOtpSent && !isEmailVerified && (
-                    <div className="p-3 bg-zinc-900 rounded-xl border border-amber-500/30 flex items-center gap-3 mt-2">
-                      <input
-                        type="text"
-                        maxLength={7}
-                        placeholder="7-digit OTP"
-                        value={regOtp}
-                        onChange={(e) => setRegOtp(e.target.value)}
-                        className="bg-black border border-zinc-700 focus:border-amber-400 rounded-lg py-2 px-3 text-sm text-white focus:outline-none font-mono font-bold w-32 tracking-widest text-center"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyOtp}
-                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-lg transition-all cursor-pointer"
-                      >
-                        Verify OTP
-                      </button>
-                      <span className="text-[11px] text-zinc-300">
-                        Enter the 7-digit OTP sent to your email.
-                      </span>
-                    </div>
-                  )}
+                  <p className="text-[10px] text-zinc-400">
+                    If left blank, your Date of Birth (e.g. 15051998) will automatically become your password.
+                  </p>
                 </div>
               </div>
             )}

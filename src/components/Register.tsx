@@ -526,69 +526,16 @@ export default function Register() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">Email ID (Mandatory for Verification) *</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      required
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setIsEmailVerified(false);
-                        setIsOtpSent(false);
-                      }}
-                      disabled={isEmailVerified}
-                      className={`flex-1 bg-zinc-950 border ${isEmailVerified ? 'border-emerald-500/50 text-emerald-400' : 'border-zinc-800 focus:border-amber-400'} rounded-xl px-4 py-2.5 text-sm focus:outline-none`}
-                    />
-                    {!isEmailVerified && (
-                      <button
-                        type="button"
-                        onClick={handleSendOtp}
-                        disabled={otpLoading || otpCooldown > 0}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-black text-xs font-black uppercase rounded-xl transition-all"
-                      >
-                        {otpLoading ? "Sending..." : otpCooldown > 0 ? `Resend in ${otpCooldown}s` : isOtpSent ? "Resend OTP" : "Send OTP"}
-                      </button>
-                    )}
-                  </div>
+                  <label className="text-xs font-bold text-gray-300">Email ID (ఐచ్ఛికం - Optional)</label>
+                  <input
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                  />
+                  <p className="text-[10px] text-emerald-400/90 font-medium">✓ Direct registration without OTP</p>
                 </div>
-
-                {isOtpSent && !isEmailVerified && (
-                  <div className="mt-4 p-4 bg-zinc-900 border border-amber-500/30 rounded-2xl space-y-3 animate-in slide-in-from-top-2 duration-300">
-                    <label className="text-[10px] font-bold text-amber-300 uppercase tracking-widest block">
-                      Enter 6-Digit OTP Code
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        maxLength={6}
-                        placeholder="000000"
-                        ref={otpInputRef}
-                        value={regOtp}
-                        onChange={(e) => setRegOtp(e.target.value.replace(/\D/g, ""))}
-                        autoFocus
-                        className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-center font-mono text-lg tracking-widest text-white focus:outline-none focus:border-amber-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyOtp}
-                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase rounded-xl transition-all"
-                      >
-                        Verify
-                      </button>
-                    </div>
-                    {otpErrorMsg && <p className="text-[10px] text-rose-400 font-bold">{otpErrorMsg}</p>}
-                    {otpSuccessMsg && <p className="text-[10px] text-emerald-400 font-bold">{otpSuccessMsg}</p>}
-                  </div>
-                )}
-
-                {isEmailVerified && (
-                  <p className="mt-2 text-[10px] text-emerald-400 font-bold flex items-center gap-1.5 animate-in fade-in duration-500">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Email verified successfully via verification@shubhamastu.in
-                  </p>
-                )}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-300">Create Password (పాస్‌వర్డ్) *</label>
                   <input
@@ -805,7 +752,7 @@ export default function Register() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || isVerifyingPayment || (isOtpSent && !isEmailVerified)}
+                disabled={loading || isVerifyingPayment}
                 className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isVerifyingPayment ? (
