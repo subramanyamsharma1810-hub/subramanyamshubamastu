@@ -819,13 +819,20 @@ export const databaseService = {
     try {
       const isAdminSession = typeof window !== "undefined" && localStorage.getItem("bramhana_admin_session") === "true";
       const q = query(collection(db, "profiles"));
-      const querySnapshot = await getDocs(q);
+      // 1200ms timeout race to prevent UI freeze if Firestore operations stall or cancel
+      const querySnapshotPromise = getDocs(q);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200));
+      const querySnapshot = await Promise.race([querySnapshotPromise, timeoutPromise]);
       
-      if (querySnapshot.empty) {
+      if (!querySnapshot) {
+        // Fast fallback to local cache
+        const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
+        rawProfiles = local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
+      } else if (querySnapshot.empty) {
         // Seed Firestore collection with default profiles on first run IF ADMIN
         if (isAdminSession) {
           for (const p of PRE_SEEDED_PROFILES) {
-            await setDoc(doc(db, "profiles", p.id), p);
+            setDoc(doc(db, "profiles", p.id), p).catch(() => {});
           }
         }
         rawProfiles = [...PRE_SEEDED_PROFILES];
@@ -835,16 +842,11 @@ export const databaseService = {
         });
         
         // Guarantee the admin profiles are always fully up-to-date with current pre-seeded admin details
-        // Only attempt this if it's an admin session to avoid permission errors
         if (isAdminSession) {
           for (const p of PRE_SEEDED_PROFILES) {
             const existingAdmin = rawProfiles.find(rp => rp.id === p.id);
             if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.password !== p.password || existingAdmin.name !== p.name) {
-              try {
-                await setDoc(doc(db, "profiles", p.id), p);
-              } catch (fsErr) {
-                // Non-fatal sync
-              }
+              setDoc(doc(db, "profiles", p.id), p).catch(() => {});
               if (existingAdmin) {
                 const idx = rawProfiles.indexOf(existingAdmin);
                 if (idx > -1) rawProfiles[idx] = p;
@@ -859,30 +861,28 @@ export const databaseService = {
       if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
         console.warn("Firestore access restricted, reading from local cache...");
       } else {
-        console.error("Firestore profiles fetch error:", err);
+        console.warn("Firestore profiles fetch fallback to local cache:", err?.message || err);
       }
-      const local = localStorage.getItem("matrimonial_profiles");
+      const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
       rawProfiles = local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
     }
 
     // Always merge with localStorage to ensure local profiles are fully preserved and synchronized
-    const local = localStorage.getItem("matrimonial_profiles");
+    const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
     if (local) {
       try {
         const localProfiles: Profile[] = JSON.parse(local);
         for (const lp of localProfiles) {
           if (!rawProfiles.some((rp) => rp.id === lp.id)) {
             rawProfiles.push(lp);
-            // Proactively try to sync this missing local profile to Firestore
+            // Non-blocking proactive sync to Firestore
             try {
               const safeLp = { ...lp };
               if (safeLp.photo_url && safeLp.photo_url.startsWith("data:image") && safeLp.photo_url.length > 900000) {
                 safeLp.photo_url = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400";
               }
-              await setDoc(doc(db, "profiles", lp.id), safeLp);
-            } catch (syncErr) {
-              // Silently handle size or network sync errors
-            }
+              setDoc(doc(db, "profiles", lp.id), safeLp).catch(() => {});
+            } catch (_) {}
           }
         }
       } catch (parseErr) {

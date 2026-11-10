@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, Compass, MapPin, Calendar, Clock, Phone, Briefcase, Heart, Award, ShieldCheck, User, UploadCloud, Camera, Trash2, Image, FileText, Eye, EyeOff } from "lucide-react";
+import { Sparkles, Compass, MapPin, Calendar, Clock, Phone, Briefcase, Heart, Award, ShieldCheck, User, UploadCloud, Camera, Trash2, Image, FileText, Eye, EyeOff, Download } from "lucide-react";
 import { Profile, AstrologyDetails } from "../types";
 import { BRAHMIN_SUB_CASTES, BRAHMIN_GOTRAMS } from "../lib/brahminMetadata";
 import { calculatePanchangam } from "../lib/panchangam";
@@ -7,6 +7,7 @@ import { KundaliChart } from "./KundaliChart";
 import SearchableSelect from "./SearchableSelect";
 import { databaseService } from "../lib/databaseService";
 import ContactRequestsManager from "./dashboard/ContactRequestsManager";
+import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
 interface MyProfileFormProps {
   currentProfile: Profile;
@@ -1231,6 +1232,16 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
                   }
                   return null;
                 })()}
+
+                {/* Download PDF Button */}
+                <button
+                  type="button"
+                  onClick={() => downloadAstrologyPdf({ ...currentProfile, ...formData, astrology })}
+                  className="w-full mt-3 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-105 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+                >
+                  <Download className="w-4 h-4 text-black" />
+                  <span>Download Complete Astrological & Kundali PDF Summary (జాతక పత్రిక PDF)</span>
+                </button>
               </div>
 
               {/* Spiritual alignment score dial */}

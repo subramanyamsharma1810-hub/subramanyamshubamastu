@@ -45,8 +45,10 @@ import {
   Zap,
   CreditCard,
   Mail,
-  ShieldCheck
+  ShieldCheck,
+  Download
 } from "lucide-react";
+import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
 interface LandingPageProps {
   onLoginSuccess: (profile: Profile) => void;
@@ -115,7 +117,7 @@ export default function LandingPage({
   const [regDob, setRegDob] = useState("");
   const [regBirthPlace, setRegBirthPlace] = useState("");
   const [regBirthPincode, setRegBirthPincode] = useState("");
-  const [regSubscriptionStatus, setRegSubscriptionStatus] = useState<"free" | "paid_100" | "paid_900">("free");
+  const [regSubscriptionStatus, setRegSubscriptionStatus] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("paid_1599");
   const [regBirthTime, setRegBirthTime] = useState("08:30");
   const [regTimeType, setRegTimeType] = useState<"exact" | "buffer">("exact");
   const [regBufferFrom, setRegBufferFrom] = useState("09:00");
@@ -2249,11 +2251,10 @@ export default function LandingPage({
                     onChange={(e) => setRegSubscriptionStatus(e.target.value as any)}
                     className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none font-bold cursor-pointer"
                   >
+                    <option value="paid_1599">₹1599 Paid Plan - 31 Days Unlimited Brahmin Matches (₹1599)</option>
+                    <option value="paid_100">₹100 Search Starter Plan - Start Matching (₹100)</option>
                     <option value="free">Free Plan (ఉచిత ప్లాన్) - Basic Registration (₹0)</option>
-                    <option value="paid_1500">Full Premium Plan - Full Access (₹1500)</option>
-                    <option value="paid_750">Defence 50% Off Plan - AGNIVEERA (₹750)</option>
-                    <option value="paid_900">New User Discount Plan - NEWUSER2026 (₹900)</option>
-                    <option value="paid_referral">Referral Rewards Plan - Free Access (₹0)</option>
+                    <option value="paid_900">New User Special Plan - NEWUSER2026 (₹900)</option>
                   </select>
                 </div>
 
@@ -2469,22 +2470,37 @@ export default function LandingPage({
               </div>
             </div>
 
+            {/* Download Astrology & Kundali PDF Button */}
+            <button
+              type="button"
+              onClick={() => downloadAstrologyPdf(registeredProfile)}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-105 active:scale-[0.98] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300 relative z-10"
+            >
+              <Download className="w-4 h-4 text-black" />
+              <span>Download My Kundali & Astrology Summary PDF (జాతక పత్రిక PDF)</span>
+            </button>
+
             {/* Payment Section for Paid Packages */}
-            {(registeredProfile.subscription_status === "paid_100" || registeredProfile.subscription_status === "paid_900") && (
+            {(registeredProfile.subscription_status === "paid_100" || registeredProfile.subscription_status === "paid_900" || registeredProfile.subscription_status === "paid_1599") && (
               <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl p-4 space-y-4 relative z-10">
                 <div className="text-center space-y-1">
                   <span className="text-[10px] text-amber-300 font-mono tracking-widest uppercase block font-bold">Secure Payment Portal</span>
                   <h4 className="text-sm font-extrabold text-white">
-                    {registeredProfile.subscription_status === "paid_100" 
-                      ? "Pay Match Registration Fee (₹100)" 
-                      : "Pay Full Communication Upgrade (₹900)"}
+                    {registeredProfile.subscription_status === "paid_1599"
+                      ? "Pay 31-Day Unlimited Matches Fee (₹1599)"
+                      : registeredProfile.subscription_status === "paid_100" 
+                        ? "Pay Match Registration Fee (₹100)" 
+                        : "Pay Full Communication Upgrade (₹900)"}
                   </h4>
                   <p className="text-[11px] text-zinc-400">
                     Scan G.V. Subramanyam's authentic PhonePe QR code below to complete your registration.
                   </p>
                 </div>
 
-                <PhonePeQRCode amount={registeredProfile.subscription_status === "paid_100" ? 100 : 900} className="w-full shadow-lg" />
+                <PhonePeQRCode 
+                  amount={registeredProfile.subscription_status === "paid_1599" ? 1599 : (registeredProfile.subscription_status === "paid_100" ? 100 : 900)} 
+                  className="w-full shadow-lg" 
+                />
 
                 {regPaymentSuccess || registeredProfile.fee_transaction_id || registeredProfile.upgrade_transaction_id ? (
                   <div className="p-3 bg-emerald-950/40 border border-emerald-500/20 rounded-xl text-center space-y-1 text-emerald-400">

@@ -38,10 +38,12 @@ import {
   LayoutGrid,
   MessageSquare,
   Video,
-  MoreVertical
+  MoreVertical,
+  Download
 } from "lucide-react";
 import MobileActionSheet from "./MobileActionSheet";
 import PlayStoreTestingDesk from "./PlayStoreTestingDesk";
+import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
 interface MatchListProps {
   currentProfile: Profile;
@@ -1604,6 +1606,16 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                             </div>
                           </div>
                         )}
+
+                        {/* Download Match Astrological Summary PDF */}
+                        <button
+                          type="button"
+                          onClick={() => downloadAstrologyPdf(selectedMatch)}
+                          className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-105 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+                        >
+                          <Download className="w-4 h-4 text-black" />
+                          <span>Download {selectedMatch.name}'s Kundali & Astrology PDF (జాతక పత్రిక PDF)</span>
+                        </button>
                       </div>
                     )}
 

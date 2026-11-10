@@ -19,8 +19,10 @@ import {
   CreditCard,
   ArrowRight,
   Home,
-  Zap
+  Zap,
+  Download
 } from "lucide-react";
+import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export default function Register() {
   const [motherName, setMotherName] = useState("");
 
   // Payment choice
-  const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900">("paid_100");
+  const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("paid_1599");
   const [utrNumber, setUtrNumber] = useState("");
   const [referralCode, setReferralCode] = useState("");
 
@@ -337,7 +339,9 @@ export default function Register() {
               <div className="flex items-center justify-between text-zinc-300">
                 <span>Subscription Tier:</span>
                 <span className="font-bold text-amber-300">
-                  {registeredProfile.subscription_status === "paid_900" 
+                  {registeredProfile.subscription_status === "paid_1599"
+                    ? "🌟 ₹1599 Premium Tier (31 Days Full Access)"
+                    : registeredProfile.subscription_status === "paid_900" 
                     ? "👑 ₹900 Premium Tier (Full Access)" 
                     : registeredProfile.subscription_status === "paid_100" 
                     ? "💳 ₹100 Match Registered" 
@@ -348,6 +352,18 @@ export default function Register() {
                 <span>Gotram:</span>
                 <span className="font-bold text-white">{registeredProfile.gothram}</span>
               </div>
+            </div>
+
+            {/* Astrology PDF Download */}
+            <div className="max-w-md mx-auto pt-2">
+              <button
+                type="button"
+                onClick={() => downloadAstrologyPdf(registeredProfile)}
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-105 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+              >
+                <Download className="w-4 h-4 text-black" />
+                <span>Download My Astrological Kundali Summary PDF (జాతక పత్రిక PDF)</span>
+              </button>
             </div>
 
             {/* Action buttons */}
@@ -627,7 +643,24 @@ export default function Register() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <label
+                    onClick={() => setPlanChoice("paid_1599")}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 relative overflow-hidden ${
+                      planChoice === "paid_1599"
+                        ? "bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400"
+                        : "bg-zinc-950 border-zinc-800 text-gray-400 hover:border-zinc-700"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-black text-amber-300">31-Day Premium</span>
+                      <span className="text-xs font-mono font-black text-amber-300">₹1599</span>
+                    </div>
+                    <p className="text-[10px] text-gray-300 font-medium">
+                      31 days unlimited access to matching Brahmin profiles & direct coordinates.
+                    </p>
+                  </label>
+
                   <label
                     onClick={() => setPlanChoice("paid_100")}
                     className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
@@ -637,11 +670,11 @@ export default function Register() {
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <span className="text-xs font-extrabold text-white">Match Fee</span>
+                      <span className="text-xs font-extrabold text-white">Match Search</span>
                       <span className="text-xs font-mono font-black text-amber-400">₹100</span>
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      Instantly unlocks Brahmin opposite-gender matches and coordinates.
+                      Start searching verified Brahmin matches & astrological coordinates.
                     </p>
                   </label>
 
@@ -675,7 +708,7 @@ export default function Register() {
                       <span className="text-xs font-mono font-black text-gray-400">₹0</span>
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      Profile registered in registry; matches require ₹100 fee activation.
+                      Basic registry listing without immediate contact unlock.
                     </p>
                   </label>
                 </div>
@@ -688,12 +721,12 @@ export default function Register() {
                         Scan with PhonePe / GPay / Paytm / BHIM
                       </span>
                       <p className="text-xs text-zinc-300">
-                        Amount to Pay: <strong className="text-amber-300">{planChoice === "paid_100" ? "₹100" : "₹900"}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
+                        Amount to Pay: <strong className="text-amber-300">{planChoice === "paid_1599" ? "₹1599" : (planChoice === "paid_100" ? "₹100" : "₹900")}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
                       </p>
                     </div>
 
                     <div className="max-w-xs mx-auto">
-                      <PhonePeQRCode amount={planChoice === "paid_100" ? 100 : 900} className="w-full shadow-md" />
+                      <PhonePeQRCode amount={planChoice === "paid_1599" ? 1599 : (planChoice === "paid_100" ? 100 : 900)} className="w-full shadow-md" />
                     </div>
 
                     <div className="space-y-1.5 max-w-sm mx-auto">
