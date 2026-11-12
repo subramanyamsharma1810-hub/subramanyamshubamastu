@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /private-media/{userId}/{mediaKind}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.uid == userId
+        && (mediaKind == "photo" || mediaKind == "kundali");
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && (mediaKind == "photo" || mediaKind == "kundali")
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, getDocFromServer, doc } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
+import { getStorage } from "firebase/storage";
 import { getAuth, signInAnonymously, GoogleAuthProvider } from "firebase/auth";
 import firebaseConfig from "../../firebase-applet-config.json" with { type: "json" };
 
@@ -9,6 +10,7 @@ const app = initializeApp(firebaseConfig);
 // The database ID is typically in the config or we use the default
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const rtdb = getDatabase(app);
+export const storage = getStorage(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -46,7 +48,6 @@ async function testConnection() {
   }
 }
 testConnection();
-
 
 
 

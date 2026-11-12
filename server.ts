@@ -10,7 +10,6 @@ import multer from "multer";
 import { referralCouponEngine } from "./src/server/referralCouponEngine.ts";
 import { contactRevealEngine } from "./src/server/contactRevealEngine.ts";
 import { callSessionEngine } from "./src/server/callSessionEngine.ts";
-import { getUserMediaUrl, uploadUserMedia, verifyFirebaseToken } from "./src/server/uploadUserMedia.ts";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./src/lib/firebase.ts";
 
@@ -44,50 +43,6 @@ app.use((req, res, next) => {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
-});
-
-// Private user media is stored outside Firestore and delivered only through
-// short-lived signed URLs. The owner id is kept in object metadata for audits.
-app.post("/api/media/upload", upload.single("file"), async (req, res) => {
-  try {
-    const firebaseUser = await verifyFirebaseToken(req.headers.authorization);
-    const kind = req.body?.kind === "kundali" ? "kundali" : "photo";
-    if (!firebaseUser || !req.file) {
-      return res.status(401).json({ success: false, error: "A valid Firebase login and media file are required." });
-    }
-
-    const result = await uploadUserMedia(
-      firebaseUser.uid,
-      req.file.buffer,
-      req.file.mimetype || "application/octet-stream",
-      kind
-    );
-
-    return res.json({
-      success: true,
-      mediaKey: result.mediaKey,
-      // This URL expires and does not expose the R2 bucket or original file name.
-      url: result.url
-    });
-  } catch (error: any) {
-    console.error("Private media upload failed:", error);
-    return res.status(500).json({ success: false, error: "Unable to store private media." });
-  }
-});
-
-app.get("/api/media/url", async (req, res) => {
-  try {
-    const mediaKey = String(req.query.key || "");
-    const firebaseUser = await verifyFirebaseToken(req.headers.authorization);
-    const ownerId = mediaKey.split("/")[1] || "";
-    if (!firebaseUser || firebaseUser.uid !== ownerId) {
-      return res.status(403).json({ success: false, error: "Not authorized to access this media." });
-    }
-    return res.json({ success: true, url: await getUserMediaUrl(mediaKey) });
-  } catch (error: any) {
-    console.error("Private media URL generation failed:", error);
-    return res.status(400).json({ success: false, error: "Invalid or unavailable private media." });
-  }
 });
 
 // Dedicated Health check route

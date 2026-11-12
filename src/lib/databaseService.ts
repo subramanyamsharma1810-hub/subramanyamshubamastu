@@ -1,5 +1,6 @@
-import { db, auth } from "./firebase";
+import { db, auth, storage } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, onSnapshot } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, Pandit } from "../types";
 import { calculateMatchScore } from "./matchEngine";
 import { hashPassword, verifyPassword } from "./passwordSecurity";
@@ -1422,24 +1423,21 @@ export const databaseService = {
 
   // Storage Methods (Upload base64 representation to Firestore/Local storage simulated)
   async uploadFile(file: File, bucket: string, _userId: string): Promise<string> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("kind", bucket === "kundali" ? "kundali" : "photo");
-    const token = await auth.currentUser?.getIdToken();
-    if (!token) {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
       throw new Error("Please sign in before uploading private media.");
     }
 
-    const response = await fetch("/api/media/upload", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
+    const mediaKind = bucket === "kundali" ? "kundali" : "photo";
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80) || "upload";
+    const mediaRef = ref(storage, `private-media/${firebaseUser.uid}/${mediaKind}/${crypto.randomUUID()}-${safeName}`);
+    await uploadBytes(mediaRef, file, {
+      contentType: file.type || "application/octet-stream",
+      customMetadata: { ownerId: firebaseUser.uid, mediaKind }
     });
-    const result = await response.json().catch(() => null);
-    if (!response.ok || !result?.success || typeof result.url !== "string") {
-      throw new Error(result?.error || "Private media upload failed.");
-    }
-    return result.url;
+
+    // Firebase Storage rules require authentication; no Cloudflare/R2 URL is used.
+    return getDownloadURL(mediaRef);
   },
 
   async getAdminSettings(): Promise<AdminSettings> {
