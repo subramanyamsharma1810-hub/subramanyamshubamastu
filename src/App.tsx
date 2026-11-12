@@ -105,68 +105,73 @@ export default function App() {
   // Load active user profile and their preferences on mount
   useEffect(() => {
     async function loadInitialData() {
-      setLoading(true);
+      const shouldShowLoading = !currentProfile;
+      if (shouldShowLoading) {
+        setLoading(true);
+      }
       try {
-        await ensureAuth();
         const loggedInId = localStorage.getItem("bramhana_logged_in_user_id");
-        if (loggedInId) {
-          const profiles = await databaseService.getProfiles(true);
-          setAllProfiles(profiles);
-          let activeProfile = profiles.find((p) => p.id === loggedInId);
-          if (activeProfile) {
-            // Check if active suspension has expired
-            if (activeProfile.status === "Declined" && activeProfile.suspension_lift_at) {
-              const liftTime = new Date(activeProfile.suspension_lift_at);
-              if (new Date() >= liftTime) {
-                console.log(`Suspension expired on load for ${activeProfile.name}. Restoring to Verified status.`);
-                const restored: Profile = {
-                  ...activeProfile,
-                  status: "Verified",
-                  suspension_lift_at: "",
-                  suspension_reason: ""
-                };
-                await databaseService.saveProfile(restored);
-                activeProfile = restored;
-              }
+        if (!loggedInId) {
+          setCurrentProfile(null);
+          return;
+        }
+
+        await ensureAuth();
+        const profiles = await databaseService.getProfiles(true);
+        setAllProfiles(profiles);
+        let activeProfile = profiles.find((p) => p.id === loggedInId);
+        if (activeProfile) {
+          // Check if active suspension has expired
+          if (activeProfile.status === "Declined" && activeProfile.suspension_lift_at) {
+            const liftTime = new Date(activeProfile.suspension_lift_at);
+            if (new Date() >= liftTime) {
+              console.log(`Suspension expired on load for ${activeProfile.name}. Restoring to Verified status.`);
+              const restored: Profile = {
+                ...activeProfile,
+                status: "Verified",
+                suspension_lift_at: "",
+                suspension_reason: ""
+              };
+              await databaseService.saveProfile(restored);
+              activeProfile = restored;
             }
-            setCurrentProfile(activeProfile);
-            registerCallPushNotifications(activeProfile.id).catch(() => {});
-            const prefs = await databaseService.getPartnerPreferences(activeProfile.id);
-            setPreferences(prefs);
-            
-            const isSystemAdmin = 
-              activeProfile.id === "admin-subbu" || 
-              activeProfile.id === "admin-subba-reddy" || 
-              activeProfile.id === "admin-tejaswar" ||
-              activeProfile.id === "admin-praveen" ||
-              activeProfile.role === "employee" ||
-              activeProfile.role === "admin" ||
-              activeProfile.role === "super_admin" ||
-              activeProfile.email?.toLowerCase() === "praveenproq@gmail.com" ||
-              activeProfile.contact_number?.replace(/\D/g, "").includes("9876543219") ||
-              activeProfile.contact_number?.replace(/\D/g, "").includes("9347359489") || 
-              activeProfile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
-              activeProfile.contact_number?.replace(/\D/g, "").includes("9392551166");
-            
-            if (isSystemAdmin) {
-              localStorage.setItem("bramhana_admin_session", "true");
-              setIsAdmin(true);
-              // Only purge if specifically logged in as admin to avoid permission noise for guests
-              await databaseService.purgeFakeData().catch(() => {});
-            } else {
-              setIsAdmin(false);
-            }
+          }
+          setCurrentProfile(activeProfile);
+          registerCallPushNotifications(activeProfile.id).catch(() => {});
+          const prefs = await databaseService.getPartnerPreferences(activeProfile.id);
+          setPreferences(prefs);
+
+          const isSystemAdmin =
+            activeProfile.id === "admin-subbu" ||
+            activeProfile.id === "admin-subba-reddy" ||
+            activeProfile.id === "admin-tejaswar" ||
+            activeProfile.id === "admin-praveen" ||
+            activeProfile.role === "employee" ||
+            activeProfile.role === "admin" ||
+            activeProfile.role === "super_admin" ||
+            activeProfile.email?.toLowerCase() === "praveenproq@gmail.com" ||
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9876543219") ||
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9347359489") ||
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9392551166");
+
+          if (isSystemAdmin) {
+            localStorage.setItem("bramhana_admin_session", "true");
+            setIsAdmin(true);
           } else {
-            setCurrentProfile(null);
+            setIsAdmin(false);
           }
         } else {
-          // If not logged in, keep currentProfile as null so LandingPage renders
+          localStorage.removeItem("bramhana_logged_in_user_id");
           setCurrentProfile(null);
         }
       } catch (err) {
-        console.warn("Non-fatal startup warning:", err);
+        console.error("Failed to load initial profile data:", err);
+        setCurrentProfile(null);
       } finally {
-        setLoading(false);
+        if (shouldShowLoading) {
+          setLoading(false);
+        }
       }
     }
     loadInitialData();
