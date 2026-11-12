@@ -1201,24 +1201,24 @@ export default function LandingPage({
 
   const t = {
     te: {
-      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని • పవిత్ర బ్రాహ్మణ వేదిక",
-      title1: "తెలుగు బ్రాహ్మణుల కొరకు",
-      title2: "ప్రత్యేక వివాహ మ్యాట్రిమోనీ వెబ్‌సైట్",
-      bullet1: "బ్రాహ్మణులకు ప్రత్యేకంగా",
-      bullet2: "గోత్రం ఆధారిత శోధన",
-      bullet3: "సురక్షితమైన & గోప్యతల సేవ",
-      bullet4: "సంప్రదాయ వివాహ విలువలకు ప్రాధాన్యం",
-      districtSearchTitle: "ప్రాంతాల వారీగా వధువు / వరుడు శోధన",
+      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని • 100% Dedicated Brahmin Matrimony",
+      title1: "తెలుగు బ్రాహ్మణుల కొరకు • For Telugu Brahmin Families",
+      title2: "ప్రత్యేక వివాహ మ్యాట్రిమోనీ వేదిక • Trusted Matrimonial Platform",
+      bullet1: "బ్రాహ్మణులకు ప్రత్యేకంగా • Exclusive for Brahmin Families",
+      bullet2: "గోత్రం ఆధారిత శోధన • Gotram-based Search",
+      bullet3: "సురక్షితమైన & గోప్యతల సేవ • Secure & Confidential",
+      bullet4: "సంప్రదాయ విలువలకు ప్రాధాన్యం • Traditional Family Values",
+      districtSearchTitle: "ప్రాంతాల వారీగా వధువు / వరుడు శోధన • District-wise Bride / Groom Search",
     },
     en: {
-      badge: "100% Dedicated to Brahmin Matrimony • Sacred Vedic Platform",
-      title1: "Exclusive Matrimonial Website",
-      title2: "For Telugu Brahmin Families",
-      bullet1: "Exclusive for Brahmin Families",
-      bullet2: "Gotram-based Advanced Search",
-      bullet3: "Secure & 100% Confidential Service",
-      bullet4: "Emphasis on Traditional Family Values",
-      districtSearchTitle: "District-wise Bride / Groom Search (AP & Telangana)",
+      badge: "100% Dedicated Brahmin Matrimony • 100% బ్రాహ్మణ మ్యాట్రిమోని",
+      title1: "For Telugu Brahmin Families • తెలుగు బ్రాహ్మణుల కొరకు",
+      title2: "Trusted Matrimonial Platform • ప్రత్యేక వివాహ మ్యాట్రిమోనీ వేదిక",
+      bullet1: "Exclusive for Brahmin Families • బ్రాహ్మణులకు ప్రత్యేకంగా",
+      bullet2: "Gotram-based Search • గోత్రం ఆధారిత శోధన",
+      bullet3: "Secure & Confidential • సురక్షితమైన & గోప్యతల సేవ",
+      bullet4: "Traditional Family Values • సంప్రదాయ విలువలకు ప్రాధాన్యం",
+      districtSearchTitle: "District-wise Bride / Groom Search • ప్రాంతాల వారీగా వధువు / వరుడు శోధన",
     }
   }[lang];
 
@@ -1240,7 +1240,7 @@ export default function LandingPage({
       {/* Mango Leaf Toran Decorative Top Bar */}
       <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-2 px-4 text-center border-b-2 border-amber-400 flex items-center justify-center gap-3 shadow-sm">
         <span className="tracking-widest">🍃🌿🍃</span>
-        <span>బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక</span>
+        <span>బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • Honouring Tradition, Creating Sacred Alliances</span>
         <span className="tracking-widest">🍃🌿🍃</span>
       </div>
 
@@ -1256,14 +1256,14 @@ export default function LandingPage({
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#99151B] to-[#C2242C] uppercase font-sans truncate block">
-                  Subhamastu
+                  Subhamastu • శుభమస్తు
                 </span>
                 <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden sm:inline-block">
                   తెలుగు బ్రాహ్మణ మ్యాట్రిమోని
                 </span>
               </div>
               <p className="text-[8px] sm:text-[9px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
-                బ్రాహ్మణ సంప్రదాయాలకు గౌరవం... శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక
+                బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • Trusted Telugu Brahmin Matrimony
               </p>
             </div>
           </div>
@@ -1385,7 +1385,7 @@ export default function LandingPage({
               </div>
               <div>
                 <h3 className="font-extrabold text-amber-900 text-base">మీ జీవిత భాగస్వామిని కనుగొనండి</h3>
-                <p className="text-[10px] text-zinc-600">Gotram & Sub-caste Verified Matchmaking</p>
+                <p className="text-[10px] text-zinc-600">Find your life partner • Gotram & Sub-caste verified matching</p>
               </div>
             </div>
 
@@ -1456,6 +1456,24 @@ export default function LandingPage({
 
 
 
+
+      {/* Trust strip inspired by the traditional reference layout */}
+      <section className="relative z-20 w-full border-y-2 border-amber-300 bg-[#FFF8E8]/95 shadow-sm">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-amber-300/80">
+          {[
+            ["🪔", "తెలుగు బ్రాహ్మణులకు", "Dedicated to Telugu Brahmin Families"],
+            ["🛡️", "సురక్షితమైన వేదిక", "Safe & Confidential Platform"],
+            ["🔒", "నమ్మకమైన ప్రొఫైల్స్", "Verified Profile Experience"],
+            ["🤝", "వివాహ బంధాలకు సహాయం", "Support for Sacred Alliances"],
+          ].map(([icon, teLabel, enLabel]) => (
+            <div key={enLabel} className="px-3 py-4 text-center">
+              <div className="text-xl mb-1" aria-hidden="true">{icon}</div>
+              <p className="text-xs sm:text-sm font-black text-[#99151B]">{teLabel}</p>
+              <p className="text-[10px] sm:text-xs font-semibold text-amber-900">{enLabel}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* SECTION: DISTRICT-WISE BRIDE / GROOM SEARCH (AP & TELANGANA) */}
       <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
