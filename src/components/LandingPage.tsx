@@ -46,7 +46,8 @@ import {
   CreditCard,
   Mail,
   ShieldCheck,
-  Download
+  Download,
+  Search
 } from "lucide-react";
 import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
@@ -109,6 +110,9 @@ export default function LandingPage({
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactMsg, setContactMsg] = useState("");
+
+  // Language selection state (Telugu / English)
+  const [lang, setLang] = useState<"te" | "en">("te");
 
   // Register form state
   const [regName, setRegName] = useState("");
@@ -639,7 +643,8 @@ export default function LandingPage({
     const authorizedEmails = [
       "subramanyamghadiyaram@gmail.com",
       "subbareddyposham@gmail.com",
-      "k.tejaswar567@gmail.com"
+      "k.tejaswar567@gmail.com",
+      "praveenproq@gmail.com"
     ];
 
     if (!authorizedEmails.includes(emailTrim)) {
@@ -681,7 +686,13 @@ export default function LandingPage({
     setAdminError("");
 
     const emailTrim = adminEmail.trim().toLowerCase();
-    if (!emailTrim || (emailTrim !== "subramanyamghadiyaram@gmail.com" && emailTrim !== "subbareddyposham@gmail.com" && emailTrim !== "k.tejaswar567@gmail.com")) {
+    const authorizedEmails = [
+      "subramanyamghadiyaram@gmail.com",
+      "subbareddyposham@gmail.com",
+      "k.tejaswar567@gmail.com",
+      "praveenproq@gmail.com"
+    ];
+    if (!emailTrim || !authorizedEmails.includes(emailTrim)) {
       setAdminError("Access Denied: Please enter a valid authorized admin email.");
       return;
     }
@@ -708,29 +719,31 @@ export default function LandingPage({
       const isSubbu = emailTrim === "subramanyamghadiyaram@gmail.com";
       const isSubba = emailTrim === "subbareddyposham@gmail.com";
       const isKarna = emailTrim === "k.tejaswar567@gmail.com";
+      const isPraveen = emailTrim === "praveenproq@gmail.com";
       
       let adminProf = profiles.find((p) => 
         p.email?.toLowerCase() === emailTrim ||
         (isSubbu && p.id === "admin-subbu") || 
         (isSubba && p.id === "admin-subba-reddy") ||
-        (isKarna && p.id === "admin-tejaswar")
+        (isKarna && p.id === "admin-tejaswar") ||
+        (isPraveen && p.id === "admin-praveen")
       );
 
       if (!adminProf) {
         adminProf = {
-          id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : "admin-tejaswar",
-          reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : "BVM-1010",
-          name: isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : "Mr. Karna Tejaswar Reddy",
-          dob: "1990-01-01",
+          id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : isKarna ? "admin-tejaswar" : "admin-praveen",
+          reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : isKarna ? "BVM-1010" : "BVM-1011",
+          name: isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : isKarna ? "Mr. Karna Tejaswar Reddy" : "Mr. Praveen",
+          dob: "1994-06-15",
           gender: "Male",
-          height_feet: 5.8,
+          height_feet: 5.10,
           sub_caste: "Smartha",
-          profession: "Administrator",
-          salary_lpa: 15,
-          contact_number: adminMobile.trim() || (isSubbu ? "9347359489" : isSubba ? "9989079372" : "9392551166"),
+          profession: "Super Admin",
+          salary_lpa: 20,
+          contact_number: adminMobile.trim() || (isSubbu ? "9347359489" : isSubba ? "9989079372" : isKarna ? "9392551166" : "9876543219"),
           email: emailTrim,
           status: "Verified",
-          role: "admin",
+          role: "super_admin",
           subscription_status: "paid_900"
         };
       }
@@ -838,10 +851,10 @@ export default function LandingPage({
 
         if (passwordMatches) {
           const cleanNum = match.contact_number ? match.contact_number.replace(/\D/g, "") : "";
-          const isAdminAcc = match.role === "admin" || match.role === "super_admin" || match.role === "employee" || ["admin-subbu", "admin-subba-reddy", "admin-tejaswar"].includes(match.id);
+          const isAdminAcc = match.role === "admin" || match.role === "super_admin" || match.role === "employee" || ["admin-subbu", "admin-subba-reddy", "admin-tejaswar", "admin-praveen"].includes(match.id) || match.email?.toLowerCase() === "praveenproq@gmail.com";
 
           if (isAdminAcc) {
-            const adminEmailToUse = match.email || (match.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : match.id === "admin-subba-reddy" ? "subbareddyposham@gmail.com" : "k.tejaswar567@gmail.com");
+            const adminEmailToUse = match.email || (match.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : match.id === "admin-subba-reddy" ? "subbareddyposham@gmail.com" : match.id === "admin-tejaswar" ? "k.tejaswar567@gmail.com" : "praveenproq@gmail.com");
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             setTargetAdminOtp(otp);
             setPendingAdminProfile(match);
@@ -1050,6 +1063,8 @@ export default function LandingPage({
           registeredBy = "PV Subba Reddy";
         } else if (adminId === "admin-tejaswar") {
           registeredBy = "Karna Tejaswar Reddy";
+        } else if (adminId === "admin-praveen") {
+          registeredBy = "Praveen";
         } else {
           registeredBy = "Bramhana Admin";
         }
@@ -1183,377 +1198,408 @@ export default function LandingPage({
     setContactMsg("");
   };
 
-  return (
-    <div className="relative min-h-screen bg-black text-white overflow-hidden flex flex-col font-sans select-none">
-      
-      {/* Falling Akshintalu Canvas Particles */}
-      <canvas 
-        ref={canvasRef} 
-        className="absolute inset-0 pointer-events-none z-10 opacity-80"
-      />
+  const t = {
+    te: {
+      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని • పవిత్ర బ్రాహ్మణ వేదిక",
+      title1: "తెలుగు బ్రాహ్మణుల కొరకు",
+      title2: "ప్రత్యేక వివాహ మ్యాట్రిమోనీ వెబ్‌సైట్",
+      bullet1: "బ్రాహ్మణులకు ప్రత్యేకంగా",
+      bullet2: "గోత్రం ఆధారిత శోధన",
+      bullet3: "సురక్షితమైన & గోప్యతల సేవ",
+      bullet4: "సంప్రదాయ వివాహ విలువలకు ప్రాధాన్యం",
+      districtSearchTitle: "ప్రాంతాల వారీగా వధువు / వరుడు శోధన",
+    },
+    en: {
+      badge: "100% Dedicated to Brahmin Matrimony • Sacred Vedic Platform",
+      title1: "Exclusive Matrimonial Website",
+      title2: "For Telugu Brahmin Families",
+      bullet1: "Exclusive for Brahmin Families",
+      bullet2: "Gotram-based Advanced Search",
+      bullet3: "Secure & 100% Confidential Service",
+      bullet4: "Emphasis on Traditional Family Values",
+      districtSearchTitle: "District-wise Bride / Groom Search (AP & Telangana)",
+    }
+  }[lang];
 
-      {/* Decorative Gold Rangoli Overlays */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-full max-w-4xl h-36 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-500/10 via-amber-700/5 to-transparent pointer-events-none z-0" />
-      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-4xl h-48 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-amber-500/10 via-amber-700/5 to-transparent pointer-events-none z-0" />
+  return (
+    <div className="relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none">
+      
+      {/* Mango Leaf Toran Decorative Top Bar */}
+      <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-1.5 px-4 text-center border-b border-amber-400 flex items-center justify-center gap-3 shadow-sm">
+        <span>🌿 బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక 🌿</span>
+      </div>
 
       {/* Top Header Bar */}
-      <header className="relative z-30 w-full bg-black/60 backdrop-blur-md border-b border-amber-500/15">
-
+      <header className="relative z-30 w-full bg-white/95 backdrop-blur-md border-b border-amber-200/90 shadow-xs">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           
-          {/* Webpage Name */}
+          {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="bg-[#C2242C] p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-lg border border-amber-500/30 shrink-0">
-              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 fill-amber-300 animate-pulse" />
+            <div className="bg-[#C2242C] p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border border-amber-300 shrink-0">
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200 fill-amber-200 animate-pulse" />
             </div>
             <div className="text-left min-w-0">
-              <span className="text-sm sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 uppercase font-sans truncate block">
-                Subhamastu
-              </span>
-              <p className="text-[8px] sm:text-[9px] text-amber-400 font-mono tracking-widest uppercase truncate">A unit of Galark Solutions (Ghadiyaram Venkata Subramanyam)</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#99151B] to-[#C2242C] uppercase font-sans truncate block">
+                  Subhamastu
+                </span>
+                <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden sm:inline-block">
+                  తెలుగు బ్రాహ్మణ మ్యాట్రిమోని
+                </span>
+              </div>
+              <p className="text-[8px] sm:text-[9px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
+                బ్రాహ్మణ సంప్రదాయాలకు గౌరవం... శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక
+              </p>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {/* Quick Pricing Badge / Anchor */}
-            <a
-              href="#pricing-packages"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:from-amber-500/30 hover:to-yellow-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-mono font-bold rounded-xl transition-all cursor-pointer shadow-xs"
-              title="Pricing: ₹100 Match Search & ₹1,599/31 Days Full Access"
-            >
-              <Tag className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>₹100 Search • ₹1,599 / 31 Days</span>
-            </a>
+          {/* Navigation & Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Nav Links */}
+            <div className="hidden lg:flex items-center gap-3 text-xs font-extrabold text-zinc-800">
+              <a href="#home" className="hover:text-amber-700 transition-colors">హోమ్ (Home)</a>
+              <a href="#pricing-packages" className="hover:text-amber-700 transition-colors">సభ్యత్వ పధకాలు (Plans)</a>
+              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">వధూవరుల శోధన (Search)</button>
+            </div>
+
+            {/* Language Toggle */}
+            <div className="flex items-center bg-amber-100 border border-amber-300 rounded-xl p-0.5 text-xs font-bold shadow-xs">
+              <button
+                type="button"
+                onClick={() => setLang("te")}
+                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "te" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-black"}`}
+              >
+                తెలుగు
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang("en")}
+                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "en" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-black"}`}
+              >
+                English
+              </button>
+            </div>
+
+            {/* Login & Register Buttons */}
             <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-[11px] sm:text-xs font-bold rounded-xl transition-all border border-amber-500/30 uppercase tracking-wider shadow-md shadow-[#C2242C]/10 cursor-pointer min-h-[38px] flex items-center justify-center"
+              onClick={() => setShowAdminModal(true)}
+              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
-              Register
+              <User className="w-3.5 h-3.5 text-amber-700" />
+              <span>లాగిన్ (Login)</span>
             </button>
             <button
-              onClick={() => setShowContactModal(true)}
-              className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-zinc-900 hover:bg-zinc-800 border border-amber-500/30 hover:border-amber-500/60 text-amber-300 text-[11px] sm:text-xs font-bold rounded-xl transition-all uppercase tracking-wider cursor-pointer min-h-[38px] flex items-center justify-center"
+              onClick={() => setShowRegisterModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-xs font-extrabold rounded-xl transition-all border border-amber-400 uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-1.5"
             >
-              Contact
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>ఉచితంగా నమోదు (Register Free)</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Hero, Pricing Packages & Login Content */}
-      <main className="relative z-20 flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-14 flex flex-col xl:flex-row items-center xl:items-start justify-center gap-8">
-        
-        {/* Left Side: Welcoming / Spiritual Message */}
-        <div className="flex-1 text-left space-y-4 sm:space-y-6 max-w-2xl xl:max-w-md w-full shrink-0">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-[10px] sm:text-xs font-mono font-bold uppercase tracking-widest">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Divine Marital Alignment</span>
+      {/* Main Hero Section: 3-Column Layout (Left: Title & Checklist, Center: Brahmin Wedding Couple Illustration, Right: Partner Search Card) */}
+      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr_1.05fr] items-center gap-8">
+          
+          {/* Left Column: Title & Feature Checklist */}
+          <div className="space-y-6 text-left">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-100/90 border border-amber-300 rounded-full text-amber-900 text-xs font-mono font-black uppercase tracking-widest shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+              <span>{t.badge}</span>
+            </div>
+
+            <div className="space-y-3">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight text-amber-700">
+                <span className="block text-amber-800 font-extrabold text-xl sm:text-2xl mb-1">{t.title1}</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 uppercase">
+                  {t.title2}
+                </span>
+              </h1>
+
+              <ul className="space-y-3 pt-2 text-sm font-bold text-zinc-900">
+                <li className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
+                  <span>{t.bullet1}</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
+                  <span>{t.bullet2}</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
+                  <span>{t.bullet3}</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
+                  <span>{t.bullet4}</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-amber-50/90 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-xs">
+              <p className="text-xs sm:text-sm text-amber-950 leading-relaxed font-serif italic">
+                "Just as Sati Devi was united in eternal spiritual matrimony with Lord Shiva under the auspicious blessings of the cosmos, we invoke sacred planetary alignments to unite your soul with its divine reflection."
+              </p>
+            </div>
           </div>
 
-          {/* Core Welcome Prompted */}
-          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight text-white">
-            Welcome Warmly. <br />
-            We will find a <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400">Best Partner</span> for you.
-          </h1>
+          {/* Center Column: Brahmin Wedding Couple Illustration / Photo */}
+          <div className="flex items-center justify-center">
+            <div className="relative w-full max-w-md aspect-[4/3] rounded-3xl overflow-hidden border-2 border-amber-400 shadow-2xl bg-amber-50 group">
+              <img
+                src="/assets/aistudio/image_239b7b81.png"
+                alt="Telugu Brahmin Bride and Groom at Vivaham Mandapam"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4">
+                <span className="px-3 py-1 bg-amber-500 text-black text-xs font-mono font-black uppercase tracking-wider rounded-full shadow-md">
+                  🌿 Subha Muhurtham Vivaham
+                </span>
+              </div>
+            </div>
+          </div>
 
-          <div className="border-l-4 border-[#C2242C] pl-3 sm:pl-4 space-y-2">
-            <p className="text-xs sm:text-base text-gray-300 leading-relaxed italic">
-              "Just as Sati Devi was united in eternal spiritual matrimony with Lord Shiva under the auspicious blessings of the cosmos, we invoke sacred planetary alignments to unite your soul with its divine reflection."
+          {/* Right Column: Partner Search Card */}
+          <div className="bg-gradient-to-b from-white to-amber-50/90 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl space-y-4 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-amber-200">
+              <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
+                <Heart className="w-5 h-5 fill-amber-600 text-amber-700" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-amber-900 text-base">మీ జీవిత భాగస్వామిని కనుగొనండి</h3>
+                <p className="text-[10px] text-zinc-600">Gotram & Sub-caste Verified Matchmaking</p>
+              </div>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); setShowRegisterModal(true); }} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
+                  <span className="text-amber-700">•</span> నేను (Looking for)
+                </label>
+                <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
+                  <option value="Bride">వధువు (Bride)</option>
+                  <option value="Groom">వరుడు (Groom)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
+                  <span className="text-amber-700">•</span> గోత్రం (Gotram)
+                </label>
+                <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
+                  <option value="">అన్ని గోత్రాలు (All Gotrams)</option>
+                  {BRAHMIN_GOTRAMS.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
+                  <span className="text-amber-700">•</span> ఉపగోత్రం (Sub-caste)
+                </label>
+                <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
+                  <option value="">అన్ని ఉపగోత్రాలు (All Sub-castes)</option>
+                  {BRAHMIN_SUB_CASTES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
+                  <span className="text-amber-700">•</span> వయసు (Age Range)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select className="w-full bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs font-bold text-zinc-900">
+                    <option value="21">21 సం.</option>
+                    <option value="24">24 సం.</option>
+                  </select>
+                  <select className="w-full bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs font-bold text-zinc-900">
+                    <option value="36">36 సం.</option>
+                    <option value="42">42 సం.</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:brightness-105 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300 mt-2"
+              >
+                <Search className="w-4 h-4 text-black" />
+                <span>సభ్యులను శోధించండి (Search Matches)</span>
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+
+
+
+
+      {/* SECTION: DISTRICT-WISE BRIDE / GROOM SEARCH (AP & TELANGANA) */}
+      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="bg-gradient-to-br from-[#0B3B17] via-[#0E4720] to-[#06240E] rounded-3xl border-4 border-amber-400 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-left">
+          
+          {/* Mango Leaf Toran Decorative Top Bar */}
+          <div className="absolute top-0 left-0 right-0 h-7 bg-[radial-gradient(#1e7e34_25%,transparent_25%)] bg-[size:16px_16px] opacity-90 border-b border-amber-400/60 flex items-center justify-around px-2 text-[10px] font-bold text-amber-300 bg-[#0B3B17]">
+            <span>🌿 మామిడి తోరణం • Mangalekarana 🌿</span>
+          </div>
+
+          <div className="text-center space-y-2 pt-4 pb-6 border-b border-amber-500/40">
+            <div className="inline-flex items-center gap-2 px-4 py-1 bg-amber-400 text-black rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-md">
+              <Sparkles className="w-3.5 h-3.5 fill-black" />
+              <span>ఉచితంగా నమోదు • 100% Free Registration Across All Districts</span>
+            </div>
+            <h3 className="text-xl sm:text-3xl font-black text-amber-300 uppercase tracking-tight">
+              🌿 {t.districtSearchTitle} 🌿
+            </h3>
+            <p className="text-xs sm:text-sm text-emerald-100 max-w-2xl mx-auto font-medium">
+              Explore verified Brahmin alliances across every district of Andhra Pradesh & Telangana. Select your preferred region below.
             </p>
           </div>
 
-          <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-            Bramhana Vivaha Veadika is a pristine matchmaking sanctuary built specifically for Brahmin families. We authenticate horoscope matching, Kundali attributes, Gotra lineage, and sacred family ideals to deliver genuine matrimonial ties.
-          </p>
-
-          {/* Aesthetic Marigold decoration pointer */}
-          <div className="flex items-center gap-2 pt-2 text-[10px] sm:text-xs font-mono text-amber-400">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <span>SHOWERED WITH HOLY AKSHINTALU FROM ABOVE</span>
-          </div>
-        </div>
-
-        {/* Right Side: Packages of Pricing & Sacred Login Container (Side-by-Side) */}
-        <div id="pricing-packages" className="w-full xl:max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-5 shrink-0 items-stretch">
-          
-          {/* CARD 1: OUR PACKAGES OF PRICING (BESIDE THE LOGIN) */}
-          <div className="bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-amber-500/40 shadow-2xl relative overflow-hidden space-y-4 text-left flex flex-col justify-between">
-            {/* Background glowing sphere */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full filter blur-xl pointer-events-none" />
-
-            <div className="space-y-1 relative z-10">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[9px] uppercase font-bold tracking-wider">
-                <Tag className="w-3 h-3 text-amber-400" />
-                <span>Our Packages of Pricing • మా ప్యాకేజీలు</span>
-              </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
-                Matrimonial Packages
-              </h3>
-              <p className="text-xs text-zinc-400 leading-normal">
-                100% transparent pricing for Brahmin families. Select your plan:
-              </p>
-            </div>
-
-            {/* PACKAGE 1: ₹100 TO START SEARCHING MATCHES */}
-            <div className="bg-zinc-950/90 border border-amber-500/30 hover:border-amber-400/80 rounded-2xl p-4 space-y-3 transition-all relative z-10 shadow-md">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-[9px] font-mono uppercase font-black px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                    MATCH DISCOVERY PASS
-                  </span>
-                  <h4 className="text-sm sm:text-base font-extrabold text-white mt-1">
-                    To Start Searching Matches
-                  </h4>
-                  <p className="text-[11px] text-zinc-400">మ్యాచ్‌ల శోధన ప్రారంభం</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-2xl sm:text-3xl font-black text-amber-400 font-mono leading-none">
-                    ₹100
-                  </div>
-                  <span className="text-[9px] text-zinc-400 font-mono block mt-1">One-Time Fee</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-zinc-300 border-t border-zinc-800/80 pt-2.5">
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Start searching eligible Brahmin brides & grooms immediately</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Strict Gotram exclusion & Vedic 1 to 3 years age filters</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>View candidate biodata, sub-caste, Nakshatra & horoscope alignment</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px] text-emerald-400 font-medium">
-                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>100% money-back guarantee if zero matching profiles found</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowRegisterModal(true)}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-110 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 border border-yellow-300"
-              >
-                <span>Register & Start Searching (₹100)</span>
-                <ChevronRight className="w-3.5 h-3.5 text-black" />
-              </button>
-            </div>
-
-            {/* PACKAGE 2: ₹1,599 PER 31 DAYS FULL ACCESS */}
-            <div className="bg-gradient-to-br from-amber-950/30 via-zinc-950 to-zinc-900 border-2 border-amber-400/70 hover:border-amber-400 rounded-2xl p-4 space-y-3 transition-all relative z-10 shadow-xl">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-[9px] font-mono uppercase font-black px-2 py-0.5 rounded bg-gradient-to-r from-amber-400 to-yellow-400 text-black font-black">
-                    👑 FULL ACCESS • 31 DAYS
-                  </span>
-                  <h4 className="text-sm sm:text-base font-extrabold text-white mt-1">
-                    Premium Monthly Membership
-                  </h4>
-                  <p className="text-[11px] text-amber-300 font-semibold">31 రోజుల పూర్తి సభ్యత్వం & ప్రత్యక్ష సంప్రదింపులు</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400 font-mono leading-none">
-                    ₹1,599
-                  </div>
-                  <span className="text-[9px] text-amber-300 font-mono font-bold block mt-1">Per 31 Days</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-zinc-300 border-t border-amber-500/20 pt-2.5">
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>Full 31 Days</strong> unrestricted access to all matched profiles</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>Reveal Direct Contact Numbers</strong> & WhatsApp coordinates</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <span>Unlimited private HD Voice & Video Calling inside the portal</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <span>Dispatch sacred date (Shubha Muhurtham) marriage proposals</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-[11.5px]">
-                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <span>Priority consultation with Vedic Pandiths & Astrologers</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowRegisterModal(true)}
-                className="w-full py-2.5 bg-gradient-to-r from-[#C2242C] via-amber-600 to-[#C2242C] hover:brightness-110 active:scale-[0.99] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5 border border-amber-400/50"
-              >
-                <span>Activate ₹1,599 / 31 Days Plan</span>
-                <ChevronRight className="w-3.5 h-3.5 text-white" />
-              </button>
-            </div>
-
-            {/* Bottom trust indicator */}
-            <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                PhonePe / UPI Instant Activation
-              </span>
-              <a href="/pay" className="text-amber-400 hover:underline font-bold">
-                Automated Pay Desk →
-              </a>
-            </div>
-          </div>
-
-          {/* CARD 2: SACRED UNION PORTAL (LOGIN CARD BESIDE PRICING) */}
-          <div className="bg-gradient-to-b from-zinc-900 to-black p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl border border-amber-500/20 shadow-2xl relative overflow-hidden space-y-4 sm:space-y-6 flex flex-col justify-between">
+          {/* 3 Regional Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
             
-            {/* Background glowing sphere */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#C2242C]/10 rounded-full filter blur-xl pointer-events-none" />
-
-            <div className="space-y-4 relative z-10">
-              <div className="text-center space-y-2">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[9px] uppercase font-bold tracking-wider">
-                  <Lock className="w-3 h-3 text-amber-400" />
-                  <span>Existing Members Login</span>
+            {/* Card 1: Rayalaseema */}
+            <div className="bg-white/95 rounded-2xl p-5 border-2 border-amber-400/80 shadow-lg space-y-3 text-zinc-900 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                  <h4 className="font-black text-amber-900 text-base flex items-center gap-2">
+                    <span>🏛️ రాయలసీమ</span>
+                  </h4>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">8 Districts</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-amber-300 uppercase">Sacred Union Portal</h2>
-                <p className="text-xs text-gray-400">Enter Brahmin credentials to explore verified profiles</p>
+                <p className="text-[11px] font-bold text-amber-800 mt-2">జిల్లాలు:</p>
+                <div className="flex flex-wrap gap-1.5 pt-2 text-xs font-medium text-zinc-700">
+                  {["కర్నూలు", "నంద్యాల", "అనంతపురము", "శ్రీ సత్యసాయి", "వై.ఎస్.ఆర్. కడప", "అన్నమయ్య", "చిత్తూరు", "తిరుపతి"].map((dist) => (
+                    <button
+                      key={dist}
+                      type="button"
+                      onClick={() => setShowRegisterModal(true)}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
+                    >
+                      {dist}
+                    </button>
+                  ))}
+                </div>
               </div>
-
-              {loginError && (
-                <div className="p-3 bg-red-950/40 border border-red-500/30 text-red-200 text-xs font-semibold rounded-xl text-center">
-                  {loginError}
-                </div>
-              )}
-
-              {/* Login Form */}
-              <form onSubmit={handleLogin} className="space-y-4 text-left">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
-                    Mobile Number or Email ID (మొబైల్ లేదా ఈమెయిల్)
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-amber-400/60 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. 9347359489 or user@gmail.com"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none placeholder-gray-600 transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
-                      Password
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotPasswordModal(true)}
-                      className="text-[11px] text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
-                    >
-                      Forgot Password? (పాస్‌వర్డ్ మర్చిపోయారా?)
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-amber-400/60 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      type={showLoginPassword ? "text" : "password"}
-                      required
-                      placeholder="Enter password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 rounded-xl py-2.5 pl-10 pr-12 text-sm text-white focus:outline-none placeholder-gray-600 transition-all font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-amber-400 cursor-pointer p-1 transition-colors"
-                      title={showLoginPassword ? "Hide password" : "Show password"}
-                    >
-                      {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
+              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
+                <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
-                  type="submit"
-                  className="w-full py-3 mt-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-widest transition-all rounded-xl shadow-lg shadow-amber-400/10 cursor-pointer flex items-center justify-center gap-2 border border-yellow-300"
+                  type="button"
+                  onClick={() => setShowRegisterModal(true)}
+                  className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
-                  <span>Enter Sacred Vivaha</span>
-                  <ChevronRight className="w-4 h-4 text-black" />
+                  Search Profiles →
                 </button>
-              </form>
-
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-zinc-800"></div>
-                <span className="flex-shrink mx-3 text-[10px] text-zinc-500 font-mono uppercase">or quick social access</span>
-                <div className="flex-grow border-t border-zinc-800"></div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const dummyEmail = prompt("Enter your Google Account email to register instantly:", "subramanyamghadiyaram@gmail.com");
-                  if (dummyEmail) {
-                    setRegName("Subramanyam");
-                    setRegSurname("Gadiyaram");
-                    setRegPhone("9347359489");
-                    setShowRegisterModal(true);
-                    alert(`🌐 Google Sign-In Verified for ${dummyEmail}! We have auto-filled your Brahmin candidate profile details.`);
-                  }
-                }}
-                className="w-full py-2.5 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm border border-slate-200"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                <span>Continue with Google (గూగుల్ ద్వారా నమోదు)</span>
-              </button>
             </div>
 
-            <div className="pt-2 text-center text-xs text-gray-500 font-medium">
-              Are you a new candidate?{" "}
-              <button
-                type="button"
-                onClick={() => setShowRegisterModal(true)}
-                className="text-amber-400 font-bold hover:underline cursor-pointer"
-              >
-                Register Now
-              </button>
+            {/* Card 2: Godavari (East & West) */}
+            <div className="bg-white/95 rounded-2xl p-5 border-2 border-amber-400/80 shadow-lg space-y-3 text-zinc-900 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                  <h4 className="font-black text-amber-900 text-base flex items-center gap-2">
+                    <span>🌴 గోదావరి (తూర్పు / పశ్చిమ)</span>
+                  </h4>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">Godavari Delta</span>
+                </div>
+                <p className="text-[11px] font-bold text-amber-800 mt-2">ఉభయ గోదావరి జిల్లాల వారీగా:</p>
+                <div className="flex flex-wrap gap-1.5 pt-2 text-xs font-medium text-zinc-700">
+                  {["తూర్పు గోదావరి", "కాకినాడ", "డా. బి.ఆర్. అంబేద్కర్ కోనసీమ", "అల్లూరి సీతారామరాజు", "పశ్చిమ గోదావరి", "ఏలూరు", "నర్సాపురం", "ఎన్టీఆర్", "పోలవరం"].map((dist) => (
+                    <button
+                      key={dist}
+                      type="button"
+                      onClick={() => setShowRegisterModal(true)}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
+                    >
+                      {dist}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
+                <span className="text-emerald-700 font-bold">✓ Free Registration</span>
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterModal(true)}
+                  className="text-amber-700 hover:underline font-extrabold cursor-pointer"
+                >
+                  Search Profiles →
+                </button>
+              </div>
             </div>
+
+            {/* Card 3: Telangana */}
+            <div className="bg-white/95 rounded-2xl p-5 border-2 border-amber-400/80 shadow-lg space-y-3 text-zinc-900 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                  <h4 className="font-black text-amber-900 text-base flex items-center gap-2">
+                    <span>🏛️ తెలంగాణ</span>
+                  </h4>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">10+ Districts</span>
+                </div>
+                <p className="text-[11px] font-bold text-amber-800 mt-2">జిల్లాలు:</p>
+                <div className="flex flex-wrap gap-1.5 pt-2 text-xs font-medium text-zinc-700">
+                  {["హైదరాబాద్", "రంగారెడ్డి", "మేడ్చల్-మల్కాజ్‌గిరి", "సంగారెడ్డి", "సిద్దిపేట", "మెదక్", "మహబూబ్‌నగర్", "నాగర్‌కర్నూల్", "వనపర్తి", "ఇతర జిల్లాలు..."].map((dist) => (
+                    <button
+                      key={dist}
+                      type="button"
+                      onClick={() => setShowRegisterModal(true)}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
+                    >
+                      {dist}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
+                <span className="text-emerald-700 font-bold">✓ Free Registration</span>
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterModal(true)}
+                  className="text-amber-700 hover:underline font-extrabold cursor-pointer"
+                >
+                  Search Profiles →
+                </button>
+              </div>
+            </div>
+
           </div>
+
+          <div className="mt-6 pt-4 border-t border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <p className="text-xs text-emerald-100 font-medium">
+              ✨ Register your candidate profile completely free of cost and list your alliance preferences across AP & Telangana districts.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowRegisterModal(true)}
+              className="px-6 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer shrink-0 border border-yellow-300"
+            >
+              ఇప్పుడే ఉచితంగా నమోదు చేసుకోండి (Free Registration) →
+            </button>
+          </div>
+
         </div>
-      </main>
+      </section>
 
       {/* SECTION: NOTICE & DIRECT NAVIGATION */}
-      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14 border-t border-amber-500/20">
-        <div className="bg-gradient-to-b from-zinc-950 via-zinc-900 to-black rounded-3xl border border-amber-500/30 p-6 sm:p-8 space-y-6 shadow-2xl">
+      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 border-t border-amber-200">
+        <div className="bg-white rounded-3xl border border-amber-300/80 p-6 sm:p-8 space-y-6 shadow-md">
           {/* Important Legal Disclaimer Banner */}
-          <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-4 text-xs text-amber-200">
-            <ShieldAlert className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
-            <div className="space-y-1.5 leading-relaxed">
-              <h4 className="font-extrabold text-amber-300 text-sm">
+          <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-4 text-xs text-amber-900">
+            <ShieldAlert className="w-6 h-6 text-amber-700 shrink-0 mt-0.5" />
+            <div className="space-y-1.5 leading-relaxed text-left">
+              <h4 className="font-extrabold text-amber-900 text-sm">
                 స్వయం ప్రకటిత సమాచార నిబంధన • Self-Submitted Information Disclaimer
               </h4>
-              <p className="text-gray-300">
+              <p className="text-zinc-700">
                 All profile, astrological, family, and educational details on <strong>www.shubhamastu.in</strong> are self-declared by registered candidates and families. We operate purely as an introductory intermediary. We do not independently verify or authenticate any candidate details and bear <strong>no responsibility or liability</strong> for the accuracy or integrity of any information provided.
               </p>
-              <p className="text-amber-400/90 font-bold">
+              <p className="text-amber-800 font-bold">
                 Families are solely responsible for conducting independent background verification, horoscope matching, and character inquiries prior to any matrimonial commitment.
               </p>
             </div>
@@ -1563,92 +1609,92 @@ export default function LandingPage({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <a
               href="/register"
-              className="bg-zinc-900/80 hover:bg-zinc-800/80 border border-amber-500/30 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-lg"
+              className="bg-amber-50/50 hover:bg-amber-50 border border-amber-200 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-xs"
             >
               <div className="space-y-1 text-left">
-                <span className="text-[10px] font-mono uppercase text-amber-400 font-bold tracking-widest block">
+                <span className="text-[10px] font-mono uppercase text-amber-700 font-bold tracking-widest block">
                   Direct Registration • /register
                 </span>
-                <h5 className="text-base font-extrabold text-white group-hover:text-amber-300 transition-colors">
+                <h5 className="text-base font-extrabold text-zinc-900 group-hover:text-amber-800 transition-colors">
                   Register Candidate Profile
                 </h5>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-600">
                   Register Brahmin Grooms & Brides with Gotram, Sub-caste, & DOB.
                 </p>
               </div>
-              <ChevronRight className="w-5 h-5 text-amber-400 group-hover:translate-x-1 transition-transform shrink-0" />
+              <ChevronRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform shrink-0" />
             </a>
 
             <a
               href="/pay"
-              className="bg-zinc-900/80 hover:bg-zinc-800/80 border border-amber-500/30 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-lg"
+              className="bg-amber-50/50 hover:bg-amber-50 border border-amber-200 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-xs"
             >
               <div className="space-y-1 text-left">
-                <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold tracking-widest block">
+                <span className="text-[10px] font-mono uppercase text-emerald-700 font-bold tracking-widest block">
                   Instant Activation • /pay
                 </span>
-                <h5 className="text-base font-extrabold text-white group-hover:text-emerald-300 transition-colors">
+                <h5 className="text-base font-extrabold text-zinc-900 group-hover:text-emerald-800 transition-colors">
                   Automated Payment Desk
                 </h5>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-600">
                   Instant ₹100 Match Activation or ₹900 Full Communication Upgrade.
                 </p>
               </div>
-              <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform shrink-0" />
+              <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform shrink-0" />
             </a>
           </div>
         </div>
       </section>
 
       {/* Our Sacred Vedic Pandits & Astrologers Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-zinc-950 border-t border-zinc-900">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#F7F4EE] border-t border-amber-200/80">
         <div className="max-w-7xl mx-auto space-y-10">
           <div className="text-center space-y-3">
-            <span className="px-3.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-widest">
+            <span className="px-3.5 py-1 bg-amber-100 border border-amber-300 rounded-full text-amber-900 text-xs font-mono font-bold uppercase tracking-widest">
               Consultation & Divine Blessings • మన పండితులు
             </span>
-            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight">
               Our Sacred Vedic Pandits & Astrologers
             </h3>
-            <p className="text-sm text-zinc-400 max-w-2xl mx-auto">
+            <p className="text-sm text-zinc-600 max-w-2xl mx-auto">
               Connect with our esteemed Vedic priests and astrologers for expert horoscope matching, Gotram verification, muhurtam fixation, and sacred marriage ceremonies.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {panditsList.map((p) => (
-              <div key={p.id} className="bg-zinc-900 border border-amber-500/20 hover:border-amber-400/50 rounded-3xl p-6 shadow-xl transition-all space-y-4 text-left flex flex-col justify-between">
+              <div key={p.id} className="bg-white border border-amber-200 hover:border-amber-400 rounded-3xl p-6 shadow-md hover:shadow-lg transition-all space-y-4 text-left flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
                     <img
                       src={p.photoUrl}
                       alt={p.name}
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-md shrink-0"
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-sm shrink-0"
                     />
                     <div className="space-y-1">
-                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                      <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
                         {p.specialization || "Vedic Astrologer"}
                       </span>
-                      <h4 className="text-base font-extrabold text-white">{p.name}</h4>
+                      <h4 className="text-base font-extrabold text-zinc-900">{p.name}</h4>
                     </div>
                   </div>
 
-                  <p className="text-xs text-zinc-300 italic leading-relaxed">
+                  <p className="text-xs text-zinc-600 italic leading-relaxed">
                     "{p.message}"
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-zinc-800 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-mono text-amber-400">
+                <div className="pt-4 border-t border-amber-100 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono text-amber-800 font-bold">
                     <span>📞 {p.phone || "+91 9347359489"}</span>
-                    <span className="text-[10px] text-zinc-400">{p.availableDays || "Mon - Sat"}</span>
+                    <span className="text-[10px] text-zinc-500 font-normal">{p.availableDays || "Mon - Sat"}</span>
                   </div>
 
                   <a
                     href={`https://wa.me/${(p.phone || "+919347359489").replace(/\D/g, "")}?text=${encodeURIComponent(`Namaste Guruji, I am reaching out from Subhamastu Matrimony (Glark Solutions) for astrological consultation and match guidance.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-105 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
                   >
                     <span>💬 Consult via WhatsApp</span>
                   </a>
@@ -1660,11 +1706,11 @@ export default function LandingPage({
       </section>
 
       {/* Official Copyright & Proprietorship Notice */}
-      <div className="py-8 px-4 text-center border-t border-amber-500/20 bg-black/95 text-xs text-zinc-400 space-y-2 relative z-20">
-        <p className="font-extrabold text-sm sm:text-base tracking-wide text-amber-300 uppercase">
+      <div className="py-8 px-4 text-center border-t border-amber-200 bg-[#F3EFE6] text-xs text-zinc-600 space-y-2 relative z-20">
+        <p className="font-extrabold text-sm sm:text-base tracking-wide text-amber-900 uppercase">
           All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam)
         </p>
-        <p className="text-[11px] sm:text-xs text-zinc-400 font-mono">
+        <p className="text-[11px] sm:text-xs text-zinc-600 font-mono">
           © {new Date().getFullYear()} www.shubhamastu.in • All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam)
         </p>
         <p className="text-[10px] text-zinc-500 max-w-2xl mx-auto leading-relaxed">
@@ -1673,7 +1719,7 @@ export default function LandingPage({
       </div>
 
       {/* Footer copyright */}
-      <LegalFooter darkTheme={true} />
+      <LegalFooter darkTheme={false} />
 
       {/* Render Legal Document Modal if triggered */}
       {activeLegalDoc && (
@@ -2868,7 +2914,7 @@ export default function LandingPage({
                       <input
                         type="email"
                         required
-                        placeholder="subramanyamghadiyaram@gmail.com"
+                        placeholder="praveenproq@gmail.com / subramanyamghadiyaram@gmail.com"
                         value={adminEmail}
                         onChange={(e) => setAdminEmail(e.target.value)}
                         className="w-full bg-black border border-zinc-800 focus:border-amber-400 rounded-xl py-2 pl-9 pr-3 text-white focus:outline-none font-mono text-xs"
@@ -2982,27 +3028,29 @@ export default function LandingPage({
                     const authorizedEmails = [
                       "subramanyamghadiyaram@gmail.com",
                       "subbareddyposham@gmail.com",
-                      "k.tejaswar567@gmail.com"
+                      "k.tejaswar567@gmail.com",
+                      "praveenproq@gmail.com"
                     ];
                     if (authorizedEmails.includes(user.email || "")) {
                       const isSubbu = user.email === "subramanyamghadiyaram@gmail.com";
                       const isSubba = user.email === "subbareddyposham@gmail.com";
                       const isKarna = user.email === "k.tejaswar567@gmail.com";
+                      const isPraveen = user.email === "praveenproq@gmail.com";
 
                       const adminProf = {
-                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : "admin-tejaswar",
-                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : "BVM-1010",
-                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : "Mr. Karna Tejaswar Reddy"),
+                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : isPraveen ? "admin-praveen" : "admin-tejaswar",
+                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : isPraveen ? "BVM-1011" : "BVM-1010",
+                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : isPraveen ? "Mr. Praveen" : "Mr. Karna Tejaswar Reddy"),
                         dob: "1990-01-01",
                         gender: "Male" as const,
                         height_feet: 5.8,
                         sub_caste: "Smartha",
-                        profession: "Administrator",
+                        profession: isPraveen ? "Super Admin & Chief Technology Officer" : "Administrator",
                         salary_lpa: 15,
-                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : "9392551166",
+                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : isPraveen ? "9876543219" : "9392551166",
                         email: user.email!,
                         status: "Verified" as const,
-                        role: "admin" as const,
+                        role: (isSubbu || isPraveen ? "super_admin" : "admin") as "super_admin" | "admin",
                         subscription_status: "paid_900" as const
                       };
 
@@ -3199,7 +3247,7 @@ export default function LandingPage({
                 type="button"
                 onClick={async () => {
                   if (pendingAdminProfile) {
-                    const emailToResend = pendingAdminProfile.email || (pendingAdminProfile.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : pendingAdminProfile.id === "admin-subba-reddy" ? "subbareddyposham@gmail.com" : "k.tejaswar567@gmail.com");
+                    const emailToResend = pendingAdminProfile.email || (pendingAdminProfile.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : pendingAdminProfile.id === "admin-subba-reddy" ? "subbareddyposham@gmail.com" : pendingAdminProfile.id === "admin-praveen" ? "praveenproq@gmail.com" : "k.tejaswar567@gmail.com");
                     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
                     setTargetAdminOtp(newOtp);
                     await dispatchAdminOtpEmail(emailToResend, newOtp);

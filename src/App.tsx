@@ -138,8 +138,12 @@ export default function App() {
               activeProfile.id === "admin-subbu" || 
               activeProfile.id === "admin-subba-reddy" || 
               activeProfile.id === "admin-tejaswar" ||
+              activeProfile.id === "admin-praveen" ||
               activeProfile.role === "employee" ||
               activeProfile.role === "admin" ||
+              activeProfile.role === "super_admin" ||
+              activeProfile.email?.toLowerCase() === "praveenproq@gmail.com" ||
+              activeProfile.contact_number?.replace(/\D/g, "").includes("9876543219") ||
               activeProfile.contact_number?.replace(/\D/g, "").includes("9347359489") || 
               activeProfile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
               activeProfile.contact_number?.replace(/\D/g, "").includes("9392551166");
@@ -175,8 +179,12 @@ export default function App() {
       profile.id === "admin-subbu" || 
       profile.id === "admin-subba-reddy" || 
       profile.id === "admin-tejaswar" ||
+      profile.id === "admin-praveen" ||
       profile.role === "employee" ||
       profile.role === "admin" ||
+      profile.role === "super_admin" ||
+      profile.email?.toLowerCase() === "praveenproq@gmail.com" ||
+      profile.contact_number?.replace(/\D/g, "").includes("9876543219") ||
       profile.contact_number?.replace(/\D/g, "").includes("9347359489") || 
       profile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
       profile.contact_number?.replace(/\D/g, "").includes("9392551166");
@@ -201,7 +209,7 @@ export default function App() {
       // Verify credentials first
       const verifiedAdmin = await databaseService.verifyAdminCredentials(mobileClean, passClean);
       if (verifiedAdmin) {
-        const emailTarget = verifiedAdmin.email || (verifiedAdmin.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : verifiedAdmin.id === "admin-subba-reddy" ? "Subbareddyposham@gmail.com" : "K.tejaswar567@gmail.com");
+        const emailTarget = verifiedAdmin.email || (verifiedAdmin.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : verifiedAdmin.id === "admin-subba-reddy" ? "Subbareddyposham@gmail.com" : verifiedAdmin.id === "admin-praveen" ? "praveenproq@gmail.com" : "K.tejaswar567@gmail.com");
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         setGeneratedAdminOtp(otp);
         setAdminEmailTarget(emailTarget);
@@ -242,12 +250,14 @@ export default function App() {
       const isSubbu = verifiedAdmin.id === "admin-subbu" || mobileClean.includes("9347359489");
       const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9989079372");
       const isKarna = verifiedAdmin.id === "admin-tejaswar" || mobileClean.includes("9392551166");
+      const isPraveen = verifiedAdmin.id === "admin-praveen" || mobileClean.includes("9876543219") || verifiedAdmin.email?.toLowerCase() === "praveenproq@gmail.com";
       
       let adminProf = profiles.find(p => 
         p.id === verifiedAdmin.id || 
         (isSubbu && p.id === "admin-subbu") || 
         (isSubba && p.id === "admin-subba-reddy") ||
         (isKarna && p.id === "admin-tejaswar") ||
+        (isPraveen && p.id === "admin-praveen") ||
         p.contact_number?.replace(/\D/g, "").slice(-10) === mobileClean.slice(-10)
       );
 
@@ -410,6 +420,12 @@ export default function App() {
     currentProfile?.id === "admin-subbu" || 
     currentProfile?.id === "admin-subba-reddy" || 
     currentProfile?.id === "admin-tejaswar" ||
+    currentProfile?.id === "admin-praveen" ||
+    currentProfile?.role === "employee" ||
+    currentProfile?.role === "admin" ||
+    currentProfile?.role === "super_admin" ||
+    currentProfile?.email?.toLowerCase() === "praveenproq@gmail.com" ||
+    currentProfile?.contact_number?.replace(/\D/g, "").includes("9876543219") ||
     currentProfile?.contact_number?.replace(/\D/g, "").includes("9347359489") || 
     currentProfile?.contact_number?.replace(/\D/g, "").includes("9989079372") ||
     currentProfile?.contact_number?.replace(/\D/g, "").includes("9392551166");
@@ -799,27 +815,29 @@ export default function App() {
                     const authorizedEmails = [
                       "subramanyamghadiyaram@gmail.com",
                       "subbareddyposham@gmail.com",
-                      "k.tejaswar567@gmail.com"
+                      "k.tejaswar567@gmail.com",
+                      "praveenproq@gmail.com"
                     ];
                     if (authorizedEmails.includes(user.email || "")) {
                       const isSubbu = user.email === "subramanyamghadiyaram@gmail.com";
                       const isSubba = user.email === "subbareddyposham@gmail.com";
                       const isKarna = user.email === "k.tejaswar567@gmail.com";
+                      const isPraveen = user.email === "praveenproq@gmail.com";
 
                       const adminProf = {
-                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : "admin-tejaswar",
-                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : "BVM-1010",
-                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : "Mr. Karna Tejaswar Reddy"),
+                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : isPraveen ? "admin-praveen" : "admin-tejaswar",
+                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : isPraveen ? "BVM-1011" : "BVM-1010",
+                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : isPraveen ? "Mr. Praveen" : "Mr. Karna Tejaswar Reddy"),
                         dob: "1990-01-01",
                         gender: "Male" as const,
                         height_feet: 5.8,
                         sub_caste: "Smartha",
-                        profession: "Administrator",
+                        profession: isPraveen ? "Super Admin & Chief Technology Officer" : "Administrator",
                         salary_lpa: 15,
-                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : "9392551166",
+                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : isPraveen ? "9876543219" : "9392551166",
                         email: user.email!,
                         status: "Verified" as const,
-                        role: "admin" as const,
+                        role: (isSubbu || isPraveen ? "super_admin" : "admin") as "super_admin" | "admin",
                         subscription_status: "paid_900" as const
                       };
 

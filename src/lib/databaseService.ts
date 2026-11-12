@@ -91,6 +91,19 @@ export const ROOT_ADMINS: AdminUser[] = [
     createdAt: "2026-08-15T10:00:00Z",
     status: "active",
     isRoot: true
+  },
+  {
+    id: "admin-praveen",
+    name: "Mr. Praveen",
+    mobile: "9876543219",
+    password: "Praveen@2026!#",
+    email: "praveenproq@gmail.com",
+    role: "super_admin",
+    stage: 1,
+    designation: "Super Admin & Operational Director, Glark Solutions / shubhamastu.in",
+    createdAt: "2026-11-12T10:00:00Z",
+    status: "active",
+    isRoot: true
   }
 ];
 
@@ -567,6 +580,40 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     created_at: "2026-08-15T10:00:00Z"
   },
   {
+    id: "admin-praveen",
+    reg_number: "BVM-1011",
+    password: "Praveen@2026!#",
+    name: "Mr. Praveen (Super Admin)",
+    dob: "1994-06-15",
+    gender: "Male",
+    height_feet: 5.10,
+    sub_caste: "Smartha",
+    profession: "Super Admin & Operational Director",
+    salary_lpa: 20.0,
+    contact_number: "9876543219",
+    email: "praveenproq@gmail.com",
+    status: "Verified",
+    role: "admin",
+    subscription_status: "paid_900",
+    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400",
+    birth_time: "09:15",
+    birth_location: "Hyderabad, India",
+    gothram: "Kashyapa",
+    surname: "Praveen",
+    astrology: {
+      nakshatra: "Rohini",
+      nakshatraLord: "Moon",
+      pada: 2,
+      rashi: "Vrishabha (Taurus)",
+      tithi: "Shukla Ashtami",
+      deity: "Brahma",
+      spiritualAnalysis: "Profound administrative dedication, trustworthy, dedicated to community welfare and verified matrimonial authenticity.",
+      compatibilityTraits: ["Loyal leader", "Dedicated administrator", "Family-oriented"],
+      spiritualScore: 96
+    },
+    created_at: "2026-11-12T10:00:00Z"
+  },
+  {
     id: "prof-yeashwini-9876543210",
     reg_number: "BVM-2026",
     password: "yeashawini.p@phonepe",
@@ -911,12 +958,13 @@ export const databaseService = {
 
     // ROW LEVEL SECURITY (RLS) MASKING: Mask contact numbers for all users except admins and owners
     const currentUserId = typeof window !== "undefined" ? localStorage.getItem("bramhana_logged_in_user_id") : null;
-    const isAdminUser = currentUserId === "admin-subbu" || currentUserId === "admin-subba-reddy" || currentUserId === "admin-tejaswar" || localStorage.getItem("bramhana_admin_session") === "true";
+    const isAdminUser = currentUserId === "admin-subbu" || currentUserId === "admin-subba-reddy" || currentUserId === "admin-tejaswar" || currentUserId === "admin-praveen" || localStorage.getItem("bramhana_admin_session") === "true";
 
     return rawProfiles.map(p => {
       const isOwner = p.id === currentUserId;
       const isSubbu = p.id === "admin-subbu" || (p.contact_number && p.contact_number.includes("9347359489"));
       const isSubbaReddy = p.id === "admin-subba-reddy" || (p.contact_number && p.contact_number.includes("9494949494"));
+      const isPraveen = p.id === "admin-praveen" || (p.email && p.email.toLowerCase() === "praveenproq@gmail.com");
       
       if (!isAdminUser && !isOwner) {
         // Mask phone number for prestige protection
@@ -931,7 +979,8 @@ export const databaseService = {
       if (!isAdminUser) {
         const isSubbu = p.id === "admin-subbu" || (p.contact_number && p.contact_number.includes("9347359489"));
         const isSubbaReddy = p.id === "admin-subba-reddy" || (p.contact_number && p.contact_number.includes("9494949494"));
-        return !isSubbu && !isSubbaReddy && p.role !== "admin";
+        const isPraveen = p.id === "admin-praveen" || (p.email && p.email.toLowerCase() === "praveenproq@gmail.com");
+        return !isSubbu && !isSubbaReddy && !isPraveen && p.role !== "admin";
       }
       return true;
     });
@@ -1264,7 +1313,7 @@ export const databaseService = {
       const querySnapshot = await getDocs(q);
       for (const docSnap of querySnapshot.docs) {
         const id = docSnap.id;
-        if (id !== "admin-subbu" && id !== "admin-subba-reddy" && id !== "admin-tejaswar") {
+        if (id !== "admin-subbu" && id !== "admin-subba-reddy" && id !== "admin-tejaswar" && id !== "admin-praveen") {
           await deleteDoc(doc(db, path, id)).catch(() => {});
         }
       }
@@ -1276,7 +1325,7 @@ export const databaseService = {
       }
     }
 
-    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "admin-subbu" || p.id === "admin-subba-reddy" || p.id === "admin-tejaswar");
+    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "admin-subbu" || p.id === "admin-subba-reddy" || p.id === "admin-tejaswar" || p.id === "admin-praveen");
     localStorage.setItem("matrimonial_profiles", JSON.stringify(preserved));
     return preserved;
   },
@@ -1764,7 +1813,7 @@ export const databaseService = {
 
   async deleteAdmin(id: string): Promise<boolean> {
     // Prevent deleting root admins
-    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "admin-tejaswar") {
+    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "admin-tejaswar" || id === "admin-praveen") {
       console.warn("Root administrators cannot be removed.");
       return false;
     }

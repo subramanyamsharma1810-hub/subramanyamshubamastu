@@ -39,7 +39,10 @@ import {
   MessageSquare,
   Video,
   MoreVertical,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2
 } from "lucide-react";
 import MobileActionSheet from "./MobileActionSheet";
 import PlayStoreTestingDesk from "./PlayStoreTestingDesk";
@@ -98,6 +101,11 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
   const [copySuccess, setCopySuccess] = useState<"phone" | "upi" | null>(null);
 
+  // Lightbox gallery states
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
   const [showPandithModal, setShowPandithModal] = useState(false);
   const [meetDateTarget, setMeetDateTarget] = useState<Profile | null>(null);
   const [pelliChupuluTarget, setPelliChupuluTarget] = useState<Profile | null>(null);
@@ -112,7 +120,9 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     currentProfile?.id === "admin-subbu" ||
     currentProfile?.id === "admin-subba-reddy" ||
     currentProfile?.id === "admin-tejaswar" ||
-    currentProfile?.role === "admin"
+    currentProfile?.id === "admin-praveen" ||
+    currentProfile?.role === "admin" ||
+    currentProfile?.role === "super_admin"
   );
 
   const [adminMatchMode, setAdminMatchMode] = useState<"all" | "simulate_groom" | "simulate_bride" | "strict">(() => {
@@ -381,7 +391,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             const isSubbu = p.id === "admin-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
             const isSubbaReddy = p.id === "admin-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9989079372");
             const isKarna = p.id === "admin-tejaswar" || p.contact_number?.replace(/\D/g, "").includes("9392551166");
-            return !isOwn && !isSubbu && !isSubbaReddy && !isKarna;
+            const isPraveen = p.id === "admin-praveen" || p.contact_number?.replace(/\D/g, "").includes("9876543219") || p.email?.toLowerCase() === "praveenproq@gmail.com";
+            return !isOwn && !isSubbu && !isSubbaReddy && !isKarna && !isPraveen;
           }
         );
         setProfiles(matches);
@@ -1415,43 +1426,49 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
             {/* Divine Photo Gallery */}
             <div className="space-y-3 pb-6 border-b border-gray-100">
-              <h4 className="text-sm font-black text-[#362B5A] uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#C2242C]" />
-                Auspicious Portrait Gallery (చిత్రమాలిక)
+              <h4 className="text-sm font-black text-[#362B5A] uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#C2242C]" />
+                  Auspicious Portrait Gallery (చిత్రమాలిక)
+                </span>
+                <span className="text-[10px] text-zinc-500 font-mono font-normal">Click to view fullscreen lightbox</span>
               </h4>
               <div className="grid grid-cols-3 gap-3">
-                <div className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all">
-                  <img
-                    src={selectedMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
-                    alt="Primary Photo"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
-                    Primary
-                  </div>
-                </div>
-
-                <div className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all">
-                  <img
-                    src={selectedMatch.photo_url_2 || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400"}
-                    alt="Second Photo"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
-                    Portrait 2
-                  </div>
-                </div>
-
-                <div className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all">
-                  <img
-                    src={selectedMatch.photo_url_3 || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400"}
-                    alt="Third Photo"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
-                    Portrait 3
-                  </div>
-                </div>
+                {[
+                  { url: selectedMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400", label: "Primary" },
+                  { url: selectedMatch.photo_url_2 || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400", label: "Portrait 2" },
+                  { url: selectedMatch.photo_url_3 || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400", label: "Portrait 3" }
+                ].map((item, idx) => {
+                  const allPhotos = [
+                    selectedMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400",
+                    selectedMatch.photo_url_2 || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400",
+                    selectedMatch.photo_url_3 || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400"
+                  ];
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setLightboxPhotos(allPhotos);
+                        setLightboxIndex(idx);
+                        setLightboxOpen(true);
+                      }}
+                      className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all cursor-pointer"
+                      title="Click to view fullscreen lightbox carousel"
+                    >
+                      <img
+                        src={item.url}
+                        alt={item.label}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
+                        {item.label}
+                      </div>
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -2338,6 +2355,61 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         currentProfile={currentProfile}
         onActivateAdminTestingMode={(mode) => setAdminMatchMode(mode)}
       />
+
+      {/* Lightbox-Style Fullscreen Mobile-Optimized Carousel Gallery */}
+      {lightboxOpen && lightboxPhotos.length > 0 && (
+        <div className="fixed inset-0 bg-black/95 z-[500] backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-8 animate-in fade-in duration-200 select-none">
+          <div className="w-full max-w-5xl flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 font-mono text-xs sm:text-sm font-bold text-amber-300">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Auspicious Portrait {lightboxIndex + 1} of {lightboxPhotos.length}</span>
+            </div>
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="p-2.5 bg-zinc-800 hover:bg-[#C2242C] text-white rounded-full transition-all cursor-pointer border border-zinc-700 shadow-xl"
+              title="Close Lightbox"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="relative flex-1 w-full max-w-4xl flex items-center justify-center px-2 py-4">
+            <button
+              onClick={() => setLightboxIndex((prev) => (prev === 0 ? lightboxPhotos.length - 1 : prev - 1))}
+              className="absolute left-2 sm:left-4 z-10 p-3 bg-black/60 hover:bg-black text-white rounded-full transition-all cursor-pointer border border-white/20 shadow-2xl"
+              title="Previous Photo"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+
+            <img
+              src={lightboxPhotos[lightboxIndex]}
+              alt={`Portrait ${lightboxIndex + 1}`}
+              className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl border-2 border-amber-500/40 select-none"
+            />
+
+            <button
+              onClick={() => setLightboxIndex((prev) => (prev === lightboxPhotos.length - 1 ? 0 : prev + 1))}
+              className="absolute right-2 sm:right-4 z-10 p-3 bg-black/60 hover:bg-black text-white rounded-full transition-all cursor-pointer border border-white/20 shadow-2xl"
+              title="Next Photo"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto py-2 px-4 max-w-xl">
+            {lightboxPhotos.map((photo, idx) => (
+              <button
+                key={idx}
+                onClick={() => setLightboxIndex(idx)}
+                className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${idx === lightboxIndex ? "border-amber-400 scale-105 shadow-md" : "border-transparent opacity-60 hover:opacity-100"}`}
+              >
+                <img src={photo} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

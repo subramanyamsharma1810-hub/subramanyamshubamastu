@@ -36,6 +36,9 @@
     "react-window": "^2.3.4",
     "recharts": "^3.10.0",
     "resend": "^6.19.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "zeptomail": "^8.0.1"
   },

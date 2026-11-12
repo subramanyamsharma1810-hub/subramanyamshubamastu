@@ -32,7 +32,9 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
     currentProfile?.id === "admin-subbu" ||
     currentProfile?.id === "admin-subba-reddy" ||
     currentProfile?.id === "admin-tejaswar" ||
-    currentProfile?.role === "admin"
+    currentProfile?.id === "admin-praveen" ||
+    currentProfile?.role === "admin" ||
+    currentProfile?.role === "super_admin"
   );
 
   useEffect(() => {

@@ -197,6 +197,18 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
         designation: "Chief Grievance Redressal Officer"
       };
     }
+    if (loggedInId === "admin-praveen") {
+      return {
+        id: "admin-praveen",
+        name: "Mr. Praveen",
+        mobile: "9876543219",
+        email: "praveenproq@gmail.com",
+        role: "super_admin",
+        stage: 1,
+        isRoot: true,
+        designation: "Super Admin & Chief Technology Officer"
+      };
+    }
     return null;
   }, []);
 
@@ -811,7 +823,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       
       // Auto lift expired suspensions on load
       const now = new Date();
-      const nonAdminProfiles = data.filter((p) => p.id !== "admin-subbu" && p.id !== "admin-subba-reddy" && p.id !== "admin-tejaswar");
+      const nonAdminProfiles = data.filter((p) => p.id !== "admin-subbu" && p.id !== "admin-subba-reddy" && p.id !== "admin-tejaswar" && p.id !== "admin-praveen");
       
       const processedProfiles = await Promise.all(
         nonAdminProfiles.map(async (p) => {
@@ -1375,6 +1387,8 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       adminName = "PV Subba Reddy";
     } else if (adminId === "admin-tejaswar") {
       adminName = "Karna Tejaswar Reddy";
+    } else if (adminId === "admin-praveen") {
+      adminName = "Praveen";
     }
 
     const timestamp = new Date().toLocaleString("en-US", {
@@ -2003,6 +2017,8 @@ Ph: ${adminPhone}`;
           registeredBy = "PV Subba Reddy";
         } else if (adminId === "admin-tejaswar") {
           registeredBy = "Karna Tejaswar Reddy";
+        } else if (adminId === "admin-praveen") {
+          registeredBy = "Praveen";
         } else {
           registeredBy = "Bramhana Admin";
         }
