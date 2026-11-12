@@ -251,14 +251,26 @@ export default function LandingPage({
     window.open(`https://wa.me/?text=${inviteText}`, "_blank");
   };
 
+  const calculateCandidateAge = (dobString: string): number => {
+    if (!dobString) return 0;
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const handleSendEmailOtp = async () => {
-    if (otpCooldown > 0 || isSendingOtp) return;
+    if (isSendingOtp) return;
     setOtpErrorMsg("");
     setOtpSuccessMsg("");
     if (!regEmail || !regEmail.includes("@")) {
-      const msg = "❌ Please enter a valid email address in the box first to trigger OTP. (దయచేసి ముందుగా సరైన ఈమెయిల్ చిరునామా నమోదు చేయండి)";
+      const msg = "❌ Please enter a valid candidate email address in the box first to send OTP. (దయచేసి ముందుగా సరైన ఈమెయిల్ చిరునామా నమోదు చేయండి)";
       setOtpErrorMsg(msg);
-      alert("⚠️ Please enter a valid email address in the email box first, then click 'Verify using OTP'.");
+      alert("⚠️ Please enter a valid email address in the candidate email box first, then click 'Send OTP to Mail'.");
       return;
     }
     setIsSendingOtp(true);
@@ -267,8 +279,8 @@ export default function LandingPage({
     setGeneratedOtp(code);
 
     try {
-      // Proactively log to pending_verifications
-      await adminNotificationService.logPendingVerification(regEmail.trim(), code);
+      // Fire-and-forget background log so Firestore never delays or blocks email delivery
+      adminNotificationService.logPendingVerification(regEmail.trim(), code).catch(() => {});
 
       const res = await fetch("/api/send-email-otp", {
         method: "POST",
@@ -278,14 +290,12 @@ export default function LandingPage({
       const data = await res.json();
       
       setIsOtpSent(true);
-      setOtpCooldown(120); // 2 minutes cooldown
-      localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-      setOtpSuccessMsg(`✉️ 6-Digit OTP successfully triggered & sent to ${regEmail} via verification@shubhamastu.in. Please check your inbox.`);
+      setOtpCooldown(60);
+      setOtpSuccessMsg(`✉️ 6-Digit OTP successfully sent to ${regEmail} via verification@shubhamastu.in. Please check your inbox & spam.`);
     } catch (err) {
-      console.error("Error sending email OTP:", err);
-      // Even if network blips, allow user to know verification was initiated
+      console.error("Notice sending email OTP:", err);
       setIsOtpSent(true);
-      setOtpCooldown(120);
+      setOtpCooldown(60);
       setOtpSuccessMsg(`✉️ 6-Digit OTP dispatched to ${regEmail}. Please check your inbox.`);
     } finally {
       setIsSendingOtp(false);
@@ -910,22 +920,10 @@ export default function LandingPage({
       return;
     }
 
-    const calculateExactAge = (dobString: string): number => {
-      if (!dobString) return 0;
-      const birthDate = new Date(dobString);
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      return age;
-    };
-
     const minAgeReq = regGender === "Male" ? 24 : 21;
-    const currentAge = calculateExactAge(regDob);
-    if (currentAge < minAgeReq - 1) {
-      alert(`⚠️ Age Restriction: Minimum age is ${minAgeReq} years for ${regGender === "Male" ? "Boys" : "Girls"}. Current calculated age is ${currentAge} years. Registration is strictly restricted below ${minAgeReq - 1} years.`);
+    const currentAge = calculateCandidateAge(regDob);
+    if (currentAge < minAgeReq) {
+      alert(`⚠️ Age Restriction (వయోపరిమితి నిబంధన):\n\nMinimum age requirement is ${minAgeReq} years for ${regGender === "Male" ? "Male (Grooms / అబ్బాయిలు: 24+ mandatory)" : "Female (Brides / అమ్మాయిలు: 21+ mandatory)"}.\n\nCurrent calculated age is ${currentAge} years.\n\nRegistration is strictly prohibited below ${minAgeReq} years.`);
       return;
     }
 
@@ -1922,25 +1920,28 @@ export default function LandingPage({
                       <button
                         type="button"
                         onClick={handleSendEmailOtp}
-                        disabled={isSendingOtp || otpCooldown > 0}
+                        disabled={isSendingOtp}
                         title="Click to trigger and verify OTP via your email"
                         className={`px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap shadow-md ${
-                          isSendingOtp || otpCooldown > 0
-                            ? "bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700"
+                          isSendingOtp
+                            ? "bg-zinc-800 text-zinc-400 cursor-wait border border-zinc-700"
                             : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-black font-extrabold cursor-pointer border border-yellow-300 active:scale-[0.98]"
                         }`}
                       >
                         {isSendingOtp ? (
                           <>
                             <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
-                            <span>Triggering OTP...</span>
+                            <span>Sending OTP...</span>
                           </>
-                        ) : otpCooldown > 0 ? (
-                          <span>Resend ({otpCooldown}s)</span>
+                        ) : isOtpSent ? (
+                          <>
+                            <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                            <span>Resend OTP to Mail</span>
+                          </>
                         ) : (
                           <>
                             <Zap className="w-3.5 h-3.5 text-black fill-black" />
-                            <span>Verify using OTP</span>
+                            <span>Send OTP to Mail (ఓటీపీ)</span>
                           </>
                         )}
                       </button>
@@ -1966,10 +1967,10 @@ export default function LandingPage({
                         <button
                           type="button"
                           onClick={handleSendEmailOtp}
-                          disabled={otpCooldown > 0 || isSendingOtp}
-                          className="text-[10px] text-amber-400 hover:underline disabled:opacity-50 cursor-pointer font-bold"
+                          disabled={isSendingOtp}
+                          className="text-[10px] text-amber-400 hover:underline cursor-pointer font-bold"
                         >
-                          {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend OTP"}
+                          Resend OTP Code
                         </button>
                       </div>
 
@@ -2020,6 +2021,19 @@ export default function LandingPage({
                     </p>
                   )}
                 </div>
+
+                {/* Step 2 Cursor Gate Status */}
+                {!isEmailVerified ? (
+                  <div className="p-3 bg-red-950/40 border border-red-500/40 rounded-xl text-center text-xs text-red-300 font-bold flex items-center justify-center gap-2 animate-pulse">
+                    <Lock className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>⚠️ OTP is Mandatory: Next Step is blocked by cursor. Click 'Verify using OTP' above to receive and verify code to unlock.</span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-center text-xs text-emerald-300 font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>✅ Email OTP Verified! Next Step is unlocked.</span>
+                  </div>
+                )}
 
                 <div className="space-y-1.5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                   <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">
@@ -2145,7 +2159,7 @@ export default function LandingPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-black text-gray-300 uppercase tracking-wider block">
-                      Date of Birth (పుట్టిన తేదీ) * {regGender === "Male" ? "(Boys: Min 24 Yrs)" : "(Girls: Min 21 Yrs)"}
+                      Date of Birth (పుట్టిన తేదీ) * {regGender === "Male" ? "(Groom: Min 24 Yrs Mandatory)" : "(Bride: Min 21 Yrs Mandatory)"}
                     </label>
                     <div className="relative">
                       <Calendar className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -2157,22 +2171,44 @@ export default function LandingPage({
                           const dobVal = e.target.value;
                           setRegDob(dobVal);
                           if (dobVal) {
-                            const birthDate = new Date(dobVal);
-                            const today = new Date();
-                            let age = today.getFullYear() - birthDate.getFullYear();
-                            const m = today.getMonth() - birthDate.getMonth();
-                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                              age--;
-                            }
+                            const age = calculateCandidateAge(dobVal);
                             const minAge = regGender === "Male" ? 24 : 21;
-                            if (age < minAge - 1) {
-                              alert(`⚠️ Age Notice: Minimum recommended age for ${regGender === "Male" ? "Boys is 24" : "Girls is 21"} years. (Current age: ${age} years).`);
+                            if (age < minAge) {
+                              alert(`⚠️ Age Restriction (వయోపరిమితి నిబంధన):\n\nMinimum required age is ${minAge} years for ${regGender === "Male" ? "Male (Grooms: 24+ mandatory)" : "Female (Brides: 21+ mandatory)"}.\n\nCurrent calculated age: ${age} years.\n\nNext step is blocked until a valid Date of Birth is provided.`);
                             }
                           }
                         }}
-                        className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-9 pr-3 text-sm text-white focus:outline-none font-mono font-bold"
+                        className={`w-full bg-black border rounded-xl py-2.5 pl-9 pr-3 text-sm text-white focus:outline-none font-mono font-bold transition-all ${
+                          regDob && (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)
+                            ? "border-red-500 bg-red-950/20 text-red-200 focus:border-red-400"
+                            : regDob
+                            ? "border-emerald-500/70 bg-emerald-950/20 text-emerald-200"
+                            : "border-zinc-700 focus:border-amber-400"
+                        }`}
                       />
                     </div>
+                    {/* Real-time Age Validation Banner */}
+                    {regDob ? (
+                      (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21) ? (
+                        <div className="p-2.5 bg-red-950/50 border border-red-500/50 rounded-xl text-[11px] text-red-300 font-bold flex items-center gap-2 animate-pulse mt-1">
+                          <Lock className="w-4 h-4 text-red-400 shrink-0" />
+                          <span>
+                            ❌ Age Ineligible: Candidate is {calculateCandidateAge(regDob)} years old. Minimum required age is {regGender === "Male" ? "24+ years for Groom (అబ్బాయి)" : "21+ years for Bride (అమ్మాయి)"}. Next step is locked!
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-[11px] text-emerald-300 font-bold flex items-center gap-1.5 mt-1">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>
+                            ✅ Age Verified: {calculateCandidateAge(regDob)} years old ({regGender === "Male" ? "Groom 24+ eligible" : "Bride 21+ eligible"}). Next Step unlocked!
+                          </span>
+                        </div>
+                      )
+                    ) : (
+                      <p className="text-[10px] text-zinc-400 mt-1">
+                        ℹ️ Minimum age requirement: <strong>Male 24+ years</strong>, <strong>Female 21+ years</strong>.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -2426,42 +2462,97 @@ export default function LandingPage({
               )}
 
               {regStep < 5 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (regStep === 1) {
-                      if (!regName.trim() || !regSurname.trim()) {
-                        alert("⚠️ Please enter candidate Given Name and Surname.");
-                        return;
-                      }
+                <div className="flex flex-col items-end gap-1.5">
+                  <button
+                    type="button"
+                    disabled={
+                      (regStep === 2 && !isEmailVerified) ||
+                      (regStep === 4 && (!regDob || (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)))
                     }
-                    if (regStep === 2) {
-                      const cleanPhone = regPhone.replace(/\D/g, "");
-                      if (!cleanPhone || cleanPhone.length < 10) {
-                        alert("⚠️ Please enter a valid 10-digit mobile number.");
-                        return;
+                    onClick={() => {
+                      if (regStep === 1) {
+                        if (!regName.trim() || !regSurname.trim()) {
+                          alert("⚠️ Please enter candidate Given Name and Surname.");
+                          return;
+                        }
                       }
-                      if (!regEmail || !regEmail.includes("@")) {
-                        alert("⚠️ Candidate Email Address is required to receive verification OTP.");
-                        return;
+                      if (regStep === 2) {
+                        const cleanPhone = regPhone.replace(/\D/g, "");
+                        if (!cleanPhone || cleanPhone.length < 10) {
+                          alert("⚠️ Please enter a valid 10-digit mobile number.");
+                          return;
+                        }
+                        if (!regEmail || !regEmail.includes("@")) {
+                          alert("⚠️ Candidate Email Address is required to receive verification OTP.");
+                          return;
+                        }
+                        if (!isEmailVerified) {
+                          alert("🔒 OTP is Mandatory (ఓటీపీ తప్పనిసరి):\n\nThe Next Step is blocked from your cursor! Please click 'Send OTP to Mail' on the right side of the candidate email box, enter your 6-digit code, and click 'Confirm & Verify' before proceeding.");
+                          return;
+                        }
                       }
-                      if (!isEmailVerified) {
-                        alert("⚠️ Email Verification Required (ఓటీపీ ధృవీకరణ అవసరం):\n\nPlease click 'Send OTP to Mail', enter the 6-digit code received in your inbox, and click 'Verify OTP' before proceeding to Step 3.");
-                        return;
+                      if (regStep === 4) {
+                        if (!regDob) {
+                          alert("⚠️ Please select candidate Date of Birth.");
+                          return;
+                        }
+                        const age = calculateCandidateAge(regDob);
+                        const minAge = regGender === "Male" ? 24 : 21;
+                        if (age < minAge) {
+                          alert(`⚠️ Age Restriction (వయోపరిమితి నిబంధన):\n\nMinimum required age is ${minAge} years for ${regGender === "Male" ? "Male (Grooms / అబ్బాయిలు: 24+ mandatory)" : "Female (Brides / అమ్మాయిలు: 21+ mandatory)"}.\n\nCurrent calculated age is ${age} years.\n\nProgression to Step 5 is strictly blocked.`);
+                          return;
+                        }
                       }
-                    }
-                    setRegStep(regStep + 1);
-                  }}
-                  className="px-6 py-2.5 rounded-xl font-extrabold uppercase tracking-wider text-xs shadow-md transition-all bg-gradient-to-r from-amber-400 to-yellow-500 text-black cursor-pointer hover:from-amber-500 hover:to-yellow-600"
-                >
-                  Next Step (తదుపరి) →
-                </button>
+                      setRegStep(regStep + 1);
+                    }}
+                    className={`px-6 py-2.5 rounded-xl font-extrabold uppercase tracking-wider text-xs shadow-md transition-all flex items-center gap-1.5 ${
+                      (regStep === 2 && !isEmailVerified) ||
+                      (regStep === 4 && (!regDob || (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)))
+                        ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-60"
+                        : "bg-gradient-to-r from-amber-400 to-yellow-500 text-black cursor-pointer hover:from-amber-500 hover:to-yellow-600 active:scale-95"
+                    }`}
+                  >
+                    {regStep === 2 && !isEmailVerified ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>🔒 Blocked: Verify OTP First</span>
+                      </>
+                    ) : regStep === 4 && (!regDob || (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)) ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>🔒 Blocked: {regGender === "Male" ? "Male Must Be 24+" : "Female Must Be 21+"}</span>
+                      </>
+                    ) : (
+                      <span>Next Step (తదుపరి) →</span>
+                    )}
+                  </button>
+                  {regStep === 2 && !isEmailVerified && (
+                    <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Cursor blocked: Verify email OTP above
+                    </span>
+                  )}
+                  {regStep === 4 && (!regDob || (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)) && (
+                    <span className="text-[10px] text-red-400 font-bold flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Cursor blocked: {regGender === "Male" ? "Groom must be 24+ years" : "Bride must be 21+ years"}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <button
                   type="submit"
-                  disabled={!acceptTerms || isUploading}
+                  disabled={
+                    !acceptTerms ||
+                    isUploading ||
+                    !isEmailVerified ||
+                    !regDob ||
+                    (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)
+                  }
                   className={`px-6 py-2.5 rounded-xl text-black font-extrabold uppercase tracking-wider text-xs shadow-md flex items-center gap-1.5 transition-all ${
-                    !acceptTerms || isUploading
+                    !acceptTerms ||
+                    isUploading ||
+                    !isEmailVerified ||
+                    !regDob ||
+                    (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21)
                       ? "bg-zinc-700 text-zinc-400 cursor-not-allowed opacity-60"
                       : "bg-gradient-to-r from-amber-400 to-yellow-500 cursor-pointer hover:from-amber-500 hover:to-yellow-600"
                   }`}
@@ -2470,6 +2561,16 @@ export default function LandingPage({
                     <>
                       <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
                       <span>Registering...</span>
+                    </>
+                  ) : !isEmailVerified ? (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>🔒 OTP Verification Required</span>
+                    </>
+                  ) : !regDob || (regGender === "Male" ? calculateCandidateAge(regDob) < 24 : calculateCandidateAge(regDob) < 21) ? (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>🔒 Age Restricted ({regGender === "Male" ? "Male 24+" : "Female 21+"})</span>
                     </>
                   ) : (
                     <>

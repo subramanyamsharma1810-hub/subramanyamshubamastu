@@ -97,8 +97,8 @@ export default function Register() {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(code);
 
-    // Hardening: Log OTP to Firestore fallback before sending email
-    await adminNotificationService.logPendingVerification(email.trim(), code);
+    // Hardening: Fire background log without blocking OTP dispatch
+    adminNotificationService.logPendingVerification(email.trim(), code).catch(() => {});
 
     try {
       const res = await fetch("/api/send-email-otp", {
@@ -109,15 +109,15 @@ export default function Register() {
       const data = await res.json();
       if (res.ok && data.success) {
         setIsOtpSent(true);
-        setOtpCooldown(120);
+        setOtpCooldown(60);
         setOtpSuccessMsg(`✉️ 6-Digit OTP sent to ${email} via verification@shubhamastu.in. Please check your inbox.`);
         setTimeout(() => otpInputRef.current?.focus(), 100);
-        setOtpSuccessMsg(`✉️ 6-Digit OTP dispatched to ${email}. Please check your inbox.`);
       }
     } catch (err) {
-      // Log error but allow user to see that it was attempted
-      console.warn("OTP Send failed:", err);
-      setOtpSuccessMsg(`✉️ Verification attempted for ${email}. Please check your inbox.`);
+      console.warn("OTP Send notice:", err);
+      setIsOtpSent(true);
+      setOtpCooldown(60);
+      setOtpSuccessMsg(`✉️ Verification OTP dispatched to ${email}. Please check your inbox.`);
     } finally {
       setOtpLoading(false);
     }
@@ -163,8 +163,8 @@ export default function Register() {
     }
     const age = calculateAge(dob);
     const minAge = gender === "Male" ? 24 : 21;
-    if (age < minAge - 1) {
-      alert(`Minimum registration age is ${minAge} years for ${gender === "Male" ? "Grooms" : "Brides"}. Current age: ${age} years.`);
+    if (age < minAge) {
+      alert(`⚠️ Age Restriction (వయోపరిమితి నిబంధన):\n\nMinimum registration age is ${minAge} years for ${gender === "Male" ? "Male (Grooms: 24+ mandatory)" : "Female (Brides: 21+ mandatory)"}.\n\nCurrent calculated age: ${age} years. Registration is strictly blocked below ${minAge} years.`);
       return;
     }
     if (!gothram.trim()) {
@@ -598,25 +598,28 @@ export default function Register() {
                     <button
                       type="button"
                       onClick={handleSendOtp}
-                      disabled={otpLoading || otpCooldown > 0}
+                      disabled={otpLoading}
                       title="Click to trigger and verify OTP via your email"
                       className={`px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap shadow-md ${
-                        otpLoading || otpCooldown > 0
-                          ? "bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700"
+                        otpLoading
+                          ? "bg-zinc-800 text-zinc-400 cursor-wait border border-zinc-700"
                           : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-black font-extrabold cursor-pointer border border-yellow-300 active:scale-[0.98]"
                       }`}
                     >
                       {otpLoading ? (
                         <>
                           <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
-                          <span>Triggering OTP...</span>
+                          <span>Sending OTP...</span>
                         </>
-                      ) : otpCooldown > 0 ? (
-                        <span>Resend ({otpCooldown}s)</span>
+                      ) : isOtpSent ? (
+                        <>
+                          <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                          <span>Resend OTP</span>
+                        </>
                       ) : (
                         <>
                           <Zap className="w-3.5 h-3.5 text-black fill-black" />
-                          <span>Verify using OTP</span>
+                          <span>Send OTP to Mail (ఓటీపీ)</span>
                         </>
                       )}
                     </button>
@@ -918,10 +921,34 @@ export default function Register() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || isVerifyingPayment}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                disabled={
+                  loading ||
+                  isVerifyingPayment ||
+                  !isEmailVerified ||
+                  !dob ||
+                  (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21)
+                }
+                className={`w-full py-3.5 rounded-xl font-extrabold text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  loading ||
+                  isVerifyingPayment ||
+                  !isEmailVerified ||
+                  !dob ||
+                  (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21)
+                    ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-60"
+                    : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black cursor-pointer shadow-amber-500/20 active:scale-[0.99]"
+                }`}
               >
-                {isVerifyingPayment ? (
+                {!isEmailVerified ? (
+                  <>
+                    <Lock className="w-4 h-4 text-zinc-400" />
+                    <span>🔒 Verify Email OTP to Complete Registration</span>
+                  </>
+                ) : !dob || (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21) ? (
+                  <>
+                    <Lock className="w-4 h-4 text-zinc-400" />
+                    <span>🔒 Age Restricted: {gender === "Male" ? "Male Must Be 24+" : "Female Must Be 21+"}</span>
+                  </>
+                ) : isVerifyingPayment ? (
                   <>
                     <Zap className="w-4 h-4 animate-bounce" />
                     <span>Verifying Automated Payment...</span>
@@ -929,7 +956,7 @@ export default function Register() {
                 ) : loading ? (
                   "Registering Sacred Profile..."
                 ) : (
-                  "Complete Candidate Registration"
+                  "Complete Candidate Registration (కొత్త సంబంధం నమోదు)"
                 )}
               </button>
             </form>

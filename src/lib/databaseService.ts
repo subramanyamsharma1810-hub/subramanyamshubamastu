@@ -819,8 +819,11 @@ export const databaseService = {
     try {
       const isAdminSession = typeof window !== "undefined" && localStorage.getItem("bramhana_admin_session") === "true";
       const q = query(collection(db, "profiles"));
-      // 1200ms timeout race to prevent UI freeze if Firestore operations stall or cancel
-      const querySnapshotPromise = getDocs(q);
+      // 1200ms timeout race with explicit rejection handling to prevent UI freeze or cancelled operation errors
+      const querySnapshotPromise = getDocs(q).catch((err) => {
+        console.warn("Firestore getDocs handled safely:", err?.message);
+        return null;
+      });
       const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200));
       const querySnapshot = await Promise.race([querySnapshotPromise, timeoutPromise]);
       
