@@ -1422,14 +1422,20 @@ export const databaseService = {
 
   // Storage Methods (Upload base64 representation to Firestore/Local storage simulated)
   async uploadFile(file: File, bucket: string, userId: string): Promise<string> {
-    // Return a base64 representation which works everywhere flawlessly without complex setup
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("kind", bucket === "kundali" ? "kundali" : "photo");
+
+    const response = await fetch("/api/media/upload", {
+      method: "POST",
+      headers: { "x-user-id": userId },
+      body: formData
     });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.success || typeof result.url !== "string") {
+      throw new Error(result?.error || "Private media upload failed.");
+    }
+    return result.url;
   },
 
   async getAdminSettings(): Promise<AdminSettings> {
@@ -1866,7 +1872,7 @@ export const databaseService = {
       {
         id: "pandit-1",
         name: "Brahmashri Vedula Subrahmanya Sharma",
-        photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+        photoUrl: "/images/telugu-wedding-hero.png",
         message: "Dedicated to conducting sacred Vedic marriages, Kundali matching, Gothra shuddhi, and providing divine blessings according to traditional Shastras.",
         phone: "+91 9441234567",
         specialization: "Vedic Astrology & Vivaha Muhurtam",
@@ -1876,7 +1882,7 @@ export const databaseService = {
       {
         id: "pandit-2",
         name: "Brahmashri Challa Sastry",
-        photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80",
+        photoUrl: "/images/telugu-wedding-hero.png",
         message: "Expert in Ashtakoota Guna Milan, horoscope matching, dosha pariharam, and traditional Brahmin wedding rituals.",
         phone: "+91 9887654321",
         specialization: "Kundali Matching & Pariharam",

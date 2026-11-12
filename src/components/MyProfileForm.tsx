@@ -124,7 +124,7 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
     setCameraActiveTarget(null);
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!cameraActiveTarget) return;
     const video = document.getElementById("profile-camera-preview") as HTMLVideoElement;
     if (video) {
@@ -135,7 +135,10 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg");
-        setFormData((prev) => ({ ...prev, [cameraActiveTarget]: dataUrl }));
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+        const uploadedUrl = await databaseService.uploadFile(file, "user-uploads", currentProfile.id || "temp-user");
+        setFormData((prev) => ({ ...prev, [cameraActiveTarget]: uploadedUrl }));
       }
     }
     stopCamera();
@@ -148,7 +151,7 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
     if (!file) return;
     setUploadingTarget(field);
     try {
-      const uploadedUrl = await databaseService.uploadFile(file, "user-uploads", currentProfile.id || "temp-user");
+      const uploadedUrl = await databaseService.uploadFile(file, field === "kundali_url" ? "kundali" : "user-uploads", currentProfile.id || "temp-user");
       setFormData((prev) => ({ ...prev, [field]: uploadedUrl }));
     } catch (err) {
       console.error("Upload failed:", err);
@@ -452,13 +455,7 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
                     />
                   </div>
                 )}
-                <input
-                  type="url"
-                  placeholder="Or paste URL link directly..."
-                  value={formData.photo_url || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, photo_url: e.target.value }))}
-                  className="w-full text-[11px] px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#362B5A]"
-                />
+                <p className="text-[10px] text-gray-500">Uploads are stored privately and delivered with an expiring access link.</p>
               </div>
 
               {/* Photo 2 */}
@@ -507,13 +504,7 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
                     />
                   </div>
                 )}
-                <input
-                  type="url"
-                  placeholder="Or paste URL link directly..."
-                  value={formData.photo_url_2 || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, photo_url_2: e.target.value }))}
-                  className="w-full text-[11px] px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#362B5A]"
-                />
+                <p className="text-[10px] text-gray-500">Uploads are stored privately and delivered with an expiring access link.</p>
               </div>
 
               {/* Photo 3 */}
@@ -562,13 +553,7 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
                     />
                   </div>
                 )}
-                <input
-                  type="url"
-                  placeholder="Or paste URL link directly..."
-                  value={formData.photo_url_3 || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, photo_url_3: e.target.value }))}
-                  className="w-full text-[11px] px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#362B5A]"
-                />
+                <p className="text-[10px] text-gray-500">Uploads are stored privately and delivered with an expiring access link.</p>
               </div>
             </div>
           </div>

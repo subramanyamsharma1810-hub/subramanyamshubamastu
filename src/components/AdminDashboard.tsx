@@ -84,7 +84,6 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const [isAddPanditModalOpen, setIsAddPanditModalOpen] = useState(false);
   const [editingPandit, setEditingPandit] = useState<Pandit | null>(null);
   const [panditName, setPanditName] = useState("");
-  const [panditPhotoUrl, setPanditPhotoUrl] = useState("");
   const [panditMessage, setPanditMessage] = useState("");
   const [panditPhone, setPanditPhone] = useState("");
   const [panditSpecialization, setPanditSpecialization] = useState("");
@@ -103,7 +102,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     const newPandit: Pandit = {
       id: editingPandit ? editingPandit.id : `pandit-${Date.now()}`,
       name: panditName.trim(),
-      photoUrl: panditPhotoUrl.trim() || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+      photoUrl: "/images/telugu-wedding-hero.png",
       message: panditMessage.trim(),
       phone: panditPhone.trim() || "+91 9347359489",
       specialization: panditSpecialization.trim() || "Vedic Astrology & Vivaha Muhurtam",
@@ -127,7 +126,6 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     setIsAddPanditModalOpen(false);
     setEditingPandit(null);
     setPanditName("");
-    setPanditPhotoUrl("");
     setPanditMessage("");
     setPanditPhone("");
     setPanditSpecialization("");
@@ -759,7 +757,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     setCameraActiveTarget(null);
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!cameraActiveTarget) return;
     const video = document.getElementById("admin-camera-preview") as HTMLVideoElement;
     if (video) {
@@ -770,10 +768,20 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg");
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+        const mediaOwnerId = cameraActiveTarget.type === "edit"
+          ? profileToEdit?.id
+          : newProfile.id;
+        const uploadedUrl = await databaseService.uploadFile(
+          file,
+          cameraActiveTarget.field === "kundali_url" ? "kundali" : "user-uploads",
+          mediaOwnerId || currentAdmin?.id || "admin-upload"
+        );
         if (cameraActiveTarget.type === "create") {
-          setNewProfile((prev) => ({ ...prev, [cameraActiveTarget.field]: dataUrl }));
+          setNewProfile((prev) => ({ ...prev, [cameraActiveTarget.field]: uploadedUrl }));
         } else if (cameraActiveTarget.type === "edit" && profileToEdit) {
-          setProfileToEdit((prev) => ({ ...prev, [cameraActiveTarget.field]: dataUrl }));
+          setProfileToEdit((prev) => ({ ...prev, [cameraActiveTarget.field]: uploadedUrl }));
         }
       }
     }
@@ -786,7 +794,11 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   ) => {
     if (!file || !target) return;
     try {
-      const uploadedUrl = await databaseService.uploadFile(file, "user-uploads", "admin-upload");
+      const uploadedUrl = await databaseService.uploadFile(
+        file,
+        target.field === "kundali_url" ? "kundali" : "user-uploads",
+        target.type === "edit" ? profileToEdit?.id || "admin-upload" : newProfile.id || "admin-upload"
+      );
       if (target.type === "create") {
         setNewProfile((prev) => ({ ...prev, [target.field]: uploadedUrl }));
       } else if (target.type === "edit" && profileToEdit) {
@@ -6171,13 +6183,7 @@ Ph: ${adminPhone}`;
                   className="hidden"
                   onChange={(e) => e.target.files?.[0] && handleDeviceUpload(e.target.files[0], { type: "edit", field: "photo_url" })}
                 />
-                <input
-                  type="url"
-                  placeholder="Or paste URL link directly here..."
-                  value={profileToEdit.photo_url || ""}
-                  onChange={(e) => setProfileToEdit({ ...profileToEdit, photo_url: e.target.value })}
-                  className="w-full mt-1.5 px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#362B5A] text-xs font-medium"
-                />
+                <p className="text-[10px] text-gray-500">Use device upload or camera. Private media links expire automatically.</p>
               </div>
 
               {/* Photo 2 URL */}
@@ -6220,13 +6226,7 @@ Ph: ${adminPhone}`;
                   className="hidden"
                   onChange={(e) => e.target.files?.[0] && handleDeviceUpload(e.target.files[0], { type: "edit", field: "photo_url_2" })}
                 />
-                <input
-                  type="url"
-                  placeholder="Or paste URL link directly here..."
-                  value={profileToEdit.photo_url_2 || ""}
-                  onChange={(e) => setProfileToEdit({ ...profileToEdit, photo_url_2: e.target.value })}
-                  className="w-full mt-1.5 px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#362B5A] text-xs font-medium"
-                />
+                <p className="text-[10px] text-gray-500">Use device upload or camera. Private media links expire automatically.</p>
               </div>
 
               {/* Photo 3 URL */}
@@ -6269,13 +6269,7 @@ Ph: ${adminPhone}`;
                   className="hidden"
                   onChange={(e) => e.target.files?.[0] && handleDeviceUpload(e.target.files[0], { type: "edit", field: "photo_url_3" })}
                 />
-                <input
-                  type="url"
-                  placeholder="Or paste URL link directly here..."
-                  value={profileToEdit.photo_url_3 || ""}
-                  onChange={(e) => setProfileToEdit({ ...profileToEdit, photo_url_3: e.target.value })}
-                  className="w-full mt-1.5 px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#362B5A] text-xs font-medium"
-                />
+                <p className="text-[10px] text-gray-500">Use device upload or camera. Private media links expire automatically.</p>
               </div>
 
               {/* SECTION: Partner Expectations & Preferences */}
@@ -8090,13 +8084,7 @@ Ph: ${adminPhone}`;
                       className="hidden"
                       onChange={(e) => e.target.files?.[0] && handleDeviceUpload(e.target.files[0], { type: "create", field: "photo_url" })}
                     />
-                    <input
-                      type="url"
-                      placeholder="Or paste URL link directly here..."
-                      value={newProfile.photo_url}
-                      onChange={(e) => setNewProfile({ ...newProfile, photo_url: e.target.value })}
-                      className="w-full mt-1.5 px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#362B5A] text-xs font-medium"
-                    />
+                    <p className="text-[10px] text-gray-500">Use device upload or camera. Private media links expire automatically.</p>
                   </div>
 
                   {/* Photo 2 URL */}
@@ -8139,13 +8127,7 @@ Ph: ${adminPhone}`;
                       className="hidden"
                       onChange={(e) => e.target.files?.[0] && handleDeviceUpload(e.target.files[0], { type: "create", field: "photo_url_2" })}
                     />
-                    <input
-                      type="url"
-                      placeholder="Or paste URL link directly here..."
-                      value={newProfile.photo_url_2}
-                      onChange={(e) => setNewProfile({ ...newProfile, photo_url_2: e.target.value })}
-                      className="w-full mt-1.5 px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#362B5A] text-xs font-medium"
-                    />
+                    <p className="text-[10px] text-gray-500">Use device upload or camera. Private media links expire automatically.</p>
                   </div>
 
                   {/* Photo 3 URL */}
@@ -8188,13 +8170,7 @@ Ph: ${adminPhone}`;
                       className="hidden"
                       onChange={(e) => e.target.files?.[0] && handleDeviceUpload(e.target.files[0], { type: "create", field: "photo_url_3" })}
                     />
-                    <input
-                      type="url"
-                      placeholder="Or paste URL link directly here..."
-                      value={newProfile.photo_url_3}
-                      onChange={(e) => setNewProfile({ ...newProfile, photo_url_3: e.target.value })}
-                      className="w-full mt-1.5 px-3 py-1.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#362B5A] text-xs font-medium"
-                    />
+                    <p className="text-[10px] text-gray-500">Use device upload or camera. Private media links expire automatically.</p>
                   </div>
                 </>
               )}
@@ -8723,7 +8699,6 @@ Ph: ${adminPhone}`;
               onClick={() => {
                 setEditingPandit(null);
                 setPanditName("");
-                setPanditPhotoUrl("");
                 setPanditMessage("");
                 setPanditPhone("");
                 setPanditSpecialization("");
@@ -8755,7 +8730,6 @@ Ph: ${adminPhone}`;
                           onClick={() => {
                             setEditingPandit(p);
                             setPanditName(p.name);
-                            setPanditPhotoUrl(p.photoUrl);
                             setPanditMessage(p.message);
                             setPanditPhone(p.phone || "");
                             setPanditSpecialization(p.specialization || "");
@@ -8825,14 +8799,8 @@ Ph: ${adminPhone}`;
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Photo URL (ఫోటో లింక్)</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={panditPhotoUrl}
-                  onChange={(e) => setPanditPhotoUrl(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-mono text-gray-800 focus:outline-none focus:border-amber-500"
-                />
+                <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Photo</label>
+                <p className="text-[10px] text-gray-500">Pandit photos use the local protected asset. External image URLs are not accepted.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
