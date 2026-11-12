@@ -2,6 +2,7 @@ import { db, auth } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, onSnapshot } from "firebase/firestore";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, Pandit } from "../types";
 import { calculateMatchScore } from "./matchEngine";
+import { hashPassword } from "./passwordSecurity";
 
 // --- Firestore Error Handling Infrastructure ---
 export enum OperationType {
@@ -57,7 +58,6 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-subbu",
     name: "Sri G.V. Subramanyam",
     mobile: "9347359489",
-    password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
     email: "subramanyamghadiyaram@gmail.com",
     role: "super_admin",
     stage: 1,
@@ -70,7 +70,6 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-subba-reddy",
     name: "Mr. Posham Venkata Subba Reddy",
     mobile: "9989079372",
-    password: "SubbaReddy@2026!#",
     email: "subbareddyposham@gmail.com",
     role: "super_admin",
     stage: 2,
@@ -83,7 +82,6 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-tejaswar",
     name: "Mr. Karna Tejaswar Reddy",
     mobile: "9392551166",
-    password: "grievance123",
     email: "k.tejaswar567@gmail.com",
     role: "super_admin",
     stage: 2,
@@ -96,7 +94,6 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-praveen",
     name: "Mr. Praveen",
     mobile: "9876543219",
-    password: "Praveen@2026!#",
     email: "praveenproq@gmail.com",
     role: "super_admin",
     stage: 1,
@@ -465,23 +462,11 @@ export function generateRandomPassword(): string {
   return `${part1}_${part2}`;
 }
 
-export function generateDefaultDobPassword(dob?: string): string {
-  if (!dob) return generateRandomPassword();
-  const cleanDob = dob.trim();
-  const match = cleanDob.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
-  if (match) {
-    const [_, yyyy, mm, dd] = match;
-    return `${dd}${mm}${yyyy}`;
-  }
-  return cleanDob.replace(/[-/]/g, "") || generateRandomPassword();
-}
-
 // Pre-seeded, beautiful profiles reflecting the "Shiva & Sati" spiritual theme
 const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "admin-subbu",
     reg_number: "BVM-1001",
-    password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
     name: "Sri G.V. Subramanyam (Founder, Managing Director & Proprietor)",
     dob: "1995-08-15",
     gender: "Male",
@@ -515,7 +500,6 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "admin-subba-reddy",
     reg_number: "BVM-1007",
-    password: "SubbaReddy@2026!#",
     name: "PV Subba Reddy (Stage 2 Super Admin & Co-Founder)",
     dob: "1980-01-01",
     gender: "Male",
@@ -549,7 +533,6 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "admin-tejaswar",
     reg_number: "BVM-1010",
-    password: "grievance123",
     name: "Mr. Karna Teajushwar Reddy (Stage 2 Super Admin & Chief Grievance Officer)",
     dob: "1992-05-20",
     gender: "Male",
@@ -582,7 +565,6 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "admin-praveen",
     reg_number: "BVM-1011",
-    password: "Praveen@2026!#",
     name: "Mr. Praveen (Super Admin)",
     dob: "1994-06-15",
     gender: "Male",
@@ -616,7 +598,6 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "prof-yeashwini-9876543210",
     reg_number: "BVM-2026",
-    password: "yeashawini.p@phonepe",
     name: "Yeashwini",
     surname: "P",
     dob: "1998-05-15",
@@ -895,7 +876,7 @@ export const databaseService = {
         if (isAdminSession) {
           for (const p of PRE_SEEDED_PROFILES) {
             const existingAdmin = rawProfiles.find(rp => rp.id === p.id);
-            if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.password !== p.password || existingAdmin.name !== p.name) {
+            if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.name !== p.name) {
               setDoc(doc(db, "profiles", p.id), p).catch(() => {});
               if (existingAdmin) {
                 const idx = rawProfiles.indexOf(existingAdmin);
@@ -986,12 +967,12 @@ export const databaseService = {
     });
   },
 
-  async getPrivateProfileData(profileId: string): Promise<{ contact_number: string, email?: string, password?: string } | null> {
+  async getPrivateProfileData(profileId: string): Promise<{ contact_number: string, email?: string, password_hash?: string } | null> {
     try {
       const docRef = doc(db, "profiles", profileId, "private", "data");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return docSnap.data() as { contact_number: string, email?: string, password?: string };
+        return docSnap.data() as { contact_number: string, email?: string, password_hash?: string };
       }
     } catch (err) {
       console.warn(`Error fetching private data for ${profileId}:`, err);
@@ -1059,7 +1040,7 @@ export const databaseService = {
               ...profile,
               contact_number: privateData?.contact_number || profile.contact_number,
               email: privateData?.email || profile.email,
-              password: privateData?.password || profile.password
+              password_hash: privateData?.password_hash || profile.password_hash
             };
           }
         }
@@ -1105,9 +1086,10 @@ export const databaseService = {
       finalProfile.created_at = new Date().toISOString();
     }
     
-    if (!finalProfile.password) {
-      finalProfile.password = generateDefaultDobPassword(finalProfile.dob);
+    if (finalProfile.password && !finalProfile.password_hash) {
+      finalProfile.password_hash = await hashPassword(finalProfile.password);
     }
+    delete finalProfile.password;
     
     // Generate next sequential reg_number based on all central profiles
     if (!finalProfile.reg_number) {
@@ -1186,6 +1168,7 @@ export const databaseService = {
     (async () => {
       try {
         const publicProfile = { ...finalProfile };
+        delete publicProfile.password_hash;
         if (publicProfile.contact_number) {
           publicProfile.contact_number = publicProfile.contact_number.replace(/(\d{3})\d{4}(\d{2})/, "$1****$2");
         }
@@ -1198,7 +1181,7 @@ export const databaseService = {
           setDoc(doc(db, "profiles", finalProfile.id, "private", "data"), {
             contact_number: profile.contact_number,
             email: profile.email || "",
-            password: finalProfile.password
+            password_hash: finalProfile.password_hash
           }).catch(() => {})
         ];
 
@@ -1764,6 +1747,10 @@ export const databaseService = {
       createdAt: adminData.createdAt || new Date().toISOString(),
       status: adminData.status || "active"
     };
+    if (admin.password && !admin.password_hash) {
+      admin.password_hash = await hashPassword(admin.password);
+    }
+    delete admin.password;
 
     try {
       await setDoc(doc(db, "admins", admin.id), admin);
@@ -1791,7 +1778,6 @@ export const databaseService = {
         name: admin.name,
         contact_number: cleanPhone,
         email: admin.email || `${cleanPhone}@shubhamastu.in`,
-        password: admin.password,
         role: "admin",
         status: "Active",
         subscription_status: "paid_900",
@@ -1833,11 +1819,9 @@ export const databaseService = {
     return true;
   },
 
-  async verifyAdminCredentials(mobileInput: string, passwordInput: string): Promise<AdminUser | null> {
+  async verifyAdminCredentials(mobileInput: string, _passwordInput: string): Promise<AdminUser | null> {
     const cleanInputMobile = mobileInput.trim().replace(/\D/g, "");
-    const cleanInputPass = passwordInput.trim();
-
-    if (!cleanInputMobile || !cleanInputPass) return null;
+    if (!cleanInputMobile) return null;
 
     const admins = await this.getAdmins();
     for (const a of admins) {
@@ -1847,7 +1831,7 @@ export const databaseService = {
         adminMobileClean === cleanInputMobile ||
         adminMobileClean.slice(-10) === cleanInputMobile.slice(-10);
       
-      if (mobileMatch && a.password === cleanInputPass && a.status === "active") {
+      if (mobileMatch && a.status === "active") {
         const stageInfo = getAdminStageInfo(a.role, a.stage);
         return {
           ...a,

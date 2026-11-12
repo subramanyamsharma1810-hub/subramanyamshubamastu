@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, AdminRole, Pandit } from "../types";
-import { databaseService, adminNotificationService, generateRandomPassword, generateDefaultDobPassword } from "../lib/databaseService";
+import { databaseService, adminNotificationService, generateRandomPassword } from "../lib/databaseService";
 import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
 import AdminGrievanceChatsDesk from "./AdminGrievanceChatsDesk";
@@ -1931,6 +1931,10 @@ Ph: ${adminPhone}`;
     }
 
     if (isRegisteringCandidate || registeringRef.current) return;
+    if (newProfile.password.trim().length < 8) {
+      alert("Set a password of at least 8 characters. DOB is never used as a fallback password.");
+      return;
+    }
     registeringRef.current = true;
     setIsRegisteringCandidate(true);
 
@@ -2048,7 +2052,7 @@ Ph: ${adminPhone}`;
         contact_number: newProfile.contact_number.trim(),
         status: newProfile.status,
         subscription_status: registrationType === "employee" ? "free" : newProfile.subscription_status,
-        password: newProfile.password || (newProfile.dob ? generateDefaultDobPassword(newProfile.dob) : "123456"),
+        password: newProfile.password.trim(),
         photo_url: p1Url,
         photo_url_2: p2Url,
         photo_url_3: p3Url,

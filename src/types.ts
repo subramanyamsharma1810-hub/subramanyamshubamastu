@@ -35,7 +35,8 @@ export interface AstrologyDetails {
 export interface Profile {
   id: string;
   reg_number?: string; // e.g., BVM-1001
-  password?: string;   // defaults to dob if not explicitly specified
+  password?: string;   // legacy input only; never persist plaintext passwords
+  password_hash?: string;
   role?: "candidate" | "employee" | AdminRole; // Account level role
   name: string;
   dob: string;
@@ -210,6 +211,7 @@ export interface AdminUser {
   name: string;
   mobile: string;
   password?: string;
+  password_hash?: string;
   email?: string;
   role: AdminRole;
   stage?: 1 | 2 | 3 | 4;
