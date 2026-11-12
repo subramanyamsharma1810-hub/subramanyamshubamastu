@@ -236,7 +236,7 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
       return;
     }
 
-    if (admin.isRoot || admin.id === "admin-subbu" || admin.id === "admin-subba-reddy") {
+    if (admin.isRoot || admin.id === "admin-subbu" || admin.id === "admin-subba-reddy" || admin.id === "admin-tejaswar" || admin.id === "admin-praveen") {
       alert("Root Principal administrators cannot be deleted.");
       return;
     }

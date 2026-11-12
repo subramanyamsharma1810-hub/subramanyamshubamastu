@@ -3,11 +3,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "490939d2e2ba22c6329dc85cbf363ca2";
-const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "0611e270af2dcac9bf26f85cc533fdb640b7bdc8b649617d504c9deff1bf7f9f";
-const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || "https://32b3e56224ba3dca35f04eae6392e78a.r2.cloudflarestorage.com";
+const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "";
+const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "";
+const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || "https://auto.r2.cloudflarestorage.com";
 const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || "shubhamastu-call-recordings";
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || "32b3e56224ba3dca35f04eae6392e78a";
+const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || "";
 
 export async function testR2Connectivity() {
   console.log("🔍 Starting Cloudflare R2 Connectivity & Permission Diagnostic...");

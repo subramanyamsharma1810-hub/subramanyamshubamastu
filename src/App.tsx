@@ -12,7 +12,7 @@ import CalendarReminders from "./components/CalendarReminders";
 import { LegalFooter } from "./components/LegalModals";
 import { SuspensionNotice } from "./components/SuspensionNotice";
 import { Profile, PartnerPreferences } from "./types";
-import { databaseService } from "./lib/databaseService";
+import { databaseService, adminNotificationService } from "./lib/databaseService";
 import PublicReceiptViewer from "./components/PublicReceiptViewer";
 import CompactKebabCardView from "./components/CompactKebabCardView";
 import TermsPage from "./components/TermsPage";
@@ -28,8 +28,11 @@ import CallRoom from "./components/meet/CallRoom";
 import CallHistory from "./components/meet/CallHistory";
 import { registerCallPushNotifications } from "./lib/pushNotifications";
 import { ref, get } from "firebase/database";
-import { rtdb } from "./lib/firebase";
-import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck } from "lucide-react";
+import { rtdb, ensureAuth, auth, googleProvider } from "./lib/firebase";
+import { signInWithPopup } from "firebase/auth";
+import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck, FolderArchive, Download, Share2 } from "lucide-react";
+import FrontendExportModal from "./components/FrontendExportModal";
+import BottomNav from "./components/BottomNav";
 
 export default function App() {
   const location = useLocation();
@@ -67,30 +70,38 @@ export default function App() {
 
   const [devBrandName, setDevBrandName] = useState<string>(() => {
     const saved = localStorage.getItem("bramhana_dev_brand_name");
-    if (!saved || saved.includes("Murugan")) {
-      localStorage.setItem("bramhana_dev_brand_name", "Glark Solutions");
-      return "Glark Solutions";
+    if (!saved || saved.includes("Murugan") || saved === "Glark Solutions") {
+      localStorage.setItem("bramhana_dev_brand_name", "Galark Solutions (Ghadiyaram Venkata Subramanyam)");
+      return "Galark Solutions (Ghadiyaram Venkata Subramanyam)";
     }
     return saved;
   });
   const [devBrandSlogan, setDevBrandSlogan] = useState<string>(() => {
     const saved = localStorage.getItem("bramhana_dev_brand_slogan");
-    if (!saved || saved.includes("flawless craftsmanship")) {
-      localStorage.setItem("bramhana_dev_brand_slogan", "A Product of Glark Solutions - Modern digital, web, and enterprise solutions.");
-      return "A Product of Glark Solutions - Modern digital, web, and enterprise solutions.";
+    if (!saved || saved.includes("flawless craftsmanship") || saved.includes("A Product of Glark Solutions")) {
+      localStorage.setItem("bramhana_dev_brand_slogan", "A Product of Galark Solutions (Ghadiyaram Venkata Subramanyam) - Modern digital, web, and enterprise solutions.");
+      return "A Product of Galark Solutions (Ghadiyaram Venkata Subramanyam) - Modern digital, web, and enterprise solutions.";
     }
     return saved;
   });
   const [isDevWidgetOpen, setIsDevWidgetOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [activeCallSession, setActiveCallSession] = useState<{
     callSessionId: string;
     receiver: Profile;
     callType: "audio" | "video";
   } | null>(null);
+  const [adminAuditUnread, setAdminAuditUnread] = useState<number>(0);
+
+  useEffect(() => {
+    const unsub = adminNotificationService.subscribe((list) => {
+      setAdminAuditUnread(list.filter((n) => !n.read).length);
+    });
+    return () => unsub();
+  }, []);
 
   // Activate Real-Time Presence heartbeat
   useUserPresence(currentProfile?.id);
-
   // Load active user profile and their preferences on mount
   useEffect(() => {
     async function loadInitialData() {
@@ -105,6 +116,7 @@ export default function App() {
           return;
         }
 
+        await ensureAuth();
         const profiles = await databaseService.getProfiles(true);
         setAllProfiles(profiles);
         let activeProfile = profiles.find((p) => p.id === loggedInId);
@@ -130,12 +142,18 @@ export default function App() {
           setPreferences(prefs);
 
           const isSystemAdmin =
-            activeProfile.id === "prof-subbu" ||
-            activeProfile.id === "prof-subba-reddy" ||
+            activeProfile.id === "admin-subbu" ||
+            activeProfile.id === "admin-subba-reddy" ||
+            activeProfile.id === "admin-tejaswar" ||
+            activeProfile.id === "admin-praveen" ||
             activeProfile.role === "employee" ||
             activeProfile.role === "admin" ||
+            activeProfile.role === "super_admin" ||
+            activeProfile.email?.toLowerCase() === "praveenproq@gmail.com" ||
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9876543219") ||
             activeProfile.contact_number?.replace(/\D/g, "").includes("9347359489") ||
-            activeProfile.contact_number?.replace(/\D/g, "").includes("9494949494");
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+            activeProfile.contact_number?.replace(/\D/g, "").includes("9392551166");
 
           if (isSystemAdmin) {
             localStorage.setItem("bramhana_admin_session", "true");
@@ -163,12 +181,18 @@ export default function App() {
     setCurrentProfile(profile);
     registerCallPushNotifications(profile.id).catch(() => {});
     const isSystemAdmin = 
-      profile.id === "prof-subbu" || 
-      profile.id === "prof-subba-reddy" || 
+      profile.id === "admin-subbu" || 
+      profile.id === "admin-subba-reddy" || 
+      profile.id === "admin-tejaswar" ||
+      profile.id === "admin-praveen" ||
       profile.role === "employee" ||
       profile.role === "admin" ||
+      profile.role === "super_admin" ||
+      profile.email?.toLowerCase() === "praveenproq@gmail.com" ||
+      profile.contact_number?.replace(/\D/g, "").includes("9876543219") ||
       profile.contact_number?.replace(/\D/g, "").includes("9347359489") || 
-      profile.contact_number?.replace(/\D/g, "").includes("9494949494");
+      profile.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+      profile.contact_number?.replace(/\D/g, "").includes("9392551166");
     
     if (isSystemAdmin) {
       localStorage.setItem("bramhana_admin_session", "true");
@@ -190,7 +214,7 @@ export default function App() {
       // Verify credentials first
       const verifiedAdmin = await databaseService.verifyAdminCredentials(mobileClean, passClean);
       if (verifiedAdmin) {
-        const emailTarget = verifiedAdmin.email || (verifiedAdmin.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : verifiedAdmin.id === "admin-subba-reddy" ? "Subbareddyposham@gmail.com" : "K.tejaswar567@gmail.com");
+        const emailTarget = verifiedAdmin.email || (verifiedAdmin.id === "admin-subbu" ? "subramanyamghadiyaram@gmail.com" : verifiedAdmin.id === "admin-subba-reddy" ? "Subbareddyposham@gmail.com" : verifiedAdmin.id === "admin-praveen" ? "praveenproq@gmail.com" : "K.tejaswar567@gmail.com");
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         setGeneratedAdminOtp(otp);
         setAdminEmailTarget(emailTarget);
@@ -213,7 +237,7 @@ export default function App() {
       }
     } else {
       // Verify OTP entered by admin
-      if (!adminOtpInput || (adminOtpInput !== generatedAdminOtp && adminOtpInput !== "70439771" && adminOtpInput !== "123456")) {
+      if (!adminOtpInput || adminOtpInput !== generatedAdminOtp) {
         setAdminLoginError("Invalid OTP code. Please enter the correct 6-digit OTP sent to your email.");
         return;
       }
@@ -229,12 +253,16 @@ export default function App() {
       
       const profiles = await databaseService.getProfiles(true);
       const isSubbu = verifiedAdmin.id === "admin-subbu" || mobileClean.includes("9347359489");
-      const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9494949494");
+      const isSubba = verifiedAdmin.id === "admin-subba-reddy" || mobileClean.includes("9989079372");
+      const isKarna = verifiedAdmin.id === "admin-tejaswar" || mobileClean.includes("9392551166");
+      const isPraveen = verifiedAdmin.id === "admin-praveen" || mobileClean.includes("9876543219") || verifiedAdmin.email?.toLowerCase() === "praveenproq@gmail.com";
       
       let adminProf = profiles.find(p => 
         p.id === verifiedAdmin.id || 
-        (isSubbu && p.id === "prof-subbu") || 
-        (isSubba && p.id === "prof-subba-reddy") ||
+        (isSubbu && p.id === "admin-subbu") || 
+        (isSubba && p.id === "admin-subba-reddy") ||
+        (isKarna && p.id === "admin-tejaswar") ||
+        (isPraveen && p.id === "admin-praveen") ||
         p.contact_number?.replace(/\D/g, "").slice(-10) === mobileClean.slice(-10)
       );
 
@@ -259,6 +287,18 @@ export default function App() {
       
       localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
       localStorage.setItem("bramhana_current_admin", JSON.stringify(verifiedAdmin));
+      
+      // CRITICAL: Elevate anonymous session to admin in Firestore to enable isAdmin() rules
+      if (auth.currentUser) {
+        await adminNotificationService.elevateToAdmin(auth.currentUser.uid, {
+          adminId: verifiedAdmin.id,
+          name: verifiedAdmin.name,
+          role: verifiedAdmin.role,
+          stage: verifiedAdmin.stage,
+          mobile: verifiedAdmin.mobile
+        });
+      }
+
       setCurrentProfile({
         ...adminProf,
         role: (verifiedAdmin.role as any) || adminProf.role || "admin"
@@ -382,10 +422,18 @@ export default function App() {
   }
 
   const isLoggedInUserAdmin = 
-    currentProfile?.id === "prof-subbu" || 
-    currentProfile?.id === "prof-subba-reddy" || 
+    currentProfile?.id === "admin-subbu" || 
+    currentProfile?.id === "admin-subba-reddy" || 
+    currentProfile?.id === "admin-tejaswar" ||
+    currentProfile?.id === "admin-praveen" ||
+    currentProfile?.role === "employee" ||
+    currentProfile?.role === "admin" ||
+    currentProfile?.role === "super_admin" ||
+    currentProfile?.email?.toLowerCase() === "praveenproq@gmail.com" ||
+    currentProfile?.contact_number?.replace(/\D/g, "").includes("9876543219") ||
     currentProfile?.contact_number?.replace(/\D/g, "").includes("9347359489") || 
-    currentProfile?.contact_number?.replace(/\D/g, "").includes("9494949494");
+    currentProfile?.contact_number?.replace(/\D/g, "").includes("9989079372") ||
+    currentProfile?.contact_number?.replace(/\D/g, "").includes("9392551166");
 
   return (
     <div className="min-h-screen bg-[#EBF6FF] text-[#362B5A] font-sans flex flex-col">
@@ -402,12 +450,43 @@ export default function App() {
       />
 
       {/* Main Content Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-8 md:py-12 pb-24 md:pb-12">
+        {/* Mobile Compact User Status Bar */}
+        {!isAdmin && (
+          <div className="block lg:hidden bg-white rounded-2xl p-3 shadow-xs border border-[#362B5A]/10 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#362B5A]/15 shrink-0">
+                  <img
+                    src={currentProfile.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=200"}
+                    alt={currentProfile.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-[#362B5A] text-xs sm:text-sm truncate leading-tight">{currentProfile.name}</h3>
+                  <p className="text-[10px] text-gray-500 font-medium truncate font-mono">
+                    {currentProfile.reg_number || "BVM-Member"} • {currentProfile.sub_caste}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTabChange("profile")}
+                className="px-2.5 py-1.5 bg-[#362B5A] text-white rounded-xl text-[10px] font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 active:scale-95"
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span>Kundali</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
-          {/* Quick Active User Profile Card on the left (Except in Admin mode) */}
+          {/* Active User Profile Card (Desktop Sidebar) */}
           {!isAdmin && (
-            <div className="lg:col-span-3 bg-white rounded-3xl p-6 shadow-md border border-[#362B5A]/5 space-y-6">
+            <div className="hidden lg:block lg:col-span-3 bg-white rounded-3xl p-6 shadow-md border border-[#362B5A]/5 space-y-6 sticky top-24">
               <div className="text-center space-y-3">
                 <div className="relative w-24 h-24 mx-auto rounded-full overflow-hidden border-4 border-[#362B5A]/10 shadow-lg">
                   <img
@@ -698,7 +777,7 @@ export default function App() {
                       type="text"
                       required
                       maxLength={6}
-                      placeholder="e.g. 704397"
+                      placeholder="XXXXXX"
                       value={adminOtpInput}
                       onChange={(e) => setAdminOtpInput(e.target.value)}
                       className="w-full bg-gray-50 border-2 border-[#362B5A] rounded-xl py-3 px-4 text-[#362B5A] text-center font-mono tracking-widest text-lg font-black focus:outline-none shadow-sm"
@@ -725,16 +804,97 @@ export default function App() {
               <Sparkles className="w-4 h-4 text-orange-200" />
               <span>{adminOtpSent ? "Verify OTP & Login" : "Send Verification OTP"}</span>
             </button>
+
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-400 bg-white px-2">Security Fallback</div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const result = await signInWithPopup(auth, googleProvider);
+                  const user = result.user;
+                  if (user) {
+                    const authorizedEmails = [
+                      "subramanyamghadiyaram@gmail.com",
+                      "subbareddyposham@gmail.com",
+                      "k.tejaswar567@gmail.com",
+                      "praveenproq@gmail.com"
+                    ];
+                    if (authorizedEmails.includes(user.email || "")) {
+                      const isSubbu = user.email === "subramanyamghadiyaram@gmail.com";
+                      const isSubba = user.email === "subbareddyposham@gmail.com";
+                      const isKarna = user.email === "k.tejaswar567@gmail.com";
+                      const isPraveen = user.email === "praveenproq@gmail.com";
+
+                      const adminProf = {
+                        id: isSubbu ? "admin-subbu" : isSubba ? "admin-subba-reddy" : isPraveen ? "admin-praveen" : "admin-tejaswar",
+                        reg_number: isSubbu ? "BVM-1001" : isSubba ? "BVM-1007" : isPraveen ? "BVM-1011" : "BVM-1010",
+                        name: user.displayName || (isSubbu ? "Sri G.V. Subramanyam" : isSubba ? "Mr. Posham Venkata Subba Reddy" : isPraveen ? "Mr. Praveen" : "Mr. Karna Tejaswar Reddy"),
+                        dob: "1990-01-01",
+                        gender: "Male" as const,
+                        height_feet: 5.8,
+                        sub_caste: "Smartha",
+                        profession: isPraveen ? "Super Admin & Chief Technology Officer" : "Administrator",
+                        salary_lpa: 15,
+                        contact_number: isSubbu ? "9347359489" : isSubba ? "9989079372" : isPraveen ? "9876543219" : "9392551166",
+                        email: user.email!,
+                        status: "Verified" as const,
+                        role: (isSubbu || isPraveen ? "super_admin" : "admin") as "super_admin" | "admin",
+                        subscription_status: "paid_900" as const
+                      };
+
+                      await adminNotificationService.elevateToAdmin(user.uid, {
+                        adminId: adminProf.id,
+                        name: adminProf.name,
+                        role: "admin",
+                        stage: isSubbu ? 1 : 2,
+                        mobile: adminProf.contact_number
+                      });
+
+                      localStorage.setItem("bramhana_admin_session", "true");
+                      localStorage.setItem("bramhana_logged_in_user_id", adminProf.id);
+                      setCurrentProfile(adminProf);
+                      setIsAdmin(true);
+                      setShowAdminLoginModal(false);
+                    } else {
+                      setAdminLoginError("This Google account is not authorized for Administrative access.");
+                    }
+                  }
+                } catch (err: any) {
+                  setAdminLoginError(err.message);
+                }
+              }}
+              className="w-full py-2.5 bg-white border border-gray-200 text-[#362B5A] font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-all rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-2"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
+              <span>Admin Login with Google</span>
+            </button>
           </form>
         </div>
       )}
 
-      {/* FLOATING DEVELOPER BRANDING HUB BADGE (Bottom-Left) */}
-      <div className="hidden lg:block fixed bottom-4 left-4 z-[99] font-sans">
-        {/* Pulsing Badge */}
+      {/* FLOATING QUICK ACTIONS & DEVELOPER SOURCE EXPORT (Bottom-Left) */}
+      <div className="fixed bottom-4 left-4 z-[99] font-sans flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        {/* DOWNLOAD & SHARE FRONTEND SOURCE BUTTON */}
+        <button
+          onClick={() => setIsExportModalOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl border border-emerald-400/40 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-black select-none cursor-pointer group shadow-emerald-950/50"
+          title="Download all frontend files or forward via WhatsApp and Mail"
+        >
+          <div className="relative">
+            <FolderArchive className="w-4 h-4 text-emerald-200 group-hover:rotate-6 transition-transform" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
+          </div>
+          <span className="tracking-wide">Download & Send Frontend (ZIP / WA / Mail)</span>
+        </button>
+
+        {/* Pulsing Glark Solutions Badge */}
         <button
           onClick={() => setIsDevWidgetOpen(true)}
-          className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl border border-amber-400/30 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-bold select-none cursor-pointer group shadow-amber-900/30"
+          className="hidden md:flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl border border-amber-400/30 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-bold select-none cursor-pointer group shadow-amber-900/30"
         >
           <div className="relative">
             <Zap className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
@@ -742,6 +902,12 @@ export default function App() {
           </div>
           <span className="tracking-wide">A Product of Glark Solutions</span>
         </button>
+
+        {/* Frontend Source Export & Share Modal */}
+        <FrontendExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+        />
 
         {/* Branding Hub Modal / Bottom Drawer */}
         {isDevWidgetOpen && (
@@ -975,11 +1141,12 @@ export default function App() {
         )}
       </div>
 
-      {/* Global Incoming Call Listener & Modal */}
-      {currentProfile && (
+      {/* Global Incoming Call Listener & Modal - Only active when user is logged in and not in a call */}
+      {currentProfile && !activeCallSession && (
         <IncomingCallModal
           currentProfile={currentProfile}
           allProfiles={allProfiles}
+          isInActiveCall={Boolean(activeCallSession)}
           onAcceptCall={(callSessionId, callType) => {
             const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${callSessionId}`);
             get(sessionRef).then(snap => {
@@ -1015,6 +1182,21 @@ export default function App() {
           receiver={activeCallSession.receiver}
           callType={activeCallSession.callType}
           onEndCall={() => setActiveCallSession(null)}
+        />
+      )}
+
+      {/* Modern Native Mobile Bottom Navigation Bar */}
+      {currentProfile && (
+        <BottomNav
+          currentTab={currentTab}
+          setCurrentTab={handleTabChange}
+          isAdmin={isAdmin}
+          setIsAdmin={setIsAdmin}
+          isLoggedInUserAdmin={isLoggedInUserAdmin}
+          onOpenQuickMenu={() => window.dispatchEvent(new CustomEvent("open-portal-menu"))}
+          onOpenPandithModal={() => window.dispatchEvent(new CustomEvent("open-pandith-consultation"))}
+          onOpenAuditModal={() => window.dispatchEvent(new CustomEvent("open-admin-audit"))}
+          adminAuditUnread={adminAuditUnread}
         />
       )}
 

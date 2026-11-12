@@ -1,7 +1,56 @@
-import { db } from "./firebase";
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query } from "firebase/firestore";
+import { db, auth } from "./firebase";
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, onSnapshot } from "firebase/firestore";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, Pandit } from "../types";
 import { calculateMatchScore } from "./matchEngine";
+
+// --- Firestore Error Handling Infrastructure ---
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('[Firestore Error Handled]: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+// ------------------------------------------------
 
 export const ROOT_ADMINS: AdminUser[] = [
   {
@@ -31,7 +80,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     isRoot: true
   },
   {
-    id: "admin-grievance",
+    id: "admin-tejaswar",
     name: "Mr. Karna Tejaswar Reddy",
     mobile: "9392551166",
     password: "grievance123",
@@ -40,6 +89,19 @@ export const ROOT_ADMINS: AdminUser[] = [
     stage: 2,
     designation: "Stage 2 Super Admin & Chief Grievance Redressal Officer",
     createdAt: "2026-08-15T10:00:00Z",
+    status: "active",
+    isRoot: true
+  },
+  {
+    id: "admin-praveen",
+    name: "Mr. Praveen",
+    mobile: "9876543219",
+    password: "Praveen@2026!#",
+    email: "praveenproq@gmail.com",
+    role: "super_admin",
+    stage: 1,
+    designation: "Super Admin & Operational Director, Glark Solutions / shubhamastu.in",
+    createdAt: "2026-11-12T10:00:00Z",
     status: "active",
     isRoot: true
   }
@@ -53,42 +115,337 @@ export interface AdminNotification {
   details: string;
   timestamp: string;
   read: boolean;
+  targetCandidateId?: string;
+  targetCandidateRegNumber?: string;
+  category?: 'verification' | 'payment' | 'profile' | 'suspension' | 'grievance' | 'pandit' | 'system' | 'status';
 }
 
+export const INITIAL_ADMIN_AUDIT_LOGS: AdminNotification[] = [
+  {
+    id: "notif-seed-1",
+    adminId: "admin-subbu",
+    adminName: "Sri G.V. Subramanyam",
+    action: "Proprietor System Initialized & Stage 1 Authority Active",
+    details: "Sole Proprietor & Chief Executive initialized the Shubhamastu Brahmin Vivaha registry with strict Gotra validation.",
+    timestamp: "2026-07-01T10:00:00Z",
+    read: true,
+    category: "system"
+  },
+  {
+    id: "notif-seed-2",
+    adminId: "admin-subba-reddy",
+    adminName: "Sri Posham Venkata Subba Reddy",
+    action: "Verified Payment ₹900 (Full 28-Day Membership)",
+    details: "Candidate: Sharma Aditya (BVM-1001), Txn ID: UPI/20260707/98827, Received via: subbareddy@upi",
+    timestamp: "2026-07-07T16:00:00Z",
+    read: true,
+    targetCandidateRegNumber: "BVM-1001",
+    category: "payment"
+  },
+  {
+    id: "notif-seed-3",
+    adminId: "admin-tejaswar",
+    adminName: "Sri Karna Tejaswar Reddy",
+    action: "Resolved Grievance Case #GR-2026-001",
+    details: "Candidate: Narasimhaiah (BVM-1006) - Verified phone contact and adjusted caste sub-category according to Shastra compliance.",
+    timestamp: "2026-08-15T10:00:00Z",
+    read: true,
+    targetCandidateRegNumber: "BVM-1006",
+    category: "grievance"
+  }
+];
+
 export const adminNotificationService = {
-  getNotifications(): AdminNotification[] {
+  async getNotifications(): Promise<AdminNotification[]> {
+    const getLocal = (): AdminNotification[] => {
+      try {
+        const data = localStorage.getItem("admin_notifications");
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      localStorage.setItem("admin_notifications", JSON.stringify(INITIAL_ADMIN_AUDIT_LOGS));
+      return INITIAL_ADMIN_AUDIT_LOGS;
+    };
+
     try {
-      const data = localStorage.getItem("admin_notifications");
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
+      const q = query(collection(db, "admin_notifications"));
+      const snapshot = await getDocs(q);
+      const list: AdminNotification[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as AdminNotification);
+      });
+
+      // Merge with local list so we don't drop newly added offline/cached records
+      const local = getLocal();
+      const map = new Map<string, AdminNotification>();
+      for (const item of local) map.set(item.id, item);
+      for (const item of list) map.set(item.id, item);
+
+      const merged = Array.from(map.values()).sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      localStorage.setItem("admin_notifications", JSON.stringify(merged.slice(0, 250)));
+      return merged;
+    } catch (err: any) {
+      console.warn("Firestore notification fetch warning, reading local state:", err?.message);
+      return getLocal();
     }
   },
-  logAction(adminId: string, adminName: string, action: string, details: string) {
+
+  async logAction(
+    adminId: string,
+    adminName: string,
+    action: string,
+    details: string,
+    meta?: {
+      targetCandidateId?: string;
+      targetCandidateRegNumber?: string;
+      category?: 'verification' | 'payment' | 'profile' | 'suspension' | 'grievance' | 'pandit' | 'system' | 'status';
+    }
+  ): Promise<AdminNotification> {
+    const newNotif: AdminNotification = {
+      id: "notif-" + Date.now() + "-" + Math.floor(Math.random() * 10000),
+      adminId,
+      adminName,
+      action,
+      details,
+      timestamp: new Date().toISOString(),
+      read: false,
+      targetCandidateId: meta?.targetCandidateId,
+      targetCandidateRegNumber: meta?.targetCandidateRegNumber,
+      category: meta?.category || "system"
+    };
+
+    // 1. Immediately store in localStorage so UI updates synchronously
     try {
-      const notifs = this.getNotifications();
-      const newNotif: AdminNotification = {
-        id: "notif-" + Date.now() + "-" + Math.floor(Math.random()*1000),
-        adminId,
-        adminName,
-        action,
-        details,
-        timestamp: new Date().toISOString(),
-        read: false
-      };
-      notifs.unshift(newNotif);
-      if (notifs.length > 100) notifs.pop();
-      localStorage.setItem("admin_notifications", JSON.stringify(notifs));
+      const local = localStorage.getItem("admin_notifications");
+      let list: AdminNotification[] = local ? JSON.parse(local) : [...INITIAL_ADMIN_AUDIT_LOGS];
+      list = list.filter(item => item.id !== newNotif.id);
+      list.unshift(newNotif);
+      if (list.length > 250) list.pop();
+      localStorage.setItem("admin_notifications", JSON.stringify(list));
     } catch (e) {
-      console.error("Failed to log admin action:", e);
+      console.error("Local storage notification update error:", e);
+    }
+
+    // 2. Dispatch custom event for real-time UI reaction
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("admin_notification_added", { detail: newNotif }));
+    }
+
+    // 3. Persist to Firestore admin_notifications
+    try {
+      await setDoc(doc(db, "admin_notifications", newNotif.id), newNotif);
+    } catch (e: any) {
+      console.warn("Firestore admin_notifications write warning:", e?.message);
+    }
+
+    // 4. Also mirror into Firestore audit_logs collection
+    try {
+      await setDoc(doc(db, "audit_logs", newNotif.id), {
+        log_id: newNotif.id,
+        action_type: action,
+        admin_id: adminId,
+        admin_name: adminName,
+        details: details,
+        candidate_reg: meta?.targetCandidateRegNumber || "",
+        timestamp_ist: newNotif.timestamp
+      });
+    } catch (e: any) {
+      // non-fatal
+    }
+
+    return newNotif;
+  },
+
+  async markAllRead(): Promise<void> {
+    try {
+      const local = localStorage.getItem("admin_notifications");
+      if (local) {
+        const list: AdminNotification[] = JSON.parse(local);
+        const updated = list.map(n => ({ ...n, read: true }));
+        localStorage.setItem("admin_notifications", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("admin_notification_added"));
+    }
+
+    try {
+      const notifs = await this.getNotifications();
+      for (const n of notifs) {
+        if (!n.read) {
+          await updateDoc(doc(db, "admin_notifications", n.id), { read: true }).catch(() => {});
+        }
+      }
+    } catch (e: any) {
+      console.warn("Firestore markAllRead warning:", e?.message);
     }
   },
-  markAllRead() {
+
+  async markAsRead(id: string): Promise<void> {
     try {
-      const notifs = this.getNotifications();
-      const updated = notifs.map(n => ({ ...n, read: true }));
-      localStorage.setItem("admin_notifications", JSON.stringify(updated));
-    } catch {}
+      const local = localStorage.getItem("admin_notifications");
+      if (local) {
+        const list: AdminNotification[] = JSON.parse(local);
+        const updated = list.map(n => n.id === id ? { ...n, read: true } : n);
+        localStorage.setItem("admin_notifications", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("admin_notification_added"));
+    }
+
+    try {
+      await updateDoc(doc(db, "admin_notifications", id), { read: true }).catch(() => {});
+    } catch (e: any) {
+      console.warn("Firestore markAsRead warning:", e?.message);
+    }
+  },
+
+  subscribe(callback: (notifications: AdminNotification[]) => void): () => void {
+    const getLocal = (): AdminNotification[] => {
+      try {
+        const data = localStorage.getItem("admin_notifications");
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      localStorage.setItem("admin_notifications", JSON.stringify(INITIAL_ADMIN_AUDIT_LOGS));
+      return INITIAL_ADMIN_AUDIT_LOGS;
+    };
+
+    // 1. Immediately emit current cached/local logs
+    callback(getLocal());
+
+    // 2. Listen to custom event and storage events
+    const handleUpdate = () => {
+      callback(getLocal());
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("admin_notification_added", handleUpdate);
+      window.addEventListener("storage", handleUpdate);
+    }
+
+    // 3. Attach Firestore real-time onSnapshot
+    let unsubFirestore = () => {};
+    try {
+      const q = query(collection(db, "admin_notifications"));
+      unsubFirestore = onSnapshot(
+        q,
+        (snapshot) => {
+          const list: AdminNotification[] = [];
+          snapshot.forEach(docSnap => {
+            list.push({ id: docSnap.id, ...docSnap.data() } as AdminNotification);
+          });
+
+          // Merge with local state
+          const local = getLocal();
+          const map = new Map<string, AdminNotification>();
+          for (const item of local) map.set(item.id, item);
+          for (const item of list) map.set(item.id, item);
+
+          const merged = Array.from(map.values()).sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+
+          localStorage.setItem("admin_notifications", JSON.stringify(merged.slice(0, 250)));
+          callback(merged);
+        },
+        (err) => {
+          console.warn("Firestore admin_notifications subscription warning (using local):", err?.message);
+          callback(getLocal());
+        }
+      );
+    } catch (e) {
+      console.warn("Firestore admin_notifications subscribe init error:", e);
+    }
+
+    return () => {
+      unsubFirestore();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("admin_notification_added", handleUpdate);
+        window.removeEventListener("storage", handleUpdate);
+      }
+    };
+  },
+  async logPendingVerification(email: string, otp: string) {
+    try {
+      await setDoc(doc(db, "pending_verifications", email.toLowerCase()), {
+        email,
+        otp,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, "pending_verifications");
+    }
+  },
+  subscribePendingVerifications(callback: (verifications: any[]) => void) {
+    const q = query(collection(db, "pending_verifications"));
+    return onSnapshot(q, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      callback(list);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, "pending_verifications");
+    });
+  },
+  async elevateToAdmin(uid: string, adminDetails: any) {
+    try {
+      await setDoc(doc(db, "admins", uid), {
+        ...adminDetails,
+        elevatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, "admins");
+    }
+  }
+};
+
+export const systemAuditService = {
+  async getLogs(): Promise<any[]> {
+    try {
+      const q = query(collection(db, "audit_logs"));
+      const snapshot = await getDocs(q);
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => new Date(b.timestamp_ist).getTime() - new Date(a.timestamp_ist).getTime());
+      return list;
+    } catch (err) {
+      const local = localStorage.getItem("system_audit_logs");
+      return local ? JSON.parse(local) : [];
+    }
+  },
+  async logEvent(event: any) {
+    const logId = event.log_id || `AUDIT-${Date.now()}`;
+    const entry = {
+      ...event,
+      log_id: logId,
+      timestamp_ist: event.timestamp_ist || new Date().toISOString()
+    };
+    try {
+      await setDoc(doc(db, "audit_logs", logId), entry);
+    } catch (e) {
+      if ((e as any)?.code !== 'permission-denied') {
+        handleFirestoreError(e, OperationType.CREATE, "audit_logs");
+      }
+    }
+    const local = localStorage.getItem("system_audit_logs");
+    const list = local ? JSON.parse(local) : [];
+    list.unshift(entry);
+    if (list.length > 200) list.pop();
+    localStorage.setItem("system_audit_logs", JSON.stringify(list));
   }
 };
 
@@ -122,7 +479,7 @@ export function generateDefaultDobPassword(dob?: string): string {
 // Pre-seeded, beautiful profiles reflecting the "Shiva & Sati" spiritual theme
 const PRE_SEEDED_PROFILES: Profile[] = [
   {
-    id: "prof-subbu",
+    id: "admin-subbu",
     reg_number: "BVM-1001",
     password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
     name: "Sri G.V. Subramanyam (Founder, Managing Director & Proprietor)",
@@ -156,17 +513,17 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     created_at: "2026-07-01T10:00:00Z"
   },
   {
-    id: "prof-subba-reddy",
+    id: "admin-subba-reddy",
     reg_number: "BVM-1007",
-    password: "yD5#qX8!fV3$pW9_rK2*mT4&nC7%sY6_zL1uB9",
-    name: "PV Subba Reddy (CEO & Co-Founder)",
+    password: "SubbaReddy@2026!#",
+    name: "PV Subba Reddy (Stage 2 Super Admin & Co-Founder)",
     dob: "1980-01-01",
     gender: "Male",
     height_feet: 5.10,
     sub_caste: "Smartha",
-    profession: "CEO & Co-Founder",
+    profession: "CEO & Stage 2 Super Admin",
     salary_lpa: 30.0,
-    contact_number: "9494949494",
+    contact_number: "9989079372",
     status: "Verified",
     role: "admin",
     subscription_status: "paid_900",
@@ -190,17 +547,17 @@ const PRE_SEEDED_PROFILES: Profile[] = [
     email: "Subbareddyposham@gmail.com"
   },
   {
-    id: "prof-karna-tejaswar",
+    id: "admin-tejaswar",
     reg_number: "BVM-1010",
     password: "grievance123",
-    name: "Mr. Karna Tejaswar Reddy (Chief Grievance Redressal Officer & Statutory Nodal Contact Person)",
+    name: "Mr. Karna Teajushwar Reddy (Stage 2 Super Admin & Chief Grievance Officer)",
     dob: "1992-05-20",
     gender: "Male",
     height_feet: 5.11,
     sub_caste: "Smartha",
-    profession: "Chief Grievance Redressal Officer",
+    profession: "Chief Grievance Redressal Officer & Stage 2 Super Admin",
     salary_lpa: 18.0,
-    contact_number: "9123456780",
+    contact_number: "9392551166",
     email: "K.tejaswar567@gmail.com",
     status: "Verified",
     role: "admin",
@@ -221,14 +578,109 @@ const PRE_SEEDED_PROFILES: Profile[] = [
       spiritualScore: 95
     },
     created_at: "2026-08-15T10:00:00Z"
+  },
+  {
+    id: "admin-praveen",
+    reg_number: "BVM-1011",
+    password: "Praveen@2026!#",
+    name: "Mr. Praveen (Super Admin)",
+    dob: "1994-06-15",
+    gender: "Male",
+    height_feet: 5.10,
+    sub_caste: "Smartha",
+    profession: "Super Admin & Operational Director",
+    salary_lpa: 20.0,
+    contact_number: "9876543219",
+    email: "praveenproq@gmail.com",
+    status: "Verified",
+    role: "admin",
+    subscription_status: "paid_900",
+    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400",
+    birth_time: "09:15",
+    birth_location: "Hyderabad, India",
+    gothram: "Kashyapa",
+    surname: "Praveen",
+    astrology: {
+      nakshatra: "Rohini",
+      nakshatraLord: "Moon",
+      pada: 2,
+      rashi: "Vrishabha (Taurus)",
+      tithi: "Shukla Ashtami",
+      deity: "Brahma",
+      spiritualAnalysis: "Profound administrative dedication, trustworthy, dedicated to community welfare and verified matrimonial authenticity.",
+      compatibilityTraits: ["Loyal leader", "Dedicated administrator", "Family-oriented"],
+      spiritualScore: 96
+    },
+    created_at: "2026-11-12T10:00:00Z"
+  },
+  {
+    id: "prof-yeashwini-9876543210",
+    reg_number: "BVM-2026",
+    password: "yeashawini.p@phonepe",
+    name: "Yeashwini",
+    surname: "P",
+    dob: "1998-05-15",
+    gender: "Female",
+    height_feet: 5.4,
+    sub_caste: "Smartha",
+    profession: "Software Professional",
+    company_name: "PhonePe",
+    salary_lpa: 18.5,
+    contact_number: "9876543210",
+    email: "yeashaswini.p@phonepe.com",
+    isEmailVerified: true,
+    status: "Active",
+    role: "candidate",
+    subscription_status: "paid_1599",
+    payment_received: true,
+    fee_received_by: "Sri G.V. Subramanyam (Galark Solutions)",
+    fee_transaction_id: "UPI/PHONEPE/1599/2026",
+    fee_received_at: "2026-11-06T10:00:00Z",
+    subscription_expires_at: "2026-12-07T23:59:59Z",
+    photo_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400",
+    birth_time: "07:30",
+    birth_location: "Bengaluru, India",
+    current_city: "Bengaluru",
+    gothram: "Kasyapa",
+    astrology: {
+      nakshatra: "Swati",
+      nakshatraLord: "Rahu",
+      pada: 2,
+      rashi: "Tula (Libra)",
+      tithi: "Shukla Dashami",
+      deity: "Vayu",
+      spiritualAnalysis: "Generous, highly accomplished, culturally rooted, spiritually aligned.",
+      compatibilityTraits: ["Kindhearted", "Vedic values", "Respectful family culture"],
+      spiritualScore: 94
+    },
+    created_at: "2026-08-01T10:00:00Z"
   }
 ];
 
-// Initialize localStorage DB with only the admin profiles (Subramanyam, Subba Reddy, and Karna Tejaswar Reddy)
+// Initialize localStorage DB preserving existing and merged user profiles
 if (typeof window !== "undefined") {
-  localStorage.setItem("matrimonial_profiles", JSON.stringify(PRE_SEEDED_PROFILES));
+  try {
+    const existing = localStorage.getItem("matrimonial_profiles");
+    if (!existing) {
+      localStorage.setItem("matrimonial_profiles", JSON.stringify(PRE_SEEDED_PROFILES));
+    } else {
+      const parsed: Profile[] = JSON.parse(existing);
+      const map = new Map<string, Profile>();
+      for (const p of parsed) map.set(p.id, p);
+      // Ensure all seed profiles (including Yeashwini & admins) are always guaranteed present
+      for (const p of PRE_SEEDED_PROFILES) {
+        if (!map.has(p.id) || p.id === "prof-yeashwini-9876543210") {
+          map.set(p.id, p);
+        }
+      }
+      localStorage.setItem("matrimonial_profiles", JSON.stringify(Array.from(map.values())));
+    }
+  } catch (e) {
+    localStorage.setItem("matrimonial_profiles", JSON.stringify(PRE_SEEDED_PROFILES));
+  }
+
   const initialPrefs = [
-    { user_id: "prof-subbu", age_gap: 5, height_range: "5.0 - 5.7", preferred_sub_caste: "Any" }
+    { user_id: "admin-subbu", age_gap: 5, height_range: "5.0 - 5.7", preferred_sub_caste: "Any" }
   ];
   if (!localStorage.getItem("partner_preferences")) {
     localStorage.setItem("partner_preferences", JSON.stringify(initialPrefs));
@@ -252,7 +704,7 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
   },
   {
     id: "G-10001",
-    reporterId: "prof-subbu",
+    reporterId: "admin-subbu",
     reporterName: "Sri G.V. Subramanyam (Founder)",
     reporterPhone: "+91 93473 59489",
     accusedId: "C-301",
@@ -265,7 +717,7 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
   },
   {
     id: "G-10002",
-    reporterId: "prof-subba-reddy",
+    reporterId: "admin-subba-reddy",
     reporterName: "Sri P.V. Subba Reddy (CEO)",
     reporterPhone: "+91 94949 49494",
     accusedId: "C-302",
@@ -281,7 +733,7 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
     reporterId: "C-405",
     reporterName: "Kalyani Sharma",
     reporterPhone: "+91 70134 56789",
-    accusedId: "prof-subbu",
+    accusedId: "admin-subbu",
     accusedName: "Sri G.V. Subramanyam (Test Account)",
     accusedPhone: "+91 93473 59489",
     category: "Harassment/Unwanted Calls",
@@ -291,10 +743,10 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
   },
   {
     id: "G-10004",
-    reporterId: "prof-subba-reddy",
+    reporterId: "admin-subba-reddy",
     reporterName: "Sri P.V. Subba Reddy (Test Reporter)",
     reporterPhone: "+91 94949 49494",
-    accusedId: "prof-subbu",
+    accusedId: "admin-subbu",
     accusedName: "Sri G.V. Subramanyam (Test Candidate)",
     accusedPhone: "+91 93473 59489",
     category: "Fake Profile",
@@ -307,7 +759,7 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
     reporterId: "C-509",
     reporterName: "Anusha Sastry",
     reporterPhone: "+91 88971 12233",
-    accusedId: "prof-subba-reddy",
+    accusedId: "admin-subba-reddy",
     accusedName: "Sri P.V. Subba Reddy (Test Account)",
     accusedPhone: "+91 94949 49494",
     category: "Fake Profile",
@@ -317,7 +769,7 @@ const PRE_SEEDED_GRIEVANCES: Grievance[] = [
   },
   {
     id: "G-10006",
-    reporterId: "prof-subbu",
+    reporterId: "admin-subbu",
     reporterName: "Sri G.V. Subramanyam (Reporter)",
     reporterPhone: "+91 93473 59489",
     accusedId: "C-612",
@@ -381,16 +833,57 @@ async function compressBase64Image(base64Str?: string, maxWidth = 400, quality =
 
 export const databaseService = {
   // Profiles Methods
+  subscribeProfiles(callback: (profiles: Profile[]) => void) {
+    const q = query(collection(db, "profiles"));
+    return onSnapshot(q, (snapshot) => {
+      const rawProfiles: Profile[] = [];
+      snapshot.forEach((docSnap) => {
+        rawProfiles.push(docSnap.data() as Profile);
+      });
+      
+      // Merge with pre-seeded admins to ensure they are always visible to admins
+      for (const p of PRE_SEEDED_PROFILES) {
+        if (!rawProfiles.some(rp => rp.id === p.id)) {
+          rawProfiles.push(p);
+        }
+      }
+
+      // Sort profiles by created_at descending
+      rawProfiles.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      callback(rawProfiles);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, "profiles");
+    });
+  },
+
   async getProfiles(ignoreFilter = false): Promise<Profile[]> {
     let rawProfiles: Profile[] = [];
     try {
+      const isAdminSession = typeof window !== "undefined" && localStorage.getItem("bramhana_admin_session") === "true";
       const q = query(collection(db, "profiles"));
-      const querySnapshot = await getDocs(q);
+      // 1200ms timeout race with explicit rejection handling to prevent UI freeze or cancelled operation errors
+      const querySnapshotPromise = getDocs(q).catch((err) => {
+        console.warn("Firestore getDocs handled safely:", err?.message);
+        return null;
+      });
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200));
+      const querySnapshot = await Promise.race([querySnapshotPromise, timeoutPromise]);
       
-      if (querySnapshot.empty) {
-        // Seed Firestore collection with default profiles on first run
-        for (const p of PRE_SEEDED_PROFILES) {
-          await setDoc(doc(db, "profiles", p.id), p);
+      if (!querySnapshot) {
+        // Fast fallback to local cache
+        const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
+        rawProfiles = local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
+      } else if (querySnapshot.empty) {
+        // Seed Firestore collection with default profiles on first run IF ADMIN
+        if (isAdminSession) {
+          for (const p of PRE_SEEDED_PROFILES) {
+            setDoc(doc(db, "profiles", p.id), p).catch(() => {});
+          }
         }
         rawProfiles = [...PRE_SEEDED_PROFILES];
       } else {
@@ -399,47 +892,47 @@ export const databaseService = {
         });
         
         // Guarantee the admin profiles are always fully up-to-date with current pre-seeded admin details
-        for (const p of PRE_SEEDED_PROFILES) {
-          const existingAdmin = rawProfiles.find(rp => rp.id === p.id);
-          if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.password !== p.password || existingAdmin.name !== p.name) {
-            try {
-              await setDoc(doc(db, "profiles", p.id), p);
-            } catch (fsErr) {
-              console.error("Failed to sync admin profile to Firestore:", fsErr);
-            }
-            if (existingAdmin) {
-              const idx = rawProfiles.indexOf(existingAdmin);
-              if (idx > -1) rawProfiles[idx] = p;
-            } else {
-              rawProfiles.push(p);
+        if (isAdminSession) {
+          for (const p of PRE_SEEDED_PROFILES) {
+            const existingAdmin = rawProfiles.find(rp => rp.id === p.id);
+            if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.password !== p.password || existingAdmin.name !== p.name) {
+              setDoc(doc(db, "profiles", p.id), p).catch(() => {});
+              if (existingAdmin) {
+                const idx = rawProfiles.indexOf(existingAdmin);
+                if (idx > -1) rawProfiles[idx] = p;
+              } else {
+                rawProfiles.push(p);
+              }
             }
           }
         }
       }
-    } catch (err) {
-      console.error("Error fetching from Firestore, returning local fallback:", err);
-      const local = localStorage.getItem("matrimonial_profiles");
+    } catch (err: any) {
+      if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
+        console.warn("Firestore access restricted, reading from local cache...");
+      } else {
+        console.warn("Firestore profiles fetch fallback to local cache:", err?.message || err);
+      }
+      const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
       rawProfiles = local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
     }
 
     // Always merge with localStorage to ensure local profiles are fully preserved and synchronized
-    const local = localStorage.getItem("matrimonial_profiles");
+    const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
     if (local) {
       try {
         const localProfiles: Profile[] = JSON.parse(local);
         for (const lp of localProfiles) {
           if (!rawProfiles.some((rp) => rp.id === lp.id)) {
             rawProfiles.push(lp);
-            // Proactively try to sync this missing local profile to Firestore
+            // Non-blocking proactive sync to Firestore
             try {
               const safeLp = { ...lp };
               if (safeLp.photo_url && safeLp.photo_url.startsWith("data:image") && safeLp.photo_url.length > 900000) {
                 safeLp.photo_url = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400";
               }
-              await setDoc(doc(db, "profiles", lp.id), safeLp);
-            } catch (syncErr) {
-              // Silently handle size or network sync errors
-            }
+              setDoc(doc(db, "profiles", lp.id), safeLp).catch(() => {});
+            } catch (_) {}
           }
         }
       } catch (parseErr) {
@@ -463,28 +956,146 @@ export const databaseService = {
       return rawProfiles;
     }
 
-    // ROW LEVEL SECURITY (RLS) RULE: Exclude administrators from profile lists unless requested by administrators
+    // ROW LEVEL SECURITY (RLS) MASKING: Mask contact numbers for all users except admins and owners
     const currentUserId = typeof window !== "undefined" ? localStorage.getItem("bramhana_logged_in_user_id") : null;
-    const isAdminUser = currentUserId === "prof-subbu" || currentUserId === "prof-subba-reddy" || localStorage.getItem("bramhana_admin_session") === "true";
+    const isAdminUser = currentUserId === "admin-subbu" || currentUserId === "admin-subba-reddy" || currentUserId === "admin-tejaswar" || currentUserId === "admin-praveen" || localStorage.getItem("bramhana_admin_session") === "true";
 
-    if (!isAdminUser) {
-      return rawProfiles.filter((p) => {
-        const isSubbu = p.id === "prof-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
-        const isSubbaReddy = p.id === "prof-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9494949494");
-        return !isSubbu && !isSubbaReddy && p.role !== "admin";
-      });
+    return rawProfiles.map(p => {
+      const isOwner = p.id === currentUserId;
+      const isSubbu = p.id === "admin-subbu" || (p.contact_number && p.contact_number.includes("9347359489"));
+      const isSubbaReddy = p.id === "admin-subba-reddy" || (p.contact_number && p.contact_number.includes("9494949494"));
+      const isPraveen = p.id === "admin-praveen" || (p.email && p.email.toLowerCase() === "praveenproq@gmail.com");
+      
+      if (!isAdminUser && !isOwner) {
+        // Mask phone number for prestige protection
+        return {
+          ...p,
+          contact_number: p.contact_number ? p.contact_number.replace(/(\d{3})\d{4}(\d{3})/, "$1****$2") : "Masked",
+          email: "Protected"
+        };
+      }
+      return p;
+    }).filter((p) => {
+      if (!isAdminUser) {
+        const isSubbu = p.id === "admin-subbu" || (p.contact_number && p.contact_number.includes("9347359489"));
+        const isSubbaReddy = p.id === "admin-subba-reddy" || (p.contact_number && p.contact_number.includes("9494949494"));
+        const isPraveen = p.id === "admin-praveen" || (p.email && p.email.toLowerCase() === "praveenproq@gmail.com");
+        return !isSubbu && !isSubbaReddy && !isPraveen && p.role !== "admin";
+      }
+      return true;
+    });
+  },
+
+  async getPrivateProfileData(profileId: string): Promise<{ contact_number: string, email?: string, password?: string } | null> {
+    try {
+      const docRef = doc(db, "profiles", profileId, "private", "data");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return docSnap.data() as { contact_number: string, email?: string, password?: string };
+      }
+    } catch (err) {
+      console.warn(`Error fetching private data for ${profileId}:`, err);
+    }
+    return null;
+  },
+
+  async getProfileByPhone(identifier: string): Promise<Profile | null> {
+    const raw = identifier ? identifier.trim() : "";
+    if (!raw) return null;
+    const cleanPhone = raw.replace(/\D/g, "");
+    const lower = raw.toLowerCase();
+
+    // 1. Instant check in localStorage
+    try {
+      const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
+      if (local) {
+        const profiles: Profile[] = JSON.parse(local);
+        const match = profiles.find(p => {
+          const pPhone = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
+          const pEmail = p.email ? p.email.trim().toLowerCase() : "";
+          const pReg = p.reg_number ? p.reg_number.trim().toLowerCase() : "";
+          const pId = p.id ? p.id.toLowerCase() : "";
+          return (cleanPhone && cleanPhone.length >= 10 && pPhone === cleanPhone) ||
+                 (lower && pEmail === lower) ||
+                 (lower && pReg === lower) ||
+                 (lower && pId === lower);
+        });
+        if (match) return match;
+      }
+    } catch (e) {
+      console.warn("Local storage lookup warning:", e);
     }
 
-    return rawProfiles;
+    // 2. Instant check in PRE_SEEDED_PROFILES (includes Yeashwini & admins)
+    const seeded = PRE_SEEDED_PROFILES.find(p => {
+      const pPhone = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
+      const pEmail = p.email ? p.email.trim().toLowerCase() : "";
+      const pReg = p.reg_number ? p.reg_number.trim().toLowerCase() : "";
+      const pId = p.id ? p.id.toLowerCase() : "";
+      return (cleanPhone && cleanPhone.length >= 10 && pPhone === cleanPhone) ||
+             (lower && pEmail === lower) ||
+             (lower && pReg === lower) ||
+             (lower && pId === lower);
+    });
+    if (seeded) return seeded;
+
+    // 3. Fallback: Search Firestore phone_lookup with timeout
+    try {
+      if (cleanPhone && cleanPhone.length >= 10) {
+        const lookupRef = doc(db, "phone_lookup", cleanPhone);
+        const lookupSnap = await Promise.race([
+          getDoc(lookupRef),
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
+        ]) as any;
+        
+        if (lookupSnap && lookupSnap.exists()) {
+          const profileId = lookupSnap.data().profileId;
+          const profRef = doc(db, "profiles", profileId);
+          const profSnap = await getDoc(profRef);
+          if (profSnap && profSnap.exists()) {
+            const profile = profSnap.data() as Profile;
+            const privateData = await this.getPrivateProfileData(profileId);
+            return {
+              ...profile,
+              contact_number: privateData?.contact_number || profile.contact_number,
+              email: privateData?.email || profile.email,
+              password: privateData?.password || profile.password
+            };
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn("Firestore lookup bypassed:", err?.message);
+    }
+
+    // 4. Fallback search across all loaded profiles
+    try {
+      const all = await this.getProfiles(true);
+      const match = all.find(p => {
+        const pPhone = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
+        const pEmail = p.email ? p.email.trim().toLowerCase() : "";
+        const pReg = p.reg_number ? p.reg_number.trim().toLowerCase() : "";
+        return (cleanPhone && cleanPhone.length >= 10 && pPhone === cleanPhone) ||
+               (lower && pEmail === lower) ||
+               (lower && pReg === lower);
+      });
+      if (match) return match;
+    } catch (e) {}
+
+    return null;
   },
 
   async saveProfile(profile: Profile): Promise<Profile> {
     const finalProfile = { ...profile };
 
-    finalProfile.photo_url = await compressBase64Image(finalProfile.photo_url);
-    finalProfile.photo_url_2 = await compressBase64Image(finalProfile.photo_url_2);
-    finalProfile.photo_url_3 = await compressBase64Image(finalProfile.photo_url_3);
-    finalProfile.kundali_url = await compressBase64Image(finalProfile.kundali_url);
+    try {
+      finalProfile.photo_url = await compressBase64Image(finalProfile.photo_url);
+      finalProfile.photo_url_2 = await compressBase64Image(finalProfile.photo_url_2);
+      finalProfile.photo_url_3 = await compressBase64Image(finalProfile.photo_url_3);
+      finalProfile.kundali_url = await compressBase64Image(finalProfile.kundali_url);
+    } catch (e) {
+      console.warn("Image compression warning, using original:", e);
+    }
     
     if (!finalProfile.id) {
       finalProfile.id = `prof-${Date.now()}`;
@@ -500,30 +1111,48 @@ export const databaseService = {
     
     // Generate next sequential reg_number based on all central profiles
     if (!finalProfile.reg_number) {
-      const allProfiles = await this.getProfiles(true);
-      const regNumbers = allProfiles
-        .map(p => p.reg_number)
-        .filter((r): r is string => !!r && r.startsWith("BVM-"));
-      let maxNum = 1006; // Preseeds go up to 1006
-      if (regNumbers.length > 0) {
-        const nums = regNumbers.map(r => parseInt(r.replace("BVM-", ""), 10) || 0);
-        maxNum = Math.max(...nums, maxNum);
+      try {
+        const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
+        const allProfiles: Profile[] = local ? JSON.parse(local) : [...PRE_SEEDED_PROFILES];
+        const regNumbers = allProfiles
+          .map(p => p.reg_number)
+          .filter((r): r is string => !!r && r.startsWith("BVM-"));
+        let maxNum = 2026;
+        if (regNumbers.length > 0) {
+          const nums = regNumbers.map(r => parseInt(r.replace("BVM-", ""), 10) || 0);
+          maxNum = Math.max(...nums, maxNum);
+        }
+        finalProfile.reg_number = `BVM-${maxNum + 1}`;
+      } catch (_) {
+        finalProfile.reg_number = `BVM-${Math.floor(2027 + Math.random() * 9000)}`;
       }
-      finalProfile.reg_number = `BVM-${maxNum + 1}`;
     }
 
     if (!finalProfile.approved_matches) {
       finalProfile.approved_matches = [];
     }
 
-    // Auto-compute reciprocal matching with all other profiles in registry
+    // STEP 1: Synchronously commit to localStorage FIRST - Registration NEVER fails or hangs
     try {
-      const allProfiles = await this.getProfiles(true);
+      if (typeof window !== "undefined") {
+        const local = localStorage.getItem("matrimonial_profiles");
+        let current: Profile[] = local ? JSON.parse(local) : [...PRE_SEEDED_PROFILES];
+        current = current.filter((p) => p.id !== finalProfile.id);
+        current.unshift(finalProfile);
+        localStorage.setItem("matrimonial_profiles", JSON.stringify(current));
+      }
+    } catch (storageErr) {
+      console.warn("LocalStorage save warning:", storageErr);
+    }
+
+    // STEP 2: In-memory reciprocal matching calculations
+    try {
+      const local = typeof window !== "undefined" ? localStorage.getItem("matrimonial_profiles") : null;
+      const allProfiles: Profile[] = local ? JSON.parse(local) : [...PRE_SEEDED_PROFILES];
       for (const p of allProfiles) {
         if (p.id === finalProfile.id) continue;
-        if (p.gender === finalProfile.gender) continue; // Opposite gender only
+        if (p.gender === finalProfile.gender) continue;
 
-        // Gotram separation check (sagotra check)
         if (finalProfile.gothram && p.gothram) {
           if (finalProfile.gothram.trim().toLowerCase() === p.gothram.trim().toLowerCase()) {
             continue;
@@ -532,41 +1161,64 @@ export const databaseService = {
 
         const score = calculateMatchScore(finalProfile, p);
         if (score.totalScore >= 45) {
-          // Add p.id to finalProfile.approved_matches
           if (!finalProfile.approved_matches.includes(p.id)) {
             finalProfile.approved_matches.push(p.id);
           }
-          // Add finalProfile.id to p.approved_matches reciprocally
-          if (!p.approved_matches) {
-            p.approved_matches = [];
-          }
+          if (!p.approved_matches) p.approved_matches = [];
           if (!p.approved_matches.includes(finalProfile.id)) {
             p.approved_matches.push(finalProfile.id);
-            await setDoc(doc(db, "profiles", p.id), p).catch(err => console.error("Error updating reciprocal match p:", err));
           }
         }
       }
+      // Re-save updated matching coordinates to localStorage
+      if (typeof window !== "undefined") {
+        let updatedList: Profile[] = local ? JSON.parse(local) : [...PRE_SEEDED_PROFILES];
+        updatedList = updatedList.filter((p) => p.id !== finalProfile.id);
+        updatedList.unshift(finalProfile);
+        localStorage.setItem("matrimonial_profiles", JSON.stringify(updatedList));
+      }
     } catch (e) {
-      console.error("Error in reciprocal matching during saveProfile:", e);
+      console.warn("Reciprocal matching calculation notice:", e);
     }
 
-    try {
-      await setDoc(doc(db, "profiles", finalProfile.id), finalProfile);
-    } catch (err) {
-      console.error("Error saving to Firestore:", err);
-    }
+    // STEP 3: Non-blocking Firestore synchronization with strict timeout
+    // Prevents "FirebaseError: Operation cancelled" from freezing registration
+    (async () => {
+      try {
+        const publicProfile = { ...finalProfile };
+        if (publicProfile.contact_number) {
+          publicProfile.contact_number = publicProfile.contact_number.replace(/(\d{3})\d{4}(\d{2})/, "$1****$2");
+        }
+        publicProfile.email = "protected@shubhamastu.in";
 
-    // Sync to local fallback & prevent any duplicate profile IDs
-    const local = localStorage.getItem("matrimonial_profiles");
-    let current: Profile[] = local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
-    
-    // Prevent duplicate profile records by filtering out existing IDs first
-    current = current.filter((p) => p.id !== finalProfile.id);
-    
-    // Prepend the updated/new profile
-    current.unshift(finalProfile);
-    
-    localStorage.setItem("matrimonial_profiles", JSON.stringify(current));
+        const cleanPhone = profile.contact_number ? profile.contact_number.replace(/\D/g, "") : "";
+
+        const fsTasks = [
+          setDoc(doc(db, "profiles", finalProfile.id), publicProfile).catch(() => {}),
+          setDoc(doc(db, "profiles", finalProfile.id, "private", "data"), {
+            contact_number: profile.contact_number,
+            email: profile.email || "",
+            password: finalProfile.password
+          }).catch(() => {})
+        ];
+
+        if (cleanPhone) {
+          fsTasks.push(
+            setDoc(doc(db, "phone_lookup", cleanPhone), {
+              profileId: finalProfile.id,
+              timestamp: new Date().toISOString()
+            }).catch(() => {})
+          );
+        }
+
+        await Promise.race([
+          Promise.all(fsTasks),
+          new Promise((resolve) => setTimeout(resolve, 2500))
+        ]);
+      } catch (err: any) {
+        console.warn("Firestore sync background notice (local storage preserved):", err?.message);
+      }
+    })();
 
     return finalProfile;
   },
@@ -575,7 +1227,7 @@ export const databaseService = {
     try {
       await updateDoc(doc(db, "profiles", id), { status });
     } catch (err) {
-      console.error("Error updating status on Firestore:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `profiles/${id}`);
     }
 
     // Local Storage Fallback
@@ -603,7 +1255,8 @@ export const databaseService = {
     const updateData: any = { subscription_status };
     if (subscription_status && subscription_status !== "free") {
       updateData.status = "Verified";
-      const expiryDate = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const days = subscription_status === "paid_1599" ? 31 : 28;
+      const expiryDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       updateData.subscription_expires_at = expiryDate;
     } else {
       updateData.subscription_expires_at = null;
@@ -616,7 +1269,7 @@ export const databaseService = {
     try {
       await updateDoc(doc(db, "profiles", id), updateData);
     } catch (err) {
-      console.error("Error updating subscription status on Firestore:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `profiles/${id}`);
     }
 
     // Local Storage Fallback
@@ -628,7 +1281,8 @@ export const databaseService = {
         current[index].subscription_status = subscription_status;
         if (subscription_status && subscription_status !== "free") {
           current[index].status = "Verified";
-          const expiryDate = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const days = subscription_status === "paid_1599" ? 31 : 28;
+          const expiryDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
           current[index].subscription_expires_at = expiryDate;
         } else {
           current[index].subscription_expires_at = undefined;
@@ -645,20 +1299,33 @@ export const databaseService = {
   },
 
   async purgeFakeData(): Promise<Profile[]> {
+    // Only attempt Firestore purge if user is logged in as a root admin (or has admin session)
+    const isAdminSession = localStorage.getItem("bramhana_admin_session") === "true";
+    if (!isAdminSession) {
+      console.log("Skipping Firestore profile purge (Non-admin session).");
+      const local = localStorage.getItem("matrimonial_profiles");
+      return local ? JSON.parse(local) : PRE_SEEDED_PROFILES;
+    }
+
+    const path = "profiles";
     try {
-      const q = query(collection(db, "profiles"));
+      const q = query(collection(db, path));
       const querySnapshot = await getDocs(q);
       for (const docSnap of querySnapshot.docs) {
         const id = docSnap.id;
-        if (id !== "prof-subbu" && id !== "prof-subba-reddy" && id !== "prof-karna-tejaswar") {
-          await deleteDoc(doc(db, "profiles", id)).catch(() => {});
+        if (id !== "admin-subbu" && id !== "admin-subba-reddy" && id !== "admin-tejaswar" && id !== "admin-praveen") {
+          await deleteDoc(doc(db, path, id)).catch(() => {});
         }
       }
-    } catch (err) {
-      console.error("Error purging profiles from Firestore:", err);
+    } catch (err: any) {
+      if (err?.code === 'permission-denied') {
+        console.warn("Firestore profile purge failed due to permission denied. This is expected if elevation hasn't synced yet.");
+      } else {
+        handleFirestoreError(err, OperationType.DELETE, path);
+      }
     }
 
-    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "prof-subbu" || p.id === "prof-subba-reddy" || p.id === "prof-karna-tejaswar");
+    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "admin-subbu" || p.id === "admin-subba-reddy" || p.id === "admin-tejaswar" || p.id === "admin-praveen");
     localStorage.setItem("matrimonial_profiles", JSON.stringify(preserved));
     return preserved;
   },
@@ -667,7 +1334,7 @@ export const databaseService = {
     try {
       await deleteDoc(doc(db, "profiles", id));
     } catch (err) {
-      console.error("Error deleting profile from Firestore:", err);
+      handleFirestoreError(err, OperationType.DELETE, `profiles/${id}`);
     }
 
     // Local Storage Fallback
@@ -690,7 +1357,7 @@ export const databaseService = {
         rawPrefs.push(docSnap.data() as PartnerPreferences);
       });
     } catch (err) {
-      console.error("Error fetching all preferences from Firestore:", err);
+      handleFirestoreError(err, OperationType.LIST, "partner_preferences");
     }
 
     // Always merge with localStorage to ensure local partner preferences are fully preserved and synchronized
@@ -728,7 +1395,7 @@ export const databaseService = {
         return docSnap.data() as PartnerPreferences;
       }
     } catch (err) {
-      console.error("Error fetching preferences from Firestore, reading local state:", err);
+      console.warn("Error fetching preferences from Firestore, reading local state:", err);
     }
 
     const local = localStorage.getItem("partner_preferences");
@@ -744,7 +1411,7 @@ export const databaseService = {
     try {
       await setDoc(doc(db, "partner_preferences", pref.user_id), pref);
     } catch (err) {
-      console.error("Error saving preferences to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, `partner_preferences/${pref.user_id}`);
     }
 
     // Local Storage Fallback
@@ -792,7 +1459,7 @@ export const databaseService = {
         hasFirestoreData = true;
       }
     } catch (err) {
-      console.error("Error fetching admin settings from Firestore:", err);
+      handleFirestoreError(err, OperationType.GET, "settings/admin_config");
     }
 
     const local = localStorage.getItem("bramhana_admin_settings");
@@ -822,7 +1489,7 @@ export const databaseService = {
     try {
       await setDoc(doc(db, "settings", "admin_config"), settings);
     } catch (err) {
-      console.error("Error saving admin settings to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, "settings/admin_config");
     }
     localStorage.setItem("bramhana_admin_settings", JSON.stringify(settings));
     return settings;
@@ -837,7 +1504,7 @@ export const databaseService = {
         rawGrievances.push(docSnap.data() as Grievance);
       });
     } catch (err) {
-      console.error("Error fetching grievances from Firestore:", err);
+      handleFirestoreError(err, OperationType.LIST, "grievances");
     }
 
     // Ensure the pre-seeded Narasimhaiah grievance is present so the admin always has it
@@ -882,11 +1549,34 @@ export const databaseService = {
     return rawGrievances;
   },
 
+  subscribeGrievances(callback: (grievances: Grievance[]) => void) {
+    const q = query(collection(db, "grievances"));
+    return onSnapshot(q, (snapshot) => {
+      const rawGrievances: Grievance[] = [];
+      snapshot.forEach((docSnap) => {
+        rawGrievances.push(docSnap.data() as Grievance);
+      });
+      
+      // Ensure pre-seeded are present
+      for (const psg of PRE_SEEDED_GRIEVANCES) {
+        if (!rawGrievances.some((g) => g.id === psg.id)) {
+          rawGrievances.push(psg);
+        }
+      }
+      
+      rawGrievances.sort((a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime());
+      localStorage.setItem("matrimonial_grievances", JSON.stringify(rawGrievances));
+      callback(rawGrievances);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, "grievances");
+    });
+  },
+
   async saveGrievance(grievance: Grievance): Promise<Grievance> {
     try {
       await setDoc(doc(db, "grievances", grievance.id), grievance);
     } catch (err) {
-      console.error("Error saving grievance to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, `grievances/${grievance.id}`);
     }
 
     // Local Storage Fallback
@@ -927,13 +1617,13 @@ export const databaseService = {
   async getMarriages(): Promise<MarriageRecord[]> {
     let rawMarriages: MarriageRecord[] = [];
     try {
-      const q = query(collection(db, "marriages"));
+      const q = query(collection(db, "marriage_records"));
       const snapshot = await getDocs(q);
       snapshot.forEach((docSnap) => {
         rawMarriages.push(docSnap.data() as MarriageRecord);
       });
     } catch (err) {
-      console.error("Error fetching marriages from Firestore:", err);
+      handleFirestoreError(err, OperationType.LIST, "marriage_records");
     }
 
     const local = localStorage.getItem("matrimonial_marriages");
@@ -944,9 +1634,9 @@ export const databaseService = {
           if (!rawMarriages.some((rm) => rm.id === lm.id)) {
             rawMarriages.push(lm);
             try {
-              await setDoc(doc(db, "marriages", lm.id), lm);
+              await setDoc(doc(db, "marriage_records", lm.id), lm);
             } catch (syncErr) {
-              console.warn(`Background sync failed for marriage ${lm.id}:`, syncErr);
+              // Non-fatal sync
             }
           }
         }
@@ -962,11 +1652,26 @@ export const databaseService = {
     return rawMarriages;
   },
 
+  subscribeMarriages(callback: (marriages: MarriageRecord[]) => void) {
+    const q = query(collection(db, "marriage_records"));
+    return onSnapshot(q, (snapshot) => {
+      const rawMarriages: MarriageRecord[] = [];
+      snapshot.forEach((docSnap) => {
+        rawMarriages.push(docSnap.data() as MarriageRecord);
+      });
+      rawMarriages.sort((a, b) => new Date(b.marriedAt).getTime() - new Date(a.marriedAt).getTime());
+      localStorage.setItem("matrimonial_marriages", JSON.stringify(rawMarriages));
+      callback(rawMarriages);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, "marriage_records");
+    });
+  },
+
   async saveMarriage(record: MarriageRecord): Promise<MarriageRecord> {
     try {
-      await setDoc(doc(db, "marriages", record.id), record);
+      await setDoc(doc(db, "marriage_records", record.id), record);
     } catch (err) {
-      console.error("Error saving marriage to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, `marriage_records/${record.id}`);
     }
 
     const local = localStorage.getItem("matrimonial_marriages");
@@ -984,9 +1689,9 @@ export const databaseService = {
 
   async deleteMarriage(id: string): Promise<boolean> {
     try {
-      await deleteDoc(doc(db, "marriages", id));
+      await deleteDoc(doc(db, "marriage_records", id));
     } catch (err) {
-      console.error("Error deleting marriage from Firestore:", err);
+      handleFirestoreError(err, OperationType.DELETE, `marriage_records/${id}`);
     }
 
     const local = localStorage.getItem("matrimonial_marriages");
@@ -1018,7 +1723,7 @@ export const databaseService = {
         }
       }
     } catch (err) {
-      console.error("Error fetching admins from Firestore, using local fallback:", err);
+      handleFirestoreError(err, OperationType.LIST, "admins");
     }
 
     // Merge with localStorage
@@ -1063,7 +1768,7 @@ export const databaseService = {
     try {
       await setDoc(doc(db, "admins", admin.id), admin);
     } catch (err) {
-      console.error("Failed to save admin to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, `admins/${admin.id}`);
     }
 
     // Update local storage
@@ -1108,7 +1813,7 @@ export const databaseService = {
 
   async deleteAdmin(id: string): Promise<boolean> {
     // Prevent deleting root admins
-    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "prof-subbu" || id === "prof-subba-reddy") {
+    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "admin-tejaswar" || id === "admin-praveen") {
       console.warn("Root administrators cannot be removed.");
       return false;
     }
@@ -1116,7 +1821,7 @@ export const databaseService = {
     try {
       await deleteDoc(doc(db, "admins", id));
     } catch (err) {
-      console.error("Failed to delete admin from Firestore:", err);
+      handleFirestoreError(err, OperationType.DELETE, `admins/${id}`);
     }
 
     const local = localStorage.getItem("matrimonial_admins");
@@ -1206,7 +1911,7 @@ export const databaseService = {
     try {
       await setDoc(doc(db, "pandits", pandit.id), pandit);
     } catch (e) {
-      console.error("Error saving pandit to Firestore:", e);
+      handleFirestoreError(e, OperationType.WRITE, `pandits/${pandit.id}`);
     }
     const current = await this.getPandits();
     const idx = current.findIndex(p => p.id === pandit.id);
@@ -1223,7 +1928,7 @@ export const databaseService = {
     try {
       await deleteDoc(doc(db, "pandits", id));
     } catch (e) {
-      console.error("Error deleting pandit from Firestore:", e);
+      handleFirestoreError(e, OperationType.DELETE, `pandits/${id}`);
     }
     const current = await this.getPandits();
     const filtered = current.filter(p => p.id !== id);

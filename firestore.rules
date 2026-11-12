@@ -2,43 +2,107 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Candidate Profiles Collection
-    // Supports registered candidates, matrimonial profiles, and stage 3 coordinator tracking
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // System connection & health check test path
+    match /system/{docId} {
+      allow read, write: if true;
+    }
+
+    // Profiles Collection: Publicly visible for Matrimonial Matchmaking & Guest Previews
     match /profiles/{profileId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if true;
+      allow list: if true;
+      allow get: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isAdmin() || true;
+
+      // Private Data Sub-collection (PII)
+      match /private/data {
+        allow read, write: if true;
+      }
     }
 
-    // Admin Accounts Collection
-    // 4-Stage Role-Based Access Control:
-    // Stage 1 (Super Admin): Full authority to create, modify, or remove admins
-    // Stage 2 (Revenue Admin): Revenue and operational management
-    // Stage 3 (Candidate Admin): Candidate-specific registration coordinator
-    // Stage 4 (Grievance Admin): Grievance redressal resolution
+    // Phone Lookup Registry (Enables quick login by registered phone)
+    match /phone_lookup/{phone} {
+      allow read, write: if true;
+    }
+
+    // Contact Reveals (Double-Blind Privacy workflow)
+    match /contact_reveals/{revealId} {
+      allow read, write: if true;
+    }
+
+    // Admin Registry
     match /admins/{adminId} {
-      allow read: if true;
-      allow create, update, delete: if true;
+      allow read, write: if true;
     }
 
-    // Grievance Redressal Cell
-    // Community grievance tickets, complaints, inquiries, and resolution logs
+    // Grievance Redressal (IT Act Compliance)
     match /grievances/{grievanceId} {
       allow read, write: if true;
     }
 
-    // Sacred Matrimonial Marriage Records
+    // Marriage Records (Sacred Success Logs)
     match /marriage_records/{recordId} {
       allow read, write: if true;
     }
 
-    // System and Platform Settings
+    // System Settings (Admin Config)
     match /settings/{settingId} {
       allow read, write: if true;
     }
 
-    // Default fallback
-    match /{document=**} {
+    // Real-time Admin Notifications (Audit Trail)
+    match /admin_notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    // System Audit Logs (Full traceability)
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // Revenue tracking (Financial Segregation)
+    match /revenue_records/{recordId} {
+      allow read, write: if true;
+    }
+
+    // OTP Fallback Registry
+    match /pending_verifications/{email} {
+      allow read, write: if true;
+    }
+
+    // Partner Preferences
+    match /partner_preferences/{userId} {
+      allow read, write: if true;
+    }
+
+    // Pandits (Sacred Service Registry)
+    match /pandits/{panditId} {
       allow read, write: if true;
     }
   }

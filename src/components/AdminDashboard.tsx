@@ -5,6 +5,7 @@ import AdminManagementTab from "./AdminManagementTab";
 import AdminCouponManager from "./AdminCouponManager";
 import AdminGrievanceChatsDesk from "./AdminGrievanceChatsDesk";
 import CallRecordingsDesk from "./CallRecordingsDesk";
+import AdminAuditModal from "./AdminAuditModal";
 import { calculatePanchangam } from "../lib/panchangam";
 import { KundaliChart } from "./KundaliChart";
 import { getGenderLabel } from "../lib/genderHelper";
@@ -12,6 +13,7 @@ import SearchableSelect from "./SearchableSelect";
 import { BRAHMIN_SUB_CASTES, BRAHMIN_GOTRAMS } from "../lib/brahminMetadata";
 import ExecutiveAnalyticsDashboard from "./ExecutiveAnalyticsDashboard";
 import QualityTrendsChart from "./QualityTrendsChart";
+import { LoadTestHelper } from "../utils/LoadTestHelper";
 import { MapPin, Heart, Eye, EyeOff, ShieldAlert, AlertTriangle, Lock, MessageSquare, Star, Bell } from "lucide-react";
 import {
   ShieldCheck,
@@ -72,7 +74,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const registeringRef = React.useRef(false);
 
   // Tabs
-  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits" | "chatGrievanceDesk" | "recordings">("registrations");
+  const [activeAdminTab, setActiveAdminTab] = useState<"registrations" | "matchEngine" | "grievances" | "marriages" | "admins" | "coupons_referrals" | "pandits" | "chatGrievanceDesk" | "recordings" | "otp_monitor">("registrations");
   const [adminCount, setAdminCount] = useState<number>(2);
   const [candidateAuditProfile, setCandidateAuditProfile] = useState<Profile | null>(null);
   const [auditTab, setAuditTab] = useState<"calls" | "chats" | "feedback">("calls");
@@ -111,6 +113,17 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     await databaseService.savePandit(newPandit);
     const updated = await databaseService.getPandits();
     setPandits(updated);
+
+    const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+    const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+    await adminNotificationService.logAction(
+      activeAdminId,
+      activeAdminName,
+      editingPandit ? `Updated Vedic Pandit: ${newPandit.name}` : `Added New Vedic Pandit: ${newPandit.name}`,
+      `Specialization: ${newPandit.specialization}, Phone: ${newPandit.phone}, Availability: ${newPandit.availableDays}`,
+      { category: "pandit" }
+    );
+
     setIsAddPanditModalOpen(false);
     setEditingPandit(null);
     setPanditName("");
@@ -127,6 +140,17 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       await databaseService.deletePandit(id);
       const updated = await databaseService.getPandits();
       setPandits(updated);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        activeAdminName,
+        `Removed Vedic Pandit Record`,
+        `Deleted Pandit profile (ID: ${id}) from the public consultation directory.`,
+        { category: "pandit" }
+      );
+
       alert("✓ Pandit removed successfully.");
     }
   };
@@ -140,7 +164,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       console.error(e);
     }
     const loggedInId = localStorage.getItem("bramhana_logged_in_user_id");
-    if (loggedInId === "prof-subbu" || loggedInId === "admin-subbu") {
+    if (loggedInId === "admin-subbu") {
       return {
         id: "admin-subbu",
         name: "Sri G.V. Subramanyam",
@@ -151,15 +175,38 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
         designation: "Proprietor & Chief Patron"
       };
     }
-    if (loggedInId === "prof-subba-reddy" || loggedInId === "admin-subba-reddy") {
+    if (loggedInId === "admin-subba-reddy") {
       return {
         id: "admin-subba-reddy",
         name: "Sri P.V. Subba Reddy",
-        mobile: "9494949494",
+        mobile: "9989079372",
+        role: "super_admin",
+        stage: 2,
+        isRoot: true,
+        designation: "Managing Trustee & Executive Co-Admin"
+      };
+    }
+    if (loggedInId === "admin-tejaswar") {
+      return {
+        id: "admin-tejaswar",
+        name: "Mr. Karna Tejaswar Reddy",
+        mobile: "9392551166",
+        role: "super_admin",
+        stage: 2,
+        isRoot: true,
+        designation: "Chief Grievance Redressal Officer"
+      };
+    }
+    if (loggedInId === "admin-praveen") {
+      return {
+        id: "admin-praveen",
+        name: "Mr. Praveen",
+        mobile: "9876543219",
+        email: "praveenproq@gmail.com",
         role: "super_admin",
         stage: 1,
         isRoot: true,
-        designation: "Managing Trustee & Executive Co-Admin"
+        designation: "Super Admin & Chief Technology Officer"
       };
     }
     return null;
@@ -243,14 +290,38 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   const [subbaReddyQrInput, setSubbaReddyQrInput] = useState("");
 
   const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
+  const [pendingVerifications, setPendingVerifications] = useState<any[]>([]);
   const [showAdminNotifModal, setShowAdminNotifModal] = useState(false);
+  const [showOtpMonitor, setShowOtpMonitor] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+  const TableShimmer = () => (
+    <div className="animate-pulse space-y-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="h-20 bg-gray-100 rounded-2xl w-full" />
+      ))}
+    </div>
+  );
 
   useEffect(() => {
-    setAdminNotifications(adminNotificationService.getNotifications());
-    const interval = setInterval(() => {
-      setAdminNotifications(adminNotificationService.getNotifications());
-    }, 3000);
-    return () => clearInterval(interval);
+    const unsubNotifs = adminNotificationService.subscribe((notifs) => {
+      setAdminNotifications(notifs);
+    });
+    
+    const unsubProfiles = databaseService.subscribeProfiles((data) => {
+      setProfiles(data);
+      setLoading(false);
+    });
+
+    const unsubOTP = adminNotificationService.subscribePendingVerifications((data) => {
+      setPendingVerifications(data);
+    });
+
+    return () => {
+      unsubNotifs();
+      unsubProfiles();
+      unsubOTP();
+    };
   }, []);
 
   const unreadNotifCount = adminNotifications.filter(n => !n.read).length;
@@ -263,35 +334,27 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   }, [adminSettings]);
 
   const fetchGrievancesData = async () => {
-    setGrievancesLoading(true);
-    try {
-      const data = await databaseService.getGrievances();
-      setGrievances(data);
-    } catch (err) {
-      console.error("Failed to fetch grievances:", err);
-    } finally {
-      setGrievancesLoading(false);
-    }
+    // No-op or keep for manual refresh if needed, but subscriptions handle it now
   };
 
   const fetchMarriagesData = async () => {
-    setMarriagesLoading(true);
-    try {
-      const data = await databaseService.getMarriages();
-      setMarriageRecords(data);
-    } catch (err) {
-      console.error("Failed to fetch marriages:", err);
-    } finally {
-      setMarriagesLoading(false);
-    }
+    // No-op or keep for manual refresh if needed, but subscriptions handle it now
   };
 
   useEffect(() => {
     if (activeAdminTab === "grievances") {
-      fetchGrievancesData();
+      const unsubscribe = databaseService.subscribeGrievances((data) => {
+        setGrievances(data);
+        setGrievancesLoading(false);
+      });
+      return () => unsubscribe();
     }
     if (activeAdminTab === "marriages") {
-      fetchMarriagesData();
+      const unsubscribe = databaseService.subscribeMarriages((data) => {
+        setMarriageRecords(data);
+        setMarriagesLoading(false);
+      });
+      return () => unsubscribe();
     }
   }, [activeAdminTab]);
 
@@ -429,7 +492,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
 
       await databaseService.saveGrievance(updatedGrievance);
 
-      adminNotificationService.logAction(
+      await adminNotificationService.logAction(
         currentAdmin?.id || "admin",
         adminName,
         "Grievance Resolved",
@@ -491,40 +554,36 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
             }
           }
           await databaseService.saveProfile(updated);
-          setProfiles((prev) => prev.map((p) => (p.id === finalAccusedId ? updated : p)));
-          
-          if (suspensionType === "lift_with_warning") {
-            setUpdateMsg(`Grievance processed & profile suspension LIFTED with warning successfully!`);
-          } else if (suspensionType === "active_investigation_hold") {
-            setUpdateMsg(`Grievance processed & profile placed on investigation hold successfully!`);
-          } else if (suspensionType !== "none") {
-            const labelStr = suspensionType === "permanent" ? "Permanently" : suspensionType === "24h" ? "for 24 hours" : `for ${suspensionType.replace("day", " days")}`;
-            setUpdateMsg(`Grievance resolved and candidate suspended ${labelStr} successfully!`);
-          } else {
-            setUpdateMsg(`Grievance processed successfully (No suspension action taken)!`);
-          }
-        } else {
-          // Fallback if not found in state
-          const cleanId = verifyingGrievance.accusedId.trim();
-          if (suspensionType !== "none" && suspensionType !== "lift_with_warning") {
-            await databaseService.updateProfileStatus(cleanId, "Declined");
-          } else if (suspensionType === "lift_with_warning") {
-            await databaseService.updateProfileStatus(cleanId, "Verified");
-          }
-          setUpdateMsg(`Grievance resolved successfully!`);
+          setUpdateMsg(`Grievance resolved and candidate status updated successfully!`);
         }
-        fetchProfilesData();
-      } else {
-        setUpdateMsg(`Grievance resolved successfully!`);
       }
 
       setTimeout(() => setUpdateMsg(""), 4000);
       setVerifyingGrievance(null);
-      fetchGrievancesData();
     } catch (err) {
       console.error("Failed to resolve grievance:", err);
     }
   };
+
+  useEffect(() => {
+    // Auto-lift expired suspensions
+    const now = new Date();
+    profiles.forEach(async (p) => {
+      if (p.status === "Declined" && p.suspension_lift_at) {
+        const liftTime = new Date(p.suspension_lift_at);
+        if (now >= liftTime) {
+          console.log(`Auto-lifting expired suspension for ${p.name}`);
+          const updated: Profile = {
+            ...p,
+            status: "Verified",
+            suspension_lift_at: "",
+            suspension_reason: ""
+          };
+          await databaseService.saveProfile(updated);
+        }
+      }
+    });
+  }, [profiles]);
 
   const handleDeleteGrievanceLog = async (id: string) => {
     if (!confirm("Are you sure you want to permanently purge this complaint log? This action is irreversible.")) return;
@@ -578,6 +637,35 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+  };
+
+  const handleRunLoadTest = async () => {
+    if (!confirm("⚠️ Generate 100 authenticated test profiles? This will test Firestore & Virtualization limits.")) return;
+    setLoading(true);
+    try {
+      await LoadTestHelper.generateProfiles(100);
+      setUpdateMsg("✅ Load Test: 100 profiles generated successfully!");
+      setTimeout(() => setUpdateMsg(""), 5000);
+    } catch (err) {
+      console.error(err);
+      alert("Load test failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearLoadTest = async () => {
+    if (!confirm("Purge all stress-test mock data?")) return;
+    setLoading(true);
+    try {
+      await LoadTestHelper.clearTestData();
+      setUpdateMsg("🧹 Load Test data purged.");
+      setTimeout(() => setUpdateMsg(""), 5000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Delete Modal State
@@ -735,7 +823,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       
       // Auto lift expired suspensions on load
       const now = new Date();
-      const nonAdminProfiles = data.filter((p) => p.id !== "prof-subbu" && p.id !== "prof-subba-reddy");
+      const nonAdminProfiles = data.filter((p) => p.id !== "admin-subbu" && p.id !== "admin-subba-reddy" && p.id !== "admin-tejaswar" && p.id !== "admin-praveen");
       
       const processedProfiles = await Promise.all(
         nonAdminProfiles.map(async (p) => {
@@ -791,8 +879,33 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   };
 
   useEffect(() => {
-    fetchProfilesData();
-  }, [onRefreshTrigger]);
+    setLoading(true);
+    const unsubscribe = databaseService.subscribeProfiles((data) => {
+      const processedProfiles = data.map((p) => {
+        if (p.status === "Declined" && p.suspension_lift_at) {
+          const now = new Date();
+          const liftTime = new Date(p.suspension_lift_at);
+          if (now >= liftTime) {
+             // We can't easily do async updates inside the map here reliably without side effects
+             // but the next sync or a manual trigger will handle it.
+             // For now, let's just mark it in state.
+             return { ...p, status: "Verified", suspension_lift_at: "", suspension_reason: "" } as Profile;
+          }
+        }
+        return p;
+      });
+      setProfiles(processedProfiles);
+      if (processedProfiles.length > 0 && !selectedCandidateId) {
+        setSelectedCandidateId(processedProfiles[0].id);
+      }
+      setLoading(false);
+    });
+
+    databaseService.getAdminSettings().then(setAdminSettings);
+    databaseService.getAllPartnerPreferences().then(setAllPreferences);
+
+    return () => unsubscribe();
+  }, []); // Remove onRefreshTrigger dependency as it's now real-time
 
   // Load preferences when candidate changes in Match Engine
   useEffect(() => {
@@ -851,17 +964,36 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
   // Handle status change
   const handleStatusChange = async (profileId: string, newStatus: Profile["status"]) => {
     setUpdateMsg("");
+    setProcessingIds(prev => new Set(prev).add(profileId));
     try {
       const success = await databaseService.updateProfileStatus(profileId, newStatus);
       if (success) {
-        setProfiles((prev) =>
-          prev.map((p) => (p.id === profileId ? { ...p, status: newStatus } : p))
-        );
         setUpdateMsg(`Profile verification status changed to '${newStatus}'.`);
         setTimeout(() => setUpdateMsg(""), 3500);
+
+        const targetProfile = profiles.find((p) => p.id === profileId);
+        const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+        const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+        await adminNotificationService.logAction(
+          activeAdminId,
+          activeAdminName,
+          `Changed Candidate Status to '${newStatus}'`,
+          `Candidate: ${targetProfile?.name || 'Candidate'} (${targetProfile?.reg_number || profileId}), Sub-Caste: ${targetProfile?.sub_caste || 'Brahmin'}, Phone: ${targetProfile?.contact_number || 'N/A'}`,
+          {
+            targetCandidateId: profileId,
+            targetCandidateRegNumber: targetProfile?.reg_number,
+            category: "status"
+          }
+        );
       }
     } catch (err) {
       console.error("Failed to change profile status:", err);
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(profileId);
+        return next;
+      });
     }
   };
 
@@ -953,6 +1085,20 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
         setUpdateMsg(`Suspension schedule updated: Auto-lift configured in ${label} for ${target.name}!`);
       }
       setTimeout(() => setUpdateMsg(""), 4500);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        activeAdminName,
+        `Suspension Action: ${durationType === 'now' ? 'Revoked (Mercy Granted)' : durationType === 'permanent' ? 'Permanent Lifetime Ban' : 'Modified Hold'}`,
+        `Candidate: ${target.name} (${target.reg_number || target.id}), Action: ${durationType}`,
+        {
+          targetCandidateId: target.id,
+          targetCandidateRegNumber: target.reg_number,
+          category: "suspension"
+        }
+      );
     } catch (err) {
       console.error("Failed to revoke profile suspension:", err);
     }
@@ -1200,27 +1346,21 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     if (!targetProfile) return;
 
     if (newSubStatus === "free") {
+      setProcessingIds(prev => new Set(prev).add(profileId));
       try {
         const success = await databaseService.updateSubscriptionStatus(profileId, "free", "None", "", "");
         if (success) {
-          setProfiles((prev) =>
-            prev.map((p) =>
-              p.id === profileId
-                ? {
-                    ...p,
-                    subscription_status: "free",
-                    fee_received_by: "None",
-                    fee_transaction_id: "",
-                    fee_received_at: "",
-                  }
-                : p
-            )
-          );
           setUpdateMsg(`Subscription status updated to Free Tier successfully.`);
           setTimeout(() => setUpdateMsg(""), 3500);
         }
       } catch (err) {
         console.error("Failed to update subscription status:", err);
+      } finally {
+        setProcessingIds(prev => {
+          const next = new Set(prev);
+          next.delete(profileId);
+          return next;
+        });
       }
     } else {
       // Prompt for Transaction ID
@@ -1241,10 +1381,14 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
 
     const adminId = localStorage.getItem("bramhana_logged_in_user_id");
     let adminName = "Admin General";
-    if (adminId === "prof-subbu") {
+    if (adminId === "admin-subbu") {
       adminName = "GV Subramanyam";
-    } else if (adminId === "prof-subba-reddy") {
+    } else if (adminId === "admin-subba-reddy") {
       adminName = "PV Subba Reddy";
+    } else if (adminId === "admin-tejaswar") {
+      adminName = "Karna Tejaswar Reddy";
+    } else if (adminId === "admin-praveen") {
+      adminName = "Praveen";
     }
 
     const timestamp = new Date().toLocaleString("en-US", {
@@ -1259,6 +1403,7 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     const finalReceiverUpi = receiverUpiId === "custom" ? customReceiverUpiId.trim() : receiverUpiId;
     const amount = paymentTargetStatus === "paid_900" ? 900 : 100;
 
+    setProcessingIds(prev => new Set(prev).add(paymentProfile.id));
     try {
       const success = await databaseService.updateSubscriptionStatus(
         paymentProfile.id,
@@ -1270,30 +1415,15 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
       );
 
       if (success) {
-        setProfiles((prev) =>
-          prev.map((p) =>
-            p.id === paymentProfile.id
-              ? {
-                  ...p,
-                  subscription_status: paymentTargetStatus,
-                  status: "Verified",
-                  fee_received_by: adminName,
-                  fee_transaction_id: paymentTxnId.trim(),
-                  fee_received_at: timestamp,
-                  fee_receiver_upi: finalReceiverUpi || "bramhanavedika@ybl",
-                }
-              : p
-          )
-        );
         setUpdateMsg(`Payment verified! ${adminName} recorded Match Fees, UPI ID, and Transaction ID successfully.`);
         
         // Generate and open the Receipt
         setReceiptData({
           profileId: paymentProfile.id,
           name: `${paymentProfile.surname || ""} ${paymentProfile.name || ""}`.trim(),
-          regNumber: paymentProfile.reg_no || paymentProfile.phone || "N/A",
+          regNumber: paymentProfile.reg_number || paymentProfile.id,
           gender: paymentProfile.gender || "N/A",
-          contactNumber: paymentProfile.phone || "",
+          contactNumber: paymentProfile.contact_number || "",
           amount: amount,
           transactionId: paymentTxnId.trim(),
           receiverUpi: finalReceiverUpi || "bramhanavedika@ybl",
@@ -1303,11 +1433,30 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
 
         setIsPaymentModalOpen(false);
         setIsReceiptModalOpen(true);
-        // paymentProfile and paymentTxnId will be cleared or kept until after receipt modal is handled or dismissed
         setTimeout(() => setUpdateMsg(""), 3500);
+
+        // Cross-Admin Notification Log
+        await adminNotificationService.logAction(
+          currentAdmin?.id || adminId || "admin",
+          adminName,
+          `Verified Payment ₹${amount} (${paymentTargetStatus === "paid_900" ? "Full 28-Day Membership" : "₹100 Registration Fee"})`,
+          `Candidate: ${paymentProfile.name} (${paymentProfile.reg_number || paymentProfile.id}), Txn ID: ${paymentTxnId.trim()}, UPI: ${finalReceiverUpi || "bramhanavedika@ybl"}, Phone: ${paymentProfile.contact_number || 'N/A'}`,
+          {
+            targetCandidateId: paymentProfile.id,
+            targetCandidateRegNumber: paymentProfile.reg_number,
+            category: "payment"
+          }
+        );
       }
     } catch (err) {
       console.error("Failed to update payment status:", err);
+      alert("Error recording fee.");
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(paymentProfile.id);
+        return next;
+      });
     }
   };
 
@@ -1677,6 +1826,20 @@ Ph: ${adminPhone}`;
       setProfileToEdit(null);
       setEditPrefsToEdit(null);
       setTimeout(() => setUpdateMsg(""), 3500);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        activeAdminName,
+        `Edited Profile for ${saved.name}`,
+        `Candidate: ${saved.name} (${saved.reg_number || saved.id}), Gothram: ${saved.gothram || 'N/A'}, Phone: ${saved.contact_number || 'N/A'}, Salary: ₹${saved.salary_lpa || 'N/A'} LPA`,
+        {
+          targetCandidateId: saved.id,
+          targetCandidateRegNumber: saved.reg_number,
+          category: "profile"
+        }
+      );
     } catch (err) {
       console.error("Failed to save edited profile:", err);
     }
@@ -1848,10 +2011,14 @@ Ph: ${adminPhone}`;
       const adminId = localStorage.getItem("bramhana_logged_in_user_id");
       let registeredBy = newProfile.registered_by;
       if (!registeredBy) {
-        if (adminId === "prof-subbu") {
+        if (adminId === "admin-subbu") {
           registeredBy = "GV Subramanyam";
-        } else if (adminId === "prof-subba-reddy") {
+        } else if (adminId === "admin-subba-reddy") {
           registeredBy = "PV Subba Reddy";
+        } else if (adminId === "admin-tejaswar") {
+          registeredBy = "Karna Tejaswar Reddy";
+        } else if (adminId === "admin-praveen") {
+          registeredBy = "Praveen";
         } else {
           registeredBy = "Bramhana Admin";
         }
@@ -1909,6 +2076,20 @@ Ph: ${adminPhone}`;
       setProfiles((prev) => [saved, ...prev]);
       setUpdateMsg(`Successfully registered new candidate: ${saved.name} (${saved.reg_number})`);
       setIsRegisterModalOpen(false);
+
+      const activeAdminId = currentAdmin?.id || localStorage.getItem("bramhana_logged_in_user_id") || "admin";
+      const activeAdminName = currentAdmin?.name || (activeAdminId === "admin-subba-reddy" ? "Sri P.V. Subba Reddy" : activeAdminId === "admin-tejaswar" ? "Sri Karna Tejaswar Reddy" : "Sri G.V. Subramanyam");
+      await adminNotificationService.logAction(
+        activeAdminId,
+        registeredBy || activeAdminName,
+        `Registered New Candidate: ${saved.name}`,
+        `Registration #: ${saved.reg_number}, Gender: ${saved.gender}, Gothram: ${saved.gothram}, Mobile: ${saved.contact_number}, Tier: ${saved.subscription_status}`,
+        {
+          targetCandidateId: saved.id,
+          targetCandidateRegNumber: saved.reg_number,
+          category: "profile"
+        }
+      );
       
       // Reset state
       setNewProfile({
@@ -2623,28 +2804,28 @@ Ph: ${adminPhone}`;
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
       {/* Dashboard Banner with 4-Stage Hierarchy Clearance */}
-      <div className="bg-[#362B5A] text-white p-8 rounded-3xl shadow-xl border border-orange-500/10 relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="absolute top-0 right-0 transform translate-x-12 -translate-y-12 opacity-10">
-          <ShieldCheck className="w-64 h-64 text-orange-400" />
+      <div className="bg-[#362B5A] text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-orange-500/10 relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+        <div className="absolute top-0 right-0 transform translate-x-8 -translate-y-8 opacity-10 pointer-events-none">
+          <ShieldCheck className="w-32 h-32 sm:w-64 sm:h-64 text-orange-400" />
         </div>
         <div className="relative z-10 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-[#C2242C]/20 border border-red-500/20 text-orange-300 w-fit px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 bg-[#C2242C]/20 border border-red-500/20 text-orange-300 w-fit px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold tracking-wider uppercase">
               <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
               <span>Spiritual Ingress Gatekeeper</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/30 text-amber-200 px-3 py-1 rounded-full text-xs font-bold">
+            <div className="flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/30 text-amber-200 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold">
               <span>{stageInfo.stageBadge}</span>
               <span>Stage {stageInfo.stage}: {stageInfo.stageName}</span>
             </div>
             {currentAdmin && (
-              <span className="text-xs font-medium text-amber-100/90 bg-white/10 px-2.5 py-1 rounded-full border border-white/15">
+              <span className="text-[10px] sm:text-xs font-medium text-amber-100/90 bg-white/10 px-2.5 py-0.5 sm:py-1 rounded-full border border-white/15">
                 👤 {currentAdmin.name} ({currentAdmin.mobile})
               </span>
             )}
           </div>
-          <h2 className="text-3xl font-bold tracking-tight">Admin Sanctuary Dashboard</h2>
-          <p className="text-blue-100 max-w-xl leading-relaxed text-sm">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight">Admin Sanctuary Dashboard</h2>
+          <p className="text-blue-100 max-w-xl leading-relaxed text-xs sm:text-sm">
             {stageInfo.stage === 1
               ? "Full Supreme Authority: Candidate management, administrative controls, financial auditing, and grievance resolution."
               : stageInfo.stage === 2
@@ -2656,49 +2837,48 @@ Ph: ${adminPhone}`;
         </div>
 
         {/* Sync Indicator & Admin Bell */}
-        <div className="flex flex-col sm:flex-row items-end gap-3 relative z-10">
+        <div className="flex flex-row md:flex-col sm:flex-row items-center md:items-end justify-between gap-3 relative z-10 pt-2 md:pt-0 border-t md:border-t-0 border-white/10">
           <button
+            type="button"
             onClick={() => {
               setShowAdminNotifModal(true);
-              adminNotificationService.markAllRead();
-              setAdminNotifications(adminNotificationService.getNotifications());
             }}
-            className="relative bg-white/15 hover:bg-white/25 border border-white/30 px-4 py-2.5 rounded-2xl transition flex items-center gap-2.5 text-white font-bold text-xs shadow-lg cursor-pointer"
+            className="relative bg-white/15 hover:bg-white/25 border border-white/30 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl transition flex items-center gap-2 text-white font-bold text-[11px] sm:text-xs shadow-lg cursor-pointer min-h-[40px]"
             title="Cross-Admin Notification Bell - See changes made by any admin"
           >
-            <Bell className="w-5 h-5 text-amber-300 animate-bounce" />
-            <span>Admin Audit Bell</span>
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 animate-bounce" />
+            <span>Audit Bell</span>
             {unreadNotifCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md animate-pulse">
                 {unreadNotifCount}
               </span>
             )}
           </button>
 
-          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl text-right shrink-0">
-            <span className="text-[10px] text-blue-200/60 uppercase tracking-widest block font-bold">Storage Integration Status</span>
-            <p className="text-sm font-bold text-emerald-400 flex items-center justify-end gap-1.5 mt-1">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-              <span>Database Live & Synced</span>
+          <div className="bg-white/5 border border-white/10 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-right shrink-0">
+            <span className="text-[9px] sm:text-[10px] text-blue-200/60 uppercase tracking-widest block font-bold">Storage Status</span>
+            <p className="text-xs sm:text-sm font-bold text-emerald-400 flex items-center justify-end gap-1.5 mt-0.5">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+              <span>Live & Synced</span>
             </p>
-            <span className="text-[10px] text-amber-200/80 font-mono mt-1 block">
+            <span className="text-[9px] text-amber-200/80 font-mono mt-0.5 block">
               Stage {stageInfo.stage} • {stageInfo.canManageAdmins ? "Admin Controller" : "Protected Scope"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Quick Action Navigation Bar (No Scrolling Required) */}
-      <div className="bg-white rounded-3xl p-4 shadow-sm border border-indigo-100 flex flex-wrap items-center justify-between gap-3 sticky top-4 z-30 backdrop-blur-md bg-white/95">
-        <div className="flex items-center gap-2">
+      {/* Quick Action Navigation Bar - Responsive Horizontal Scrollable Tabs */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 shadow-sm border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 sticky top-14 sm:top-20 z-30 backdrop-blur-md bg-white/95">
+        <div className="flex items-center justify-between gap-2 shrink-0">
           <span className="text-[10px] bg-[#362B5A] text-white font-black px-2.5 py-1 rounded-full uppercase tracking-wider">⚡ Quick Jump Bar</span>
-          <span className="text-xs font-extrabold text-[#362B5A] hidden sm:inline">Live Controls:</span>
+          <span className="text-[10px] text-gray-500 font-medium sm:hidden">Swipe tabs ➔</span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 w-full sm:w-auto -mx-1 px-1 sm:mx-0 sm:px-0">
           <button
             type="button"
             onClick={() => setActiveAdminTab("registrations")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "registrations" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
@@ -2712,13 +2892,13 @@ Ph: ${adminPhone}`;
                 setActiveAdminTab("registrations");
                 window.scrollTo({ top: 350, behavior: "smooth" });
               }}
-              className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 shadow-xs"
+              className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 shadow-xs shrink-0 min-h-[38px]"
             >
               <span>📊 Revenue: ₹{revenueStats.total.total.toLocaleString()}</span>
             </button>
           ) : (
             <div
-              className="px-3 py-2 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 flex items-center gap-1.5"
+              className="px-3 py-2 rounded-xl text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 flex items-center gap-1.5 shrink-0 min-h-[38px]"
               title="Revenue metrics restricted to Stage 1 & Stage 2 Admins"
             >
               <Lock className="w-3.5 h-3.5 text-gray-400" />
@@ -2732,7 +2912,7 @@ Ph: ${adminPhone}`;
               setActiveAdminTab("registrations");
               window.scrollTo({ top: 250, behavior: "smooth" });
             }}
-            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-50 hover:bg-amber-100 text-amber-900 transition-all cursor-pointer flex items-center gap-1.5 border border-amber-200 shadow-xs"
+            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-50 hover:bg-amber-100 text-amber-900 transition-all cursor-pointer flex items-center gap-1.5 border border-amber-200 shadow-xs shrink-0 min-h-[38px]"
           >
             <span>📈 Registration Graphs</span>
           </button>
@@ -2743,7 +2923,7 @@ Ph: ${adminPhone}`;
               setActiveAdminTab("matchEngine");
               setMatchEngineMode("list");
             }}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "matchEngine" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
@@ -2753,7 +2933,7 @@ Ph: ${adminPhone}`;
           <button
             type="button"
             onClick={() => setActiveAdminTab("grievances")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "grievances" ? "bg-[#362B5A] text-white" : "bg-gray-50 hover:bg-gray-100 text-[#362B5A]"
             }`}
           >
@@ -2762,8 +2942,24 @@ Ph: ${adminPhone}`;
 
           <button
             type="button"
+            onClick={() => setActiveAdminTab("otp_monitor")}
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
+              activeAdminTab === "otp_monitor" ? "bg-[#362B5A] text-white" : "bg-red-50 hover:bg-red-100 text-red-900 border border-red-200"
+            }`}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>OTP Monitor</span>
+            {pendingVerifications.length > 0 && (
+              <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full animate-pulse">
+                {pendingVerifications.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveAdminTab("coupons_referrals")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "coupons_referrals"
                 ? "bg-[#362B5A] text-white"
                 : "bg-amber-100/80 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold"
@@ -2775,47 +2971,57 @@ Ph: ${adminPhone}`;
           <button
             type="button"
             onClick={() => setActiveAdminTab("chatGrievanceDesk")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "chatGrievanceDesk" ? "bg-[#362B5A] text-white" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200"
             }`}
           >
-            <span>💬 Chat & Grievance Audit Desk</span>
+            <span>💬 Chat Audit Desk</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveAdminTab("recordings")}
-            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0 min-h-[38px] ${
               activeAdminTab === "recordings" ? "bg-amber-600 text-white" : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300"
             }`}
           >
-            <span>🎙️ Call Recordings Desk</span>
+            <span>🎙️ Recordings</span>
+          </button>
+
+          {/* 🧪 14 Mandatory Play Store Pre-Flight QA Suite */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-playstore-testing"))}
+            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-md shrink-0 min-h-[38px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white active:scale-95"
+            title="Open 14 Mandatory Google Play Store Pre-Flight Tests"
+          >
+            <span>🧪 14 Play Store Tests</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownloadCandidatesPasswordsCSV}
-            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 shrink-0 min-h-[38px]"
             title="Download Excel Sheet with Candidates and Passwords"
           >
-            <span>📥 Excel Passwords</span>
+            <span>📥 Excel</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsAdminListModalOpen(true)}
-            className="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 shrink-0 min-h-[38px]"
             title="View Authorized Admins List"
           >
-            <span>👑 Admins List</span>
+            <span>👑 Admins</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsRegisterModalOpen(true)}
-            className="px-3.5 py-2 bg-[#C2242C] hover:bg-opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-[#C2242C] hover:bg-opacity-95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md flex items-center gap-1.5 shrink-0 min-h-[38px]"
           >
-            <span>+ Add Profile</span>
+            <span>+ Add</span>
           </button>
         </div>
       </div>
@@ -3665,6 +3871,22 @@ Ph: ${adminPhone}`;
                   <span>Purge Fake Data</span>
                 </button>
 
+                {/* Stat-Verified OTP Monitor */}
+                <button
+                  type="button"
+                  onClick={() => setShowOtpMonitor(true)}
+                  className="px-4 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-xl border border-indigo-200 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+                  title="Real-time monitor for email verification codes (Fallback for delivery issues)"
+                >
+                  <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Stat-Verified OTP Monitor</span>
+                  {pendingVerifications.length > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full animate-pulse">
+                      {pendingVerifications.length}
+                    </span>
+                  )}
+                </button>
+
                 {/* Register New Candidate */}
                 <button
                   type="button"
@@ -3734,6 +3956,24 @@ Ph: ${adminPhone}`;
                     title="Export only the profiles currently displayed in the filtered list below"
                   >
                     <span>📥 Filtered ({filteredProfiles.length}) (.csv)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRunLoadTest}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-[10px] uppercase rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                    title="Generate 100 mock profiles for performance testing"
+                  >
+                    <Cpu className="w-3 h-3" />
+                    <span>🚀 100x Load Test</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearLoadTest}
+                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[10px] uppercase rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                    title="Remove all generated mock profiles"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>🧹 Purge Test Data</span>
                   </button>
                 </div>
               </div>
@@ -4159,8 +4399,11 @@ Ph: ${adminPhone}`;
                         <td className="px-4 py-4 whitespace-nowrap text-center">
                           <select
                             value={p.status}
+                            disabled={processingIds.has(p.id)}
                             onChange={(e) => handleStatusChange(p.id, e.target.value as Profile["status"])}
                             className={`text-xs font-bold px-2 py-1.5 rounded-xl border focus:outline-none cursor-pointer transition-all ${
+                              processingIds.has(p.id) ? "opacity-50 grayscale cursor-not-allowed" : ""
+                            } ${
                               p.status === "Premium"
                                 ? "bg-rose-50 border-rose-200 text-rose-700"
                                 : p.status === "Married"
@@ -4178,6 +4421,11 @@ Ph: ${adminPhone}`;
                             <option value="Married">💍 Marriage Done</option>
                             <option value="Declined">✕ Declined</option>
                           </select>
+                          {processingIds.has(p.id) && (
+                            <div className="absolute inset-0 bg-white/20 flex items-center justify-center pointer-events-none">
+                              <Zap className="w-4 h-4 text-amber-500 animate-spin" />
+                            </div>
+                          )}
                           <div className="mt-1.5">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-mono font-bold rounded-full border border-indigo-100 shadow-2xs">
                               💖 {(() => {
@@ -4192,8 +4440,11 @@ Ph: ${adminPhone}`;
                         <td className="px-4 py-4 whitespace-nowrap text-center">
                           <select
                             value={subStatus}
+                            disabled={processingIds.has(p.id)}
                             onChange={(e) => handleSubscriptionChange(p.id, e.target.value as Profile["subscription_status"])}
                             className={`text-xs font-extrabold px-2 py-1.5 rounded-xl border focus:outline-none cursor-pointer transition-all ${
+                              processingIds.has(p.id) ? "opacity-50 cursor-not-allowed" : ""
+                            } ${
                               subStatus === "paid_900"
                                 ? "bg-[#362B5A] text-white border-[#362B5A] font-mono"
                                 : subStatus === "paid_100"
@@ -6507,9 +6758,19 @@ Ph: ${adminPhone}`;
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-violet-600 text-white rounded-xl font-black uppercase tracking-wider text-xs cursor-pointer transition-all shadow-lg shadow-pink-500/20 hover:brightness-110"
+                  disabled={processingIds.has(paymentProfile.id)}
+                  className={`flex-1 py-3 bg-gradient-to-r from-pink-500 to-violet-600 text-white rounded-xl font-black uppercase tracking-wider text-xs cursor-pointer transition-all shadow-lg shadow-pink-500/20 hover:brightness-110 flex items-center justify-center gap-2 ${
+                    processingIds.has(paymentProfile.id) ? "opacity-75 cursor-wait" : ""
+                  }`}
                 >
-                  Confirm & Activate
+                  {processingIds.has(paymentProfile.id) ? (
+                    <>
+                      <Zap className="w-4 h-4 animate-spin" />
+                      <span>Syncing Registry...</span>
+                    </>
+                  ) : (
+                    "Confirm & Activate"
+                  )}
                 </button>
               </div>
             </form>
@@ -6922,13 +7183,71 @@ Ph: ${adminPhone}`;
 
                   let compiledMessage = "";
                   if (selectedWhatsappTemplate === "welcome") {
-                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\nశ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) కు స్వాగతం. \n\nమేము మీ ప్రొఫైల్ నమోదును విజయవంతంగా స్వీకరించాము. మీ చిరంజీవి *${name}* గారి ప్రొఫైల్ మరియు జాతక వివరాలను మా బ్రాహ్మణ వైవాహిక పోర్టల్ నందు భద్రపరిచాము.\n\n*📋 నమోదు చేసిన వివరాలు / Candidate Registration Profile:*\n👉 పేరు (Name): *${name}*\n👉 లింగం (Gender): *${genderLabel}*\n👉 ఉపశాఖ (Sub-Caste): *${subCaste}*\n👉 గోత్రం (Gothram): *${gothram}*\n👉 ఉద్యోగం (Profession): *${profession}*\n👉 జీతం (Annual Income): *${lpa}*\n👉 జన్మస్థలం (Birth Location): *${location}*\n👉 ఎత్తు (Height): *${height}*\n👉 నక్షత్రం (Star): *${star}* (పాదం: ${pada})\n👉 రాశి (Moon Sign): *${rasi}*\n👉 లగ్నం (Ascendant): *${whatsappProfile.astrology?.lagnam || "Not calculated"}*\n👉 తిథి (Tithi): *${traditionalTithi}*\n\n*🔔 రిజిస్ట్రేషన్ ఫీజు చెల్లింపు / Registration Verification fee:*\nమా పోర్టల్ నందు మీ ప్రొఫైల్ ని పూర్తిగా యాక్టివేట్ చేసి, సంబంధాలు (Shortlists) పంపించడం ప్రారంభించడానికి ₹100 కనీస రిజిస్ట్రేషన్ ఫీజును క్రింది యూపీఐ ఐడి (UPI ID) కి పంపించవలసిందిగా కోరుతున్నాము.\nTo activate your profile and start receiving candidate profiles, we request you to pay the registration fee of ₹100 to the following Admin UPI ID.\n\n*💳 పేమెంట్ వివరాలు / Admin Payment Desk:*\n👉 చెల్లించాల్సిన రుసుము (Amount to Pay): *₹100*\n👉 UPI ID: *${adminUpi}*\n👉 ఖాతాదారుడి పేరు (Receiver Name): *${adminName}*\n\nగమనిక: పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ని ఈ నెంబర్ కి వాట్సాప్ చేయండి, మీ పోర్టల్ అకౌంట్ వెంటనే యాక్టివేట్ చేయబడుతుంది.\nNote: After making payment, please reply with a screenshot on this chat to instantly activate your portal account.\n\n*Registered & Handled by ${adminRole}:* *${adminName}*\n\nకృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n📞 సంప్రదించండి/Contact: +91 94942 34567`;
+                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\n` +
+                      `శ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) కు స్వాగతం. \n\n` +
+                      `మేము మీ ప్రొఫైల్ నమోదును విజయవంతంగా స్వీకరించాము. మీ చిరంజీవి *${name}* గారి ప్రొఫైల్ మరియు జాతక వివరాలను మా బ్రాహ్మణ వైవాహిక పోర్టల్ నందు భద్రపరిచాము.\n\n` +
+                      `*📋 నమోదు చేసిన వివరాలు / Candidate Registration Profile:*\n` +
+                      `👉 పేరు (Name): *${name}*\n👉 లింగం (Gender): *${genderLabel}*\n👉 ఉపశాఖ (Sub-Caste): *${subCaste}*\n` +
+                      `👉 గోత్రం (Gothram): *${gothram}*\n👉 ఉద్యోగం (Profession): *${profession}*\n👉 జీతం (Annual Income): *${lpa}*\n` +
+                      `👉 జన్మస్థలం (Birth Location): *${location}*\n👉 ఎత్తు (Height): *${height}*\n👉 నక్షత్రం (Star): *${star}* (పాదం: ${pada})\n` +
+                      `👉 రాశి (Moon Sign): *${rasi}*\n👉 లగ్నం (Ascendant): *${whatsappProfile.astrology?.lagnam || "Not calculated"}*\n` +
+                      `👉 తిథి (Tithi): *${traditionalTithi}*\n\n` +
+                      `*🔔 రిజిస్ట్రేషన్ ఫీజు చెల్లింపు / Registration Verification fee:*\n` +
+                      `మా పోర్టల్ నందు మీ ప్రొఫైల్ ని పూర్తిగా యాక్టివేట్ చేసి, సంబంధాలు (Shortlists) పంపించడం ప్రారంభించడానికి ₹100 కనీస రిజిస్ట్రేషన్ ఫీజును క్రింది యూపీఐ ఐడి (UPI ID) కి పంపించవలసిందిగా కోరుతున్నాము.\n` +
+                      `To activate your profile and start receiving candidate profiles, we request you to pay the registration fee of ₹100 to the following Admin UPI ID.\n\n` +
+                      `*💳 పేమెంట్ వివరాలు / Admin Payment Desk:*\n👉 చెల్లించాల్సిన రుసుము (Amount to Pay): *₹100*\n` +
+                      `👉 UPI ID: *${adminUpi}*\n👉 ఖాతాదారుడి పేరు (Receiver Name): *${adminName}*\n\n` +
+                      `గమనిక: పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ని ఈ నెంబర్ కి వాట్సాప్ చేయండి, మీ పోర్టల్ అకౌంట్ వెంటనే యాక్టివేట్ చేయబడుతుంది.\n` +
+                      `Note: After making payment, please reply with a screenshot on this chat to instantly activate your portal account.\n\n` +
+                      `*Registered & Handled by ${adminRole}:* *${adminName}*\n\n` +
+                      `కృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n` +
+                      `📞 సంప్రదించండి/Contact: +91 94942 34567`;
                   } else if (selectedWhatsappTemplate === "kundali_profile") {
-                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\nశ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) నుండి మీ చిరంజీవి *${name}* కొరకు సిద్ధం చేసిన మ్యాచ్ సమాచారం.\n\n*📋 మ్యాచ్ ప్రొఫైల్ సమాచారం / Match Kundali Portfolio:*\n👉 వరుడు/వధువు (Candidate Name): *${name}*\n👉 ఉపశాఖ (Sub-Caste): *${subCaste}*\n👉 జన్మ నక్షత్రం (Star): *${star}* (పాదం: ${pada})\n👉 రాశి (Rashi): *${rasi}*\n👉 లగ్నం (Ascendant): *${whatsappProfile.astrology?.lagnam || "Not calculated"}*\n👉 తిథి (Tithi): *${traditionalTithi}*\n👉 దేవత (Deity): *${deity}*\n👉 గోత్రం (Gothram): *${gothram}*\n👉 ఉద్యోగం (Profession): *${profession}*\n👉 జన్మస్థలం (Birth Location): *${location}*\n👉 ఎత్తు (Height): *${height}*\n👉 వార్షిక ఆదాయం (Annual Income): *${lpa}*\n\nమీకు ఈ సంబంధం నచ్చినట్లయితే, మా పోర్టల్ లో లాగిన్ అయి వీరి పూర్తి వివరాలు, ఫోటోలు, మరియు ఫోన్ నంబర్లు వీక్షించవచ్చు.\nIf you are interested in this candidate profile, please log in to our web portal to view full details and check astrological compatibility.\n\n*Portfolio Shared & Handled by ${adminRole}:* *${adminName}*\n\nకృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n📞 సంప్రదించండి/Contact: +91 94942 34567`;
+                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\n` +
+                      `శ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) నుండి మీ చిరంజీవి *${name}* కొరకు సిద్ధం చేసిన మ్యాచ్ సమాచారం.\n\n` +
+                      `*📋 మ్యాచ్ ప్రొఫైల్ సమాచారం / Match Kundali Portfolio:*\n` +
+                      `👉 వరుడు/వధువు (Candidate Name): *${name}*\n👉 ఉపశాఖ (Sub-Caste): *${subCaste}*\n` +
+                      `👉 జన్మ నక్షత్రం (Star): *${star}* (పాదం: ${pada})\n👉 రాశి (Rashi): *${rasi}*\n` +
+                      `👉 లగ్నం (Ascendant): *${whatsappProfile.astrology?.lagnam || "Not calculated"}*\n👉 తిథి (Tithi): *${traditionalTithi}*\n` +
+                      `👉 దేవత (Deity): *${deity}*\n👉 గోత్రం (Gothram): *${gothram}*\n👉 ఉద్యోగం (Profession): *${profession}*\n` +
+                      `👉 జన్మస్థలం (Birth Location): *${location}*\n👉 ఎత్తు (Height): *${height}*\n👉 వార్షిక ఆదాయం (Annual Income): *${lpa}*\n\n` +
+                      `మీకు ఈ సంబంధం నచ్చినట్లయితే, మా పోర్టల్ లో లాగిన్ అయి వీరి పూర్తి వివరాలు, ఫోటోలు, మరియు ఫోన్ నంబర్లు వీక్షించవచ్చు.\n` +
+                      `If you are interested in this candidate profile, please log in to our web portal to view full details and check astrological compatibility.\n\n` +
+                      `*Portfolio Shared & Handled by ${adminRole}:* *${adminName}*\n\n` +
+                      `కృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n` +
+                      `📞 సంప్రదించండి/Contact: +91 94942 34567`;
                   } else if (selectedWhatsappTemplate === "astrology_jatakam") {
-                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\nశ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) నుండి ఒక ముఖ్యమైన సమాచారం.\n\nమేము మీ ప్రొఫైల్ *${name}* కొరకు మా వైవాహిక వేదిక నందు అత్యంత అనుకూలమైన మరియు శ్రేష్ఠమైన వధూవరుల మ్యాచింగ్ సంబంధాలను (Shortlists) సిద్ధం చేసాము! \n\n*🔥 ప్రీమియం అప్‌గ్రేడ్ వివరాలు / Premium Upgrade Details:*\nషార్ట్‌లిస్ట్ చేసిన వధూవరుల పూర్తి ఫోటోలు, నక్షత్ర మ్యాచింగ్‌లు, మరియు వారి తల్లిదండ్రుల ప్రత్యక్ష సంప్రదింపు ఫోన్ నంబర్ల పూర్తి వివరాలను వెంటనే పొందేందుకు మిగిలిన ₹900 ప్రీమియం రుసుమును క్రింది UPI ఐడి ద్వారా చెల్లించి మీ అకౌంట్ ని యాక్టివేట్ చేసుకోగలరు.\nWe have found highly compatible matches for your profile in our registry! To instantly view candidate photos, check matching horoscopes, and access direct contact numbers, we kindly request you to complete your ₹900 premium fee upgrade.\n\n*📢 మా సంప్రదింపు విధానం / Support & Call Procedure:*\nమేము సాధారణంగా నేరుగా ఫోన్ ద్వారా మీకు వివరాలు అందిస్తాము. ఒకవేళ ఏదేని కారణం చేత మా ఫోన్ కాల్స్ ఎత్తని సందర్భంలో లేదా మీరు బిజీగా ఉన్నప్పుడు, ఈ వాట్సాప్ సందేశం ద్వారా సమాచారాన్ని పంపడం మా నిరంతర సంప్రదింపు విధానం.\nWe also contact you via direct phone call. However, if you are busy or unable to pick up, sharing our matching alerts and UPI payment info via WhatsApp is our standard professional procedure.\n\n*💳 పేమెంట్ వివరాలు / Admin Payment Desk:*\n👉 చెల్లించాల్సిన రుసుము (Amount to Pay): *₹900*\n👉 UPI ID: *${adminUpi}*\n👉 ఖాతాదారుడి పేరు (Receiver Name): *${adminName}*\n\nగమనిక: పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ని ఈ నెంబర్ కి వాట్సాప్ చేయండి, మీ పోర్టల్ అకౌంట్ వెంటనే యాక్టివేట్ చేయబడుతుంది.\nNote: After making payment, please reply with a screenshot on this chat to instantly activate your portal account.\n\n*Report Generated & Handled by ${adminRole}:* *${adminName}*\n\nకృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n📞 సంప్రదించండి/Contact: +91 94942 34567`;
+                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\n` +
+                      `శ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) నుండి ఒక ముఖ్యమైన సమాచారం.\n\n` +
+                      `మేము మీ ప్రొఫైల్ *${name}* కొరకు మా వైవాహిక వేదిక నందు అత్యంత అనుకూలమైన మరియు శ్రేష్ఠమైన వధూవరుల మ్యాచింగ్ సంబంధాలను (Shortlists) సిద్ధం చేసాము! \n\n` +
+                      `*🔥 ప్రీమియం అప్‌గ్రేడ్ వివరాలు / Premium Upgrade Details:*\n` +
+                      `షార్ట్‌లిస్ట్ చేసిన వధూవరుల పూర్తి ఫోటోలు, నక్షత్ర మ్యాచింగ్‌లు, మరియు వారి తల్లిదండ్రుల ప్రత్యక్ష సంప్రదింపు ఫోన్ నంబర్ల పూర్తి వివరాలను వెంటనే పొందేందుకు మిగిలిన ₹900 ప్రీమియం రుసుమును క్రింది UPI ఐడి ద్వారా చెల్లించి మీ అకౌంట్ ని యాక్టివేట్ చేసుకోగలరు.\n` +
+                      `We have found highly compatible matches for your profile in our registry! To instantly view candidate photos, check matching horoscopes, and access direct contact numbers, we kindly request you to complete your ₹900 premium fee upgrade.\n\n` +
+                      `*📢 మా సంప్రదింపు విధానం / Support & Call Procedure:*\n` +
+                      `మేము సాధారణంగా నేరుగా ఫోన్ ద్వారా మీకు వివరాలు అందిస్తాము. ఒకవేళ ఏదేని కారణం చేత మా ఫోన్ కాల్స్ ఎత్తని సందర్భంలో లేదా మీరు బిజీగా ఉన్నప్పుడు, ఈ వాట్సాప్ సందేశం ద్వారా సమాచారాన్ని పంపడం మా నిరంతర సంప్రదింపు విధానం.\n` +
+                      `We also contact you via direct phone call. However, if you are busy or unable to pick up, sharing our matching alerts and UPI payment info via WhatsApp is our standard professional procedure.\n\n` +
+                      `*💳 పేమెంట్ వివరాలు / Admin Payment Desk:*\n👉 చెల్లించాల్సిన రుసుము (Amount to Pay): *₹900*\n` +
+                      `👉 UPI ID: *${adminUpi}*\n👉 ఖాతాదారుడి పేరు (Receiver Name): *${adminName}*\n\n` +
+                      `గమనిక: పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ని ఈ నెంబర్ కి వాట్సాప్ చేయండి, మీ పోర్టల్ అకౌంట్ వెంటనే యాక్టివేట్ చేయబడుతుంది.\n` +
+                      `Note: After making payment, please reply with a screenshot on this chat to instantly activate your portal account.\n\n` +
+                      `*Report Generated & Handled by ${adminRole}:* *${adminName}*\n\n` +
+                      `కృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n` +
+                      `📞 సంప్రదించండి/Contact: +91 94942 34567`;
                   } else if (selectedWhatsappTemplate === "status_payment") {
-                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\nశ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) నందు మీ ప్రొఫైల్ విజయవంతంగా ధృవీకరించబడింది (Profile Successfully Verified).\n\nమీ చిరంజీవి *${name}* గారి కొరకు మేము సిద్ధం చేసిన శ్రేష్ఠమైన షార్ట్‌లిస్ట్ మ్యాచింగ్స్ ను మీరు ఇప్పుడే మా అధికారిక వెబ్సైట్ లో లాగిన్ అయి వీక్షించవచ్చు.\n\n*🔐 మీ లాగిన్ వివరాలు / Login Credentials:*\n👉 వెబ్‌సైట్ లింక్ (Website): https://brahmanavivaha.org/login\n👉 లాగిన్ మొబైల్ నెంబర్ (User ID / Registered Phone): *${whatsappProfile.contact_number}*\n\n*📢 మా సంప్రదింపు పద్ధతి / Telephony Procedure:*\nమా ప్రతినిధులు మీకు క్రమం తప్పకుండా నేరుగా ఫోన్ కాల్స్ ద్వారా సంబంధాలను తెలియజేస్తూ ఉంటారు. ఫోన్ కాల్స్ వీలుపడనప్పుడు లేదా ఎత్తని సందర్భాలలో ఈ వాట్సాప్ సందేశాల ద్వారా షార్ట్‌లిస్ట్ లింక్‌లను పంపడం మా ప్రామాణిక పద్ధతి.\nOur support agents will call you regularly to update you on matches. If calls are missed or unanswered, we will continue our match sharing through this official WhatsApp channel.\n\nమీరు మీ అకౌంట్ నందు లాగిన్ అయి మ్యాచ్‌ల ఫోటోలను, జాతక గుణమేళనాలను మరియు పూర్తి వివరాలను సులభంగా చూసుకోగలరు.\nPlease log in to your account to view photographs, astrological compatibility scores, and download complete portfolios.\n\n*Verified & Configured by ${adminRole}:* *${adminName}*\n\nకృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n📞 సంప్రదించండి/Contact: +91 94942 34567`;
+                    compiledMessage = `నమస్కారం/Namaskaram 🙏\n\n` +
+                      `శ్రీ బ్రాహ్మణ विवाह వేదిక (Bramhana Vivaha Vedika) నందు మీ ప్రొఫైల్ విజయవంతంగా ధృవీకరించబడింది (Profile Successfully Verified).\n\n` +
+                      `మీ చిరంజీవి *${name}* గారి కొరకు మేము సిద్ధం చేసిన శ్రేష్ఠమైన షార్ట్‌లిస్ట్ మ్యాచింగ్స్ ను మీరు ఇప్పుడే మా అధికారిక వెబ్సైట్ లో లాగిన్ అయి వీక్షించవచ్చు.\n\n` +
+                      `*🔐 మీ లాగిన్ వివరాలు / Login Credentials:*\n` +
+                      `👉 వెబ్‌సైట్ లింక్ (Website): https://brahmanavivaha.org/login\n` +
+                      `👉 లాగిన్ మొబైల్ నెంబర్ (User ID / Registered Phone): *${whatsappProfile.contact_number}*\n\n` +
+                      `*📢 మా సంప్రదింపు పద్ధతి / Telephony Procedure:*\n` +
+                      `మా ప్రతినిధులు మీకు క్రమం తప్పకుండా నేరుగా ఫోన్ కాల్స్ ద్వారా సంబంధాలను తెలియజేస్తూ ఉంటారు. ఫోన్ కాల్స్ వీలుపడనప్పుడు లేదా ఎత్తని సందర్భాలలో ఈ వాట్సాప్ సందేశాల ద్వారా షార్ట్‌లిస్ట్ లింక్‌లను పంపడం మా ప్రామాణిక పద్ధతి.\n` +
+                      `Our support agents will call you regularly to update you on matches. If calls are missed or unanswered, we will continue our match sharing through this official WhatsApp channel.\n\n` +
+                      `మీరు మీ అకౌంట్ నందు లాగిన్ అయి మ్యాచ్‌ల ఫోటోలను, జాతక గుణమేళనాలను మరియు పూర్తి వివరాలను సులభంగా చూసుకోగలరు.\n` +
+                      `Please log in to your account to view photographs, astrological compatibility scores, and download complete portfolios.\n\n` +
+                      `*Verified & Configured by ${adminRole}:* *${adminName}*\n\n` +
+                      `కృతజ్ఞతలతో/Warm regards,\nబ్రాహ్మణ विवाह వేదిక బృందం (Bramhana Vivaha Vedika Team)\n` +
+                      `📞 సంప్రదించండి/Contact: +91 94942 34567`;
                   }
 
                   return (
@@ -8164,6 +8483,104 @@ Ph: ${adminPhone}`;
       )}
 
       {/* Tab CONTENT 4: Successful Marriages Registry */}
+      {activeAdminTab === "otp_monitor" && (
+        <div className="bg-white rounded-3xl p-6 shadow-md border border-indigo-100 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            <div>
+              <h3 className="text-xl font-black text-[#362B5A] uppercase tracking-tight flex items-center gap-2">
+                <Bell className="w-6 h-6 text-red-600" />
+                Stat-Verified: Real-Time OTP Monitor
+              </h3>
+              <p className="text-xs text-gray-500 font-semibold mt-1 italic">
+                Monitor all One-Time Passwords (OTPs) dispatched via Zoho ZeptoMail. Admins can manually provide codes if delivery is delayed.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-1 rounded-full animate-pulse">
+                Live Feed Active
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-separate border-spacing-y-3">
+              <thead>
+                <tr className="text-[10px] text-gray-400 font-black uppercase tracking-widest px-4">
+                  <th className="pb-2 pl-4">Target Email</th>
+                  <th className="pb-2">OTP Code</th>
+                  <th className="pb-2">Status</th>
+                  <th className="pb-2">Dispatched At</th>
+                  <th className="pb-2 text-right pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingVerifications.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-3 opacity-30">
+                        <CheckCircle2 className="w-12 h-12 text-gray-400" />
+                        <p className="text-sm font-bold">No pending verifications at the moment.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  pendingVerifications.map((v) => (
+                    <tr key={v.id || v.email} className="bg-gray-50/50 hover:bg-indigo-50/30 transition-colors group">
+                      <td className="py-4 pl-4 rounded-l-2xl">
+                        <span className="text-sm font-bold text-[#362B5A]">{v.email}</span>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-mono font-black text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100 shadow-inner">
+                            {v.otp}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(v.otp);
+                              alert(`OTP ${v.otp} copied to clipboard.`);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md border ${
+                          v.status === "VERIFIED" 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}>
+                          {v.status || "DISPATCHED"}
+                        </span>
+                      </td>
+                      <td className="py-4">
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          {new Date(v.timestamp).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="py-4 text-right pr-4 rounded-r-2xl">
+                        <button
+                          onClick={() => {
+                            const msg = `Namaskaram! Your Shubhamastu verification code is: ${v.otp}. This was generated at ${new Date(v.timestamp).toLocaleTimeString()}.`;
+                            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+                            window.open(url, "_blank");
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 ml-auto cursor-pointer"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>Send via WA</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {activeAdminTab === "marriages" && (
         <div className="space-y-6">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -8822,63 +9239,103 @@ Ph: ${adminPhone}`;
         </div>
       )}
 
-      {/* Admin Activity Notification Bell Modal */}
-      {showAdminNotifModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#2A2146] text-white border border-purple-500/30 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto animate-scale-up">
-            <div className="flex items-center justify-between border-b border-purple-500/20 pb-4">
+      {/* Stat-Verified OTP Monitor Modal */}
+      {showOtpMonitor && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0F172A] text-white border border-indigo-500/30 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col animate-scale-up">
+            <div className="flex items-center justify-between border-b border-indigo-500/20 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-amber-400/20 text-amber-300 rounded-2xl">
-                  <Bell className="w-6 h-6 animate-pulse" />
+                <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl">
+                  <Mail className="w-6 h-6 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Cross-Admin Activity & Notification Bell</h3>
-                  <p className="text-xs text-purple-200">Track all modifications and actions performed across all administrators (Subramanyam, Subba Reddy, Tejaswar).</p>
+                  <h3 className="text-xl font-bold tracking-tight text-indigo-100">Stat-Verified OTP Monitor</h3>
+                  <p className="text-xs text-indigo-300/70">Real-time verification codes for manual support and delivery fallback.</p>
                 </div>
               </div>
               <button 
-                onClick={() => setShowAdminNotifModal(false)}
-                className="p-2 text-purple-300 hover:text-white bg-white/5 rounded-xl hover:bg-white/10 transition cursor-pointer"
+                onClick={() => setShowOtpMonitor(false)}
+                className="p-2 text-indigo-400 hover:text-white bg-white/5 rounded-xl hover:bg-white/10 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              {adminNotifications.length === 0 ? (
-                <div className="text-center py-12 text-purple-300">
-                  <p className="text-sm">No admin activity notifications logged yet.</p>
-                  <p className="text-xs text-purple-400 mt-1">Actions performed by any admin will appear here instantly for all other admins.</p>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+              {pendingVerifications.length === 0 ? (
+                <div className="text-center py-20 text-indigo-300/50">
+                  <Mail className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                  <p className="text-sm font-bold">No active verification codes in registry.</p>
+                  <p className="text-[10px]">Codes appear here instantly when users attempt registration.</p>
                 </div>
               ) : (
-                adminNotifications.map((notif: any) => (
-                  <div key={notif.id} className={`p-4 rounded-2xl border ${notif.read ? 'bg-white/5 border-white/10' : 'bg-purple-900/40 border-amber-400/40'} space-y-1.5`}>
+                pendingVerifications.map((v: any) => (
+                  <div key={v.id} className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 hover:border-indigo-400/50 transition-all space-y-2 group">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                        👤 {notif.adminName}
-                      </span>
-                      <span className="text-[10px] text-purple-300 font-mono">
-                        {new Date(notif.timestamp).toLocaleString()}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Candidate Email</span>
+                        <span className="text-sm font-extrabold text-white">{v.email}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Verification Code (OTP)</span>
+                        <div className="flex items-center gap-2 group/otp">
+                          <span className="text-2xl font-black text-amber-300 font-mono tracking-[0.2em] blur-md group-hover/otp:blur-none transition-all duration-300 select-all cursor-help" title="Hover to reveal OTP">
+                            {v.otp}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(v.otp);
+                              alert("✓ Code Copied to clipboard securely.");
+                            }}
+                            className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-indigo-300 transition-colors"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold text-white">{notif.action}</p>
-                    <p className="text-xs text-purple-200 leading-relaxed">{notif.details}</p>
+                    <div className="pt-2 border-t border-indigo-500/10 flex items-center justify-between">
+                      <span className="text-[10px] text-indigo-300/50 font-mono">
+                        Generated: {new Date(v.timestamp).toLocaleString()}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`mailto:${v.email}?subject=Your Verification Code&body=Your code is ${v.otp}`}
+                          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-black uppercase rounded-lg transition"
+                        >
+                          Send Manually
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-purple-500/20">
+            <div className="flex justify-between items-center pt-4 border-t border-indigo-500/20">
+              <p className="text-[9px] text-indigo-400 max-w-[60%] leading-relaxed">
+                Notice: This monitor is for emergency verification support only. Codes are stored temporarily for 120 seconds or until registration completes.
+              </p>
               <button
-                onClick={() => setShowAdminNotifModal(false)}
-                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl shadow-lg transition cursor-pointer"
+                onClick={() => setShowOtpMonitor(false)}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-lg transition cursor-pointer"
               >
-                Close Notification Bell
+                Close Monitor
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 3-Admin Activity & Cross-Audit Bell Modal */}
+      <AdminAuditModal 
+        isOpen={showAdminNotifModal} 
+        onClose={() => setShowAdminNotifModal(false)} 
+        onNavigateCandidate={(regOrId) => {
+          setSearchQuery(regOrId);
+          setShowAdminNotifModal(false);
+        }}
+      />
 
     </div>
   );

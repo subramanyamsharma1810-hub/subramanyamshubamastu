@@ -1,6 +1,6 @@
 {
   "name": "Subhamastu Matrimony",
-  "description": "Shubhamastu Brahmin Matrimony (www.shubhamastu.in) - Sacred Brahmin matrimonial matchmaking with Gothra separation and traditional age alignment.",
+  "description": "Subhamastu Brahmin Matrimony - Sacred matrimonial matchmaking service.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

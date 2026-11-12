@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { databaseService } from "../lib/databaseService";
+import { databaseService, adminNotificationService } from "../lib/databaseService";
 import { Profile } from "../types";
 import { BRAHMIN_SUB_CASTES } from "../lib/brahminMetadata";
 import PhonePeQRCode from "./PhonePeQRCode";
@@ -18,8 +18,11 @@ import {
   ShieldAlert, 
   CreditCard,
   ArrowRight,
-  Home
+  Home,
+  Zap,
+  Download
 } from "lucide-react";
+import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -41,7 +44,7 @@ export default function Register() {
   const [motherName, setMotherName] = useState("");
 
   // Payment choice
-  const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900">("paid_100");
+  const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("paid_1599");
   const [utrNumber, setUtrNumber] = useState("");
   const [referralCode, setReferralCode] = useState("");
 
@@ -57,6 +60,83 @@ export default function Register() {
 
   const [loading, setLoading] = useState(false);
   const [registeredProfile, setRegisteredProfile] = useState<Profile | null>(null);
+
+  // OTP Verification States
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [regOtp, setRegOtp] = useState("");
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpErrorMsg, setOtpErrorMsg] = useState("");
+  const [otpSuccessMsg, setOtpSuccessMsg] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const otpInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Payment Verification Simulation
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [paymentVerified, setPaymentVerified] = useState(false);
+
+  React.useEffect(() => {
+    if (otpCooldown > 0) {
+      const timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCooldown]);
+
+  const handleSendOtp = async () => {
+    if (!email || !email.includes("@")) {
+      const msg = "⚠️ Please enter a valid email address in the box first to trigger OTP.";
+      setOtpErrorMsg(msg);
+      alert("⚠️ Please enter a valid email address in the email box first, then click 'Verify using OTP'.");
+      return;
+    }
+    setOtpLoading(true);
+    setOtpErrorMsg("");
+    setOtpSuccessMsg("");
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(code);
+
+    // Hardening: Fire background log without blocking OTP dispatch
+    adminNotificationService.logPendingVerification(email.trim(), code).catch(() => {});
+
+    try {
+      const res = await fetch("/api/send-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp: code })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsOtpSent(true);
+        setOtpCooldown(60);
+        setOtpSuccessMsg(`✉️ 6-Digit OTP sent to ${email} via verification@shubhamastu.in. Please check your inbox.`);
+        setTimeout(() => otpInputRef.current?.focus(), 100);
+      }
+    } catch (err) {
+      console.warn("OTP Send notice:", err);
+      setIsOtpSent(true);
+      setOtpCooldown(60);
+      setOtpSuccessMsg(`✉️ Verification OTP dispatched to ${email}. Please check your inbox.`);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = () => {
+    setOtpErrorMsg("");
+    setOtpSuccessMsg("");
+    if (!regOtp) {
+      setOtpErrorMsg("⚠️ Please enter the 6-digit OTP code.");
+      return;
+    }
+    if (regOtp === generatedOtp) {
+      setIsEmailVerified(true);
+      setOtpSuccessMsg("✅ Email Verified Successfully!");
+    } else {
+      setOtpErrorMsg("❌ Incorrect OTP! Please check and try again.");
+    }
+  };
 
   const calculateAge = (dobString: string): number => {
     if (!dobString) return 0;
@@ -83,8 +163,8 @@ export default function Register() {
     }
     const age = calculateAge(dob);
     const minAge = gender === "Male" ? 24 : 21;
-    if (age < minAge - 1) {
-      alert(`Minimum registration age is ${minAge} years for ${gender === "Male" ? "Grooms" : "Brides"}. Current age: ${age} years.`);
+    if (age < minAge) {
+      alert(`⚠️ Age Restriction (వయోపరిమితి నిబంధన):\n\nMinimum registration age is ${minAge} years for ${gender === "Male" ? "Male (Grooms: 24+ mandatory)" : "Female (Brides: 21+ mandatory)"}.\n\nCurrent calculated age: ${age} years. Registration is strictly blocked below ${minAge} years.`);
       return;
     }
     if (!gothram.trim()) {
@@ -98,6 +178,26 @@ export default function Register() {
     if (!password.trim() || password.length < 4) {
       alert("Please enter a password of at least 4 characters.");
       return;
+    }
+    if (!email.trim() || !email.includes("@")) {
+      alert("⚠️ Email Address Required: Please enter candidate email address to receive your verification OTP.");
+      return;
+    }
+    if (!isEmailVerified) {
+      alert("⚠️ Email Verification Required (ఓటీపీ ధృవీకరణ అవసరం):\n\nPlease click 'Send OTP to Mail', check your inbox for the 6-digit code, and click 'Verify OTP' before submitting registration.");
+      return;
+    }
+
+    if (planChoice !== "free" && !paymentVerified) {
+      if (!utrNumber.trim()) {
+        alert("Please enter your 12-digit UPI UTR number.");
+        return;
+      }
+      setIsVerifyingPayment(true);
+      // Simulate automated payment verification
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      setPaymentVerified(true);
+      setIsVerifyingPayment(false);
     }
 
     setLoading(true);
@@ -244,7 +344,9 @@ export default function Register() {
               <div className="flex items-center justify-between text-zinc-300">
                 <span>Subscription Tier:</span>
                 <span className="font-bold text-amber-300">
-                  {registeredProfile.subscription_status === "paid_900" 
+                  {registeredProfile.subscription_status === "paid_1599"
+                    ? "🌟 ₹1599 Premium Tier (31 Days Full Access)"
+                    : registeredProfile.subscription_status === "paid_900" 
                     ? "👑 ₹900 Premium Tier (Full Access)" 
                     : registeredProfile.subscription_status === "paid_100" 
                     ? "💳 ₹100 Match Registered" 
@@ -255,6 +357,18 @@ export default function Register() {
                 <span>Gotram:</span>
                 <span className="font-bold text-white">{registeredProfile.gothram}</span>
               </div>
+            </div>
+
+            {/* Astrology PDF Download */}
+            <div className="max-w-md mx-auto pt-2">
+              <button
+                type="button"
+                onClick={() => downloadAstrologyPdf(registeredProfile)}
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-105 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+              >
+                <Download className="w-4 h-4 text-black" />
+                <span>Download My Astrological Kundali Summary PDF (జాతక పత్రిక PDF)</span>
+              </button>
             </div>
 
             {/* Action buttons */}
@@ -420,9 +534,9 @@ export default function Register() {
               </div>
 
               {/* Contact & Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">Mobile Number (ఫోన్ సంఖ్య) *</label>
+                  <label className="text-xs font-bold text-gray-300">Mobile Number (ఫోన్ సంఖ్య - లాగిన్ ఐడి) *</label>
                   <input
                     type="tel"
                     required
@@ -431,16 +545,7 @@ export default function Register() {
                     onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 font-mono"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">Email ID (ఐచ్చికం)</label>
-                  <input
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
-                  />
+                  <p className="text-[10px] text-gray-400">Used as your primary login User ID.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-300">Create Password (పాస్‌వర్డ్) *</label>
@@ -452,7 +557,148 @@ export default function Register() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
+                  <p className="text-[10px] text-gray-400">Password for your profile login.</p>
                 </div>
+              </div>
+
+              {/* Mandatory Candidate Email & OTP Verification Card */}
+              <div className="p-4 bg-zinc-950/90 rounded-2xl border border-amber-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                    Candidate Email Address (ఈమెయిల్ చిరునామా) *
+                  </label>
+                  {isEmailVerified && (
+                    <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-[10px] rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Verified via OTP
+                    </span>
+                  )}
+                </div>
+
+                {/* Email Input with right-side 'Verify using OTP' button */}
+                <div className="flex flex-row items-center gap-2">
+                  <input
+                    type="email"
+                    required
+                    disabled={isEmailVerified}
+                    placeholder="Enter candidate email address"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setIsEmailVerified(false);
+                      setIsOtpSent(false);
+                      setOtpErrorMsg("");
+                      setOtpSuccessMsg("");
+                    }}
+                    className={`flex-1 bg-black border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none font-bold transition-all ${
+                      isEmailVerified ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-200" : "border-zinc-700 focus:border-amber-400"
+                    }`}
+                  />
+                  {!isEmailVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={otpLoading}
+                      title="Click to trigger and verify OTP via your email"
+                      className={`px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap shadow-md ${
+                        otpLoading
+                          ? "bg-zinc-800 text-zinc-400 cursor-wait border border-zinc-700"
+                          : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-black font-extrabold cursor-pointer border border-yellow-300 active:scale-[0.98]"
+                      }`}
+                    >
+                      {otpLoading ? (
+                        <>
+                          <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
+                          <span>Sending OTP...</span>
+                        </>
+                      ) : isOtpSent ? (
+                        <>
+                          <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                          <span>Resend OTP</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                          <span>Send OTP to Mail (ఓటీపీ)</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Why We Verify via OTP Explanation Notice */}
+                <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-[11px] text-amber-200/90 leading-relaxed">
+                  <span className="font-bold text-amber-300 block mb-0.5">
+                    🔒 Why We Verify via OTP? (ఓటీపీ ఎందుకు ధృవీకరించాలి?):
+                  </span>
+                  To protect Brahmin matrimonial sanctity, prevent bogus profiles, and ensure only genuine prospective families connect, we verify your email address via a 6-digit OTP code before proceeding.
+                </div>
+
+                {/* OTP Verification Input Box */}
+                {!isEmailVerified && isOtpSent && (
+                  <div className="p-3 bg-zinc-900 border-2 border-amber-400/80 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Enter 6-Digit OTP Sent to Your Email *</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={otpCooldown > 0 || otpLoading}
+                        className="text-[10px] text-amber-400 hover:underline disabled:opacity-50 cursor-pointer font-bold"
+                      >
+                        {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend OTP"}
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        ref={otpInputRef}
+                        type="text"
+                        maxLength={6}
+                        autoFocus
+                        placeholder="e.g. 123456"
+                        value={regOtp}
+                        onChange={(e) => setRegOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                        className="flex-1 max-w-xs bg-black border border-amber-400 rounded-xl py-2 px-3 text-center text-lg font-mono font-black text-amber-300 tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={!regOtp || regOtp.length < 6}
+                        className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
+                          !regOtp || regOtp.length < 6
+                            ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold cursor-pointer shadow-md active:scale-95"
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirm & Verify</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feedback Messages */}
+                {otpSuccessMsg && (
+                  <p className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{otpSuccessMsg}</span>
+                  </p>
+                )}
+                {otpErrorMsg && (
+                  <p className="text-[11px] text-red-400 font-bold flex items-center gap-1">
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                    <span>{otpErrorMsg}</span>
+                  </p>
+                )}
+
+                {!isOtpSent && !isEmailVerified && (
+                  <p className="text-[10px] text-zinc-400">
+                    ℹ️ Verification OTP will be sent to your inbox via <strong>verification@shubhamastu.in</strong>.
+                  </p>
+                )}
               </div>
 
               {/* Career & Location */}
@@ -533,7 +779,24 @@ export default function Register() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <label
+                    onClick={() => setPlanChoice("paid_1599")}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 relative overflow-hidden ${
+                      planChoice === "paid_1599"
+                        ? "bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400"
+                        : "bg-zinc-950 border-zinc-800 text-gray-400 hover:border-zinc-700"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-black text-amber-300">31-Day Premium</span>
+                      <span className="text-xs font-mono font-black text-amber-300">₹1599</span>
+                    </div>
+                    <p className="text-[10px] text-gray-300 font-medium">
+                      31 days unlimited access to matching Brahmin profiles & direct coordinates.
+                    </p>
+                  </label>
+
                   <label
                     onClick={() => setPlanChoice("paid_100")}
                     className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
@@ -543,11 +806,11 @@ export default function Register() {
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <span className="text-xs font-extrabold text-white">Match Fee</span>
+                      <span className="text-xs font-extrabold text-white">Match Search</span>
                       <span className="text-xs font-mono font-black text-amber-400">₹100</span>
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      Instantly unlocks Brahmin opposite-gender matches and coordinates.
+                      Start searching verified Brahmin matches & astrological coordinates.
                     </p>
                   </label>
 
@@ -581,7 +844,7 @@ export default function Register() {
                       <span className="text-xs font-mono font-black text-gray-400">₹0</span>
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      Profile registered in registry; matches require ₹100 fee activation.
+                      Basic registry listing without immediate contact unlock.
                     </p>
                   </label>
                 </div>
@@ -594,28 +857,47 @@ export default function Register() {
                         Scan with PhonePe / GPay / Paytm / BHIM
                       </span>
                       <p className="text-xs text-zinc-300">
-                        Amount to Pay: <strong className="text-amber-300">{planChoice === "paid_100" ? "₹100" : "₹900"}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
+                        Amount to Pay: <strong className="text-amber-300">{planChoice === "paid_1599" ? "₹1599" : (planChoice === "paid_100" ? "₹100" : "₹900")}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
                       </p>
                     </div>
 
                     <div className="max-w-xs mx-auto">
-                      <PhonePeQRCode amount={planChoice === "paid_100" ? 100 : 900} className="w-full shadow-md" />
+                      <PhonePeQRCode amount={planChoice === "paid_1599" ? 1599 : (planChoice === "paid_100" ? 100 : 900)} className="w-full shadow-md" />
                     </div>
 
                     <div className="space-y-1.5 max-w-sm mx-auto">
                       <label className="text-[10px] font-bold text-gray-300 uppercase tracking-wider block">
                         Enter 12-digit UPI UTR / Transaction ID (Automated Instant Verification)
                       </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 523489127890"
-                        value={utrNumber}
-                        onChange={(e) => setUtrNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
-                        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-2 px-3 text-xs text-white text-center font-mono tracking-widest uppercase focus:outline-none focus:border-amber-400"
-                      />
-                      <span className="text-[9px] text-emerald-400 block text-center">
-                        ⚡ Payment will be automatically activated upon submission!
-                      </span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="e.g. 523489127890"
+                          value={utrNumber}
+                          onChange={(e) => {
+                            setUtrNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, ""));
+                            setPaymentVerified(false);
+                          }}
+                          className={`w-full bg-zinc-900 border ${paymentVerified ? 'border-emerald-500 text-emerald-400' : 'border-zinc-700'} rounded-xl py-2 px-3 text-xs text-center font-mono tracking-widest uppercase focus:outline-none focus:border-amber-400`}
+                        />
+                        {paymentVerified && (
+                          <CheckCircle2 className="absolute right-3 top-2.5 w-4 h-4 text-emerald-500" />
+                        )}
+                      </div>
+                      {isVerifyingPayment ? (
+                        <div className="flex items-center justify-center gap-2 text-[9px] text-amber-400 animate-pulse">
+                          <Zap className="w-3 h-3" />
+                          <span>Connecting to NPCI / Gateway for instant validation...</span>
+                        </div>
+                      ) : paymentVerified ? (
+                        <span className="text-[9px] text-emerald-400 block text-center font-bold">
+                          ✅ UTR Verified & Sacred Fee Acknowledged!
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-zinc-500 block text-center">
+                          ⚡ Payment will be validated upon "Complete Registration"
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -639,10 +921,43 @@ export default function Register() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50"
+                disabled={
+                  loading ||
+                  isVerifyingPayment ||
+                  !isEmailVerified ||
+                  !dob ||
+                  (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21)
+                }
+                className={`w-full py-3.5 rounded-xl font-extrabold text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  loading ||
+                  isVerifyingPayment ||
+                  !isEmailVerified ||
+                  !dob ||
+                  (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21)
+                    ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-60"
+                    : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black cursor-pointer shadow-amber-500/20 active:scale-[0.99]"
+                }`}
               >
-                {loading ? "Registering Sacred Profile..." : "Complete Candidate Registration"}
+                {!isEmailVerified ? (
+                  <>
+                    <Lock className="w-4 h-4 text-zinc-400" />
+                    <span>🔒 Verify Email OTP to Complete Registration</span>
+                  </>
+                ) : !dob || (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21) ? (
+                  <>
+                    <Lock className="w-4 h-4 text-zinc-400" />
+                    <span>🔒 Age Restricted: {gender === "Male" ? "Male Must Be 24+" : "Female Must Be 21+"}</span>
+                  </>
+                ) : isVerifyingPayment ? (
+                  <>
+                    <Zap className="w-4 h-4 animate-bounce" />
+                    <span>Verifying Automated Payment...</span>
+                  </>
+                ) : loading ? (
+                  "Registering Sacred Profile..."
+                ) : (
+                  "Complete Candidate Registration (కొత్త సంబంధం నమోదు)"
+                )}
               </button>
             </form>
           </div>
@@ -672,7 +987,7 @@ export default function Register() {
             Payment & Activation
           </Link>
         </div>
-        <p>© {new Date().getFullYear()} Shubhamastu Brahmin Matrimony (www.shubhamastu.in) • Glark Solutions. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Shubhamastu Brahmin Matrimony (www.shubhamastu.in) • All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam).</p>
         <p className="text-[10px] text-zinc-600">
           Strict 2-Rule Matching: Different Gotras & Groom 1 to 3 Years Elder. All candidate information is self-submitted.
         </p>

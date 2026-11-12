@@ -2,7 +2,7 @@ import React from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import { Profile } from "../types";
 import { calculateMatchScore } from "../lib/matchEngine";
-import { Compass, X, Heart, Briefcase, MapPin } from "lucide-react";
+import { Compass, X, Heart, Briefcase, MapPin, MoreVertical } from "lucide-react";
 import { getGenderLabel } from "../lib/genderHelper";
 import { NAKSHATRAS } from "../lib/panchangam";
 
@@ -13,9 +13,10 @@ interface StackCardProps {
   isFront: boolean;
   handleSwipe: (match: Profile, direction: "left" | "right") => void;
   calculateAge: (dob: string) => number;
+  onOpenOptions?: (match: Profile) => void;
 }
 
-export function StackCard({ match, currentProfile, isFront, handleSwipe, calculateAge }: StackCardProps) {
+export function StackCard({ match, currentProfile, isFront, handleSwipe, calculateAge, onOpenOptions }: StackCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
@@ -56,6 +57,23 @@ export function StackCard({ match, currentProfile, isFront, handleSwipe, calcula
           alt={match.name}
           className="w-full h-full object-cover pointer-events-none select-none"
         />
+
+        {/* 3-Dots Quick Actions Trigger Button */}
+        {onOpenOptions && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenOptions(match);
+            }}
+            className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full bg-slate-900/60 hover:bg-slate-900 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center justify-center cursor-pointer transition-transform active:scale-90"
+            title="3-Dots Quick Actions"
+            aria-label="More options"
+          >
+            <MoreVertical className="w-5 h-5 text-amber-300" />
+          </button>
+        )}
+
         <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
           <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
           <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>

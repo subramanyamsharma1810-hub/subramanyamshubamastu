@@ -1,0 +1,297 @@
+{
+  "certification": "Google Play Store Pre-Flight Quality & Production Compliance Certificate",
+  "appletId": "e0c4cd3c-62b7-411c-b376-c3b4f5d7b695",
+  "packageId": "in.shubhamastu.matrimony",
+  "appName": "Shubhamastu Brahmin Vivaha Vedika",
+  "domain": "www.shubhamastu.in",
+  "testedAt": "2026-11-06T12:03:19.961Z",
+  "scorePercent": "100%",
+  "summary": {
+    "total": 30,
+    "passed": 30,
+    "warned": 0,
+    "failed": 0
+  },
+  "mandatoryPlayStoreTests": [
+    {
+      "num": 1,
+      "code": "GP-TST-01",
+      "name": "Mobile Viewport & 44px Touch Targets",
+      "category": "Ergonomics",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "Viewport configured for mobile devices. Touch targets meet 44px standard."
+    },
+    {
+      "num": 2,
+      "code": "GP-TST-02",
+      "name": "Vedic Match Engine & Sagotra Prohibition",
+      "category": "Vedic Engine",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "Sagotra correctly detected. Valid match scored 100%."
+    },
+    {
+      "num": 3,
+      "code": "GP-TST-03",
+      "name": "Auth Session & Token Security",
+      "category": "Security",
+      "status": "PASS",
+      "latencyMs": 1,
+      "details": "Session isolation verified. Zero private keys exposed in source."
+    },
+    {
+      "num": 4,
+      "code": "GP-TST-04",
+      "name": "Data Safety, Privacy Policy & IT Act 2021",
+      "category": "Compliance",
+      "status": "PASS",
+      "latencyMs": 31,
+      "details": "Privacy Policy, Terms of Service, and Intermediary Disclaimers accessible."
+    },
+    {
+      "num": 5,
+      "code": "GP-TST-05",
+      "name": "Account Deletion & Data Rights Workflow",
+      "category": "Compliance",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "Self-service profile suspension, data purge protocol, and exclusion lists validated."
+    },
+    {
+      "num": 6,
+      "code": "GP-TST-06",
+      "name": "Cashfree / PhonePe Payment Sandbox & Receipts",
+      "category": "Payments",
+      "status": "PASS",
+      "latencyMs": 490,
+      "details": "Sandbox order created successfully. Order ID returned with Section 65B receipt readiness."
+    },
+    {
+      "num": 7,
+      "code": "GP-TST-07",
+      "name": "3-Admin Cross-Audit Trail & Bell Logs",
+      "category": "Audit",
+      "status": "PASS",
+      "latencyMs": 1,
+      "details": "3-Admin cross-audit notifications and logging methods operational."
+    },
+    {
+      "num": 8,
+      "code": "GP-TST-08",
+      "name": "Real-Time Presence & Zero Runaway Polling",
+      "category": "Performance",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "Zero runaway polling loops. WebSocket / RTDB push notifications active."
+    },
+    {
+      "num": 9,
+      "code": "GP-TST-09",
+      "name": "Grievance Redressal Desk (IT Rules 2021)",
+      "category": "Compliance",
+      "status": "PASS",
+      "latencyMs": 1,
+      "details": "Grievance officer contact and 24-hour escalation resolution verified."
+    },
+    {
+      "num": 10,
+      "code": "GP-TST-10",
+      "name": "Vedic Kundali Ephemeris Engine",
+      "category": "Vedic Engine",
+      "status": "PASS",
+      "latencyMs": 1,
+      "details": "Computed Nakshatra: Swati, Rasi: Tula, Tithi: sravana masam suklapaksham sasti (sravana sudda sasti)."
+    },
+    {
+      "num": 11,
+      "code": "GP-TST-11",
+      "name": "3-Dots Mobile Action Sheet & Kebab Controls",
+      "category": "Ergonomics",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "3-dots slide-up drawer with WhatsApp, Kundali, Shortlist, and 1-tap admin status verify confirmed."
+    },
+    {
+      "num": 12,
+      "code": "GP-TST-12",
+      "name": "Offline Fallback & Service Worker",
+      "category": "Performance",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "Service Worker precaching and offline fallback configured."
+    },
+    {
+      "num": 13,
+      "code": "GP-TST-13",
+      "name": "Virtual Scrolling & Memory Leak Test",
+      "category": "Performance",
+      "status": "PASS",
+      "latencyMs": 1,
+      "details": "react-window virtual scrolling prevents DOM bloat under 500+ profiles."
+    },
+    {
+      "num": 14,
+      "code": "GP-TST-14",
+      "name": "Google Play Production Certificate Readiness",
+      "category": "Compliance",
+      "status": "PASS",
+      "latencyMs": 0,
+      "details": "Web App Manifest and Android Digital Asset Links verified for Google Play Store."
+    }
+  ],
+  "apiTests": [
+    {
+      "num": 20,
+      "code": "API-1",
+      "name": "Landing / Web App Entry Point",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 11,
+      "details": "HTTP 200 OK (10ms). Response size: 1402 bytes."
+    },
+    {
+      "num": 21,
+      "code": "API-2",
+      "name": "Backend Health Check",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 3,
+      "details": "HTTP 200 OK (2ms). Response size: 54 bytes."
+    },
+    {
+      "num": 22,
+      "code": "API-3",
+      "name": "Vedic Astrology Calculator API",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 5,
+      "details": "HTTP 200 OK (4ms). Response size: 1491 bytes."
+    },
+    {
+      "num": 23,
+      "code": "API-4",
+      "name": "Payment Sandbox Order API",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 123,
+      "details": "HTTP 200 OK (122ms). Response size: 170 bytes."
+    },
+    {
+      "num": 24,
+      "code": "API-5",
+      "name": "Cashfree Direct Order Gateway",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 321,
+      "details": "HTTP 200 OK (321ms). Response size: 170 bytes."
+    },
+    {
+      "num": 25,
+      "code": "API-6",
+      "name": "All-in-One Frontend ZIP",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 62,
+      "details": "HTTP 200 OK (62ms). Response size: 1769111 bytes."
+    },
+    {
+      "num": 26,
+      "code": "API-7",
+      "name": "Raw HTML/CSS/JS ZIP",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 44,
+      "details": "HTTP 200 OK (44ms). Response size: 1156213 bytes."
+    },
+    {
+      "num": 27,
+      "code": "API-8",
+      "name": "Android Play Store Package Bundle ZIP",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 4,
+      "details": "HTTP 200 OK (4ms). Response size: 8631 bytes."
+    },
+    {
+      "num": 28,
+      "code": "API-9",
+      "name": "Raw index.html Source",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 5,
+      "details": "HTTP 200 OK (5ms). Response size: 884 bytes."
+    },
+    {
+      "num": 29,
+      "code": "API-10",
+      "name": "Raw style.css Stylesheet",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 5,
+      "details": "HTTP 200 OK (4ms). Response size: 197832 bytes."
+    },
+    {
+      "num": 30,
+      "code": "API-11",
+      "name": "Raw script.js Bundle",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 55,
+      "details": "HTTP 200 OK (55ms). Response size: 4525237 bytes."
+    },
+    {
+      "num": 31,
+      "code": "API-12",
+      "name": "PWA Web App Manifest",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 5,
+      "details": "HTTP 200 OK (4ms). Response size: 1613 bytes."
+    },
+    {
+      "num": 32,
+      "code": "API-13",
+      "name": "Service Worker Script",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 3,
+      "details": "HTTP 200 OK (3ms). Response size: 2945 bytes."
+    },
+    {
+      "num": 33,
+      "code": "API-14",
+      "name": "Android Asset Links",
+      "category": "API Endpoint",
+      "status": "PASS",
+      "latencyMs": 3,
+      "details": "HTTP 200 OK (3ms). Response size: 439 bytes."
+    }
+  ],
+  "loadTests": [
+    {
+      "num": 50,
+      "code": "LOAD-01",
+      "name": "1,000 In-Memory Vedic Match Computations",
+      "category": "Load Test",
+      "status": "PASS",
+      "latencyMs": 10,
+      "details": "Computed 1,000 match scores in 9.75ms (average 0.010ms/match). High throughput sustained with 0 memory bloat."
+    },
+    {
+      "num": 51,
+      "code": "LOAD-02",
+      "name": "50 Concurrent HTTP Requests Stress Test",
+      "category": "Load Test",
+      "status": "PASS",
+      "latencyMs": 56,
+      "details": "All 50/50 concurrent requests succeeded in 55ms (~909 req/sec)."
+    }
+  ],
+  "complianceSignOff": {
+    "chiefAdministrator": "Sri G.V. Subramanyam",
+    "jointRegistrar": "Sri P.V. Subba Reddy",
+    "grievanceOfficer": "Sri Karna Tejaswar Reddy",
+    "status": "APPROVED FOR PLAY STORE DEPLOYMENT"
+  }
+}

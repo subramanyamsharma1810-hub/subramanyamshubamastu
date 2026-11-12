@@ -78,7 +78,7 @@ const INITIAL_COUPONS: Coupon[] = [
 const INITIAL_VERIFICATIONS: DefenseVerification[] = [
   {
     id: "def_1001",
-    user_id: "prof-subbu",
+    user_id: "admin-subbu",
     user_name: "Sri G.V. Subramanyam",
     user_phone: "9347359489",
     user_email: "subramanyamghadiyaram@gmail.com",
@@ -110,7 +110,7 @@ const INITIAL_VERIFICATIONS: DefenseVerification[] = [
 const INITIAL_REFERRALS: Referral[] = [
   {
     id: "ref_101",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-1",
@@ -124,7 +124,7 @@ const INITIAL_REFERRALS: Referral[] = [
   },
   {
     id: "ref_102",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-2",
@@ -138,7 +138,7 @@ const INITIAL_REFERRALS: Referral[] = [
   },
   {
     id: "ref_103",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-3",
@@ -152,7 +152,7 @@ const INITIAL_REFERRALS: Referral[] = [
   },
   {
     id: "ref_104",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-4",
@@ -166,7 +166,7 @@ const INITIAL_REFERRALS: Referral[] = [
   },
   {
     id: "ref_105",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-5",
@@ -180,7 +180,7 @@ const INITIAL_REFERRALS: Referral[] = [
   },
   {
     id: "ref_106",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-6",
@@ -194,7 +194,7 @@ const INITIAL_REFERRALS: Referral[] = [
   },
   {
     id: "ref_107",
-    referrer_id: "prof-subbu",
+    referrer_id: "admin-subbu",
     referrer_name: "Sri G.V. Subramanyam",
     referrer_code: "SHUBH-7X9A",
     referee_id: "prof-ref-7",
@@ -226,9 +226,9 @@ class ReferralCouponEngine {
           defenseVerifications: parsed.defenseVerifications || INITIAL_VERIFICATIONS,
           referrals: parsed.referrals || INITIAL_REFERRALS,
           subscriptions: parsed.subscriptions || [],
-          userReferralCodes: parsed.userReferralCodes || { "prof-subbu": "SHUBH-7X9A" },
+          userReferralCodes: parsed.userReferralCodes || { "admin-subbu": "SHUBH-7X9A" },
           userReferredBy: parsed.userReferredBy || {},
-          userDefenseStatus: parsed.userDefenseStatus || { "prof-subbu": true }
+          userDefenseStatus: parsed.userDefenseStatus || { "admin-subbu": true }
         };
       }
     } catch (err) {
@@ -240,9 +240,9 @@ class ReferralCouponEngine {
       defenseVerifications: INITIAL_VERIFICATIONS,
       referrals: INITIAL_REFERRALS,
       subscriptions: [],
-      userReferralCodes: { "prof-subbu": "SHUBH-7X9A" },
+      userReferralCodes: { "admin-subbu": "SHUBH-7X9A" },
       userReferredBy: {},
-      userDefenseStatus: { "prof-subbu": true }
+      userDefenseStatus: { "admin-subbu": true }
     };
   }
 
@@ -375,8 +375,8 @@ class ReferralCouponEngine {
   }
 
   // Validate and Apply Coupon
-  public applyCoupon(code: string, userId: string, orderAmount: number = 1500): CouponApplyResponse {
-    const BASE_PRICE = 1500; // ₹600 Registration Onboarding + ₹900 Matchmaking Access
+  public applyCoupon(code: string, userId: string, orderAmount: number = 1599): CouponApplyResponse {
+    const BASE_PRICE = 1599; // ₹1,599 for 45 days subscription plan
     const normalizedCode = (code || "").trim().toUpperCase();
 
     // Check if user has already unlocked the 6-referral milestone rate of ₹800
@@ -811,14 +811,18 @@ class ReferralCouponEngine {
       let phone = "N/A";
       let email = "user@shubhamastu.in";
 
-      if (userId === "prof-subbu") {
+      if (userId === "admin-subbu") {
         name = "Sri G.V. Subramanyam";
         phone = "+91 9347359489";
         email = "subramanyamghadiyaram@gmail.com";
-      } else if (userId === "prof-subba-reddy") {
+      } else if (userId === "admin-subba-reddy") {
         name = "Sri P.V. Subba Reddy";
-        phone = "+91 9494949494";
-        email = "subbareddy@gmail.com";
+        phone = "+91 9989079372";
+        email = "subbareddyposham@gmail.com";
+      } else if (userId === "admin-tejaswar") {
+        name = "Mr. Karna Tejaswar Reddy";
+        phone = "+91 9392551166";
+        email = "k.tejaswar567@gmail.com";
       }
 
       return {

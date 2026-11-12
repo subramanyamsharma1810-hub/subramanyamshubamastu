@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Phone, ShieldCheck, Clock, CheckCircle2, XCircle, MessageSquare, ExternalLink } from "lucide-react";
+import { Phone, ShieldCheck, Clock, CheckCircle2, XCircle, MessageSquare, ExternalLink, Zap } from "lucide-react";
 import { Profile } from "../../types";
+import { databaseService } from "../../lib/databaseService";
+import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 interface PhoneRevealWidgetProps {
   targetUser: Profile;
@@ -21,29 +24,31 @@ export default function PhoneRevealWidget({
   const isOwnProfile = currentUserId === targetUser.id;
 
   useEffect(() => {
-    async function checkStatus() {
-      if (!currentUserId) return;
-      if (isOwnProfile) {
-        setStatus("APPROVED");
-        setUnmaskedPhone(targetUser.contact_number);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/profile/${targetUser.id}?requesterId=${currentUserId}`);
-        const data = await res.json();
-        if (data.success) {
-          if (data.contactStatus) {
-            setStatus(data.contactStatus);
-          }
-          if (data.isApproved) {
-            setUnmaskedPhone(targetUser.contact_number);
+    if (!currentUserId || !targetUser.id) return;
+    if (isOwnProfile) {
+      setStatus("APPROVED");
+      setUnmaskedPhone(targetUser.contact_number);
+      return;
+    }
+
+    const revealId = `${currentUserId}_${targetUser.id}`;
+    const unsubscribe = onSnapshot(doc(db, "contact_reveals", revealId), async (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setStatus(data.status);
+        if (data.status === "APPROVED") {
+          // Double-blind: Fetch real number from private sub-collection
+          const privateData = await databaseService.getPrivateProfileData(targetUser.id);
+          if (privateData?.contact_number) {
+            setUnmaskedPhone(privateData.contact_number);
           }
         }
-      } catch (err) {
-        console.error("Failed to fetch contact reveal status:", err);
+      } else {
+        setStatus("NONE");
       }
-    }
-    checkStatus();
+    });
+
+    return () => unsubscribe();
   }, [targetUser.id, currentUserId, isOwnProfile]);
 
   const handleRequestContact = async () => {
@@ -54,7 +59,16 @@ export default function PhoneRevealWidget({
     setLoading(true);
     setErrorMessage("");
     try {
-      const res = await fetch("/api/contact/request", {
+      const revealId = `${currentUserId}_${targetUser.id}`;
+      await setDoc(doc(db, "contact_reveals", revealId), {
+        requesterId: currentUserId,
+        targetId: targetUser.id,
+        status: "PENDING",
+        requestedAt: new Date().toISOString()
+      });
+      
+      // Also trigger legacy API for email notification dispatch
+      fetch("/api/contact/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -64,15 +78,10 @@ export default function PhoneRevealWidget({
           targetEmail: targetUser.email,
           targetName: targetUser.name
         })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setStatus("PENDING");
-      } else {
-        setErrorMessage(data.message || "Failed to submit request.");
-      }
+      }).catch(err => console.warn("Email alert failed, but Firestore request logged.", err));
+
     } catch (err: any) {
-      setErrorMessage(err.message || "Network error. Please try again.");
+      setErrorMessage(err.message || "Failed to submit request.");
     } finally {
       setLoading(false);
     }

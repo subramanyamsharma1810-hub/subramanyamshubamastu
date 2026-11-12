@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { List } from "react-window";
 import { Profile, PartnerPreferences, Grievance } from "../types";
 import { databaseService } from "../lib/databaseService";
 import PhonePeQRCode from "./PhonePeQRCode";
@@ -36,8 +37,16 @@ import {
   Layers,
   LayoutGrid,
   MessageSquare,
-  Video
+  Video,
+  MoreVertical,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2
 } from "lucide-react";
+import MobileActionSheet from "./MobileActionSheet";
+import PlayStoreTestingDesk from "./PlayStoreTestingDesk";
+import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 
 interface MatchListProps {
   currentProfile: Profile;
@@ -64,6 +73,23 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
     return found ? found.telugu : engName;
   };
 
+  const ShimmerCard = () => (
+    <div className="bg-white rounded-3xl border border-gray-100 p-0 overflow-hidden shadow-sm animate-pulse flex flex-col h-[560px]">
+      <div className="h-56 bg-gray-100 w-full" />
+      <div className="p-6 flex-1 space-y-6">
+        <div className="space-y-3">
+          <div className="h-6 bg-gray-100 rounded-lg w-3/4" />
+          <div className="h-3 bg-gray-50 rounded-lg w-1/2" />
+        </div>
+        <div className="bg-blue-50/50 h-10 rounded-xl w-full" />
+        <div className="pt-4 border-t border-gray-50 space-y-2">
+          <div className="h-10 bg-gray-100 rounded-xl w-full" />
+          <div className="h-10 bg-gray-50 rounded-xl w-full" />
+        </div>
+      </div>
+    </div>
+  );
+
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<Profile | null>(null);
@@ -75,12 +101,40 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
   const [copySuccess, setCopySuccess] = useState<"phone" | "upi" | null>(null);
 
+  // Lightbox gallery states
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxPhotos, setLightboxPhotos] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
   const [showPandithModal, setShowPandithModal] = useState(false);
   const [meetDateTarget, setMeetDateTarget] = useState<Profile | null>(null);
   const [pelliChupuluTarget, setPelliChupuluTarget] = useState<Profile | null>(null);
   const [meetDateForm, setMeetDateForm] = useState({ date: "", time: "11:00 AM", location: "Temple Premises / Family Lounge", note: "" });
   const [pelliChupuluForm, setPelliChupuluForm] = useState({ date: "", venue: "Bride's Residence / Function Hall", note: "" });
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const [kebabSelectedMatch, setKebabSelectedMatch] = useState<Profile | null>(null);
+  
+  const isUserAdmin = Boolean(
+    (typeof window !== "undefined" && localStorage.getItem("bramhana_admin_session") === "true") ||
+    currentProfile?.id === "admin-subbu" ||
+    currentProfile?.id === "admin-subba-reddy" ||
+    currentProfile?.id === "admin-tejaswar" ||
+    currentProfile?.id === "admin-praveen" ||
+    currentProfile?.role === "admin" ||
+    currentProfile?.role === "super_admin"
+  );
+
+  const [adminMatchMode, setAdminMatchMode] = useState<"all" | "simulate_groom" | "simulate_bride" | "strict">(() => {
+    return isUserAdmin ? "all" : "strict";
+  });
+  const [showPlayStoreTestingModal, setShowPlayStoreTestingModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleOpenPlayStore = () => setShowPlayStoreTestingModal(true);
+    window.addEventListener("open-playstore-testing", handleOpenPlayStore);
+    return () => window.removeEventListener("open-playstore-testing", handleOpenPlayStore);
+  }, []);
 
   // Chat & Call state
   const [activeChatMatch, setActiveChatMatch] = useState<Profile | null>(null);
@@ -334,9 +388,11 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         const matches = allProfiles.filter(
           (p) => {
             const isOwn = p.id === currentProfile.id;
-            const isSubbu = p.id === "prof-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
-            const isSubbaReddy = p.id === "prof-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9494949494");
-            return !isOwn && !isSubbu && !isSubbaReddy;
+            const isSubbu = p.id === "admin-subbu" || p.contact_number?.replace(/\D/g, "").includes("9347359489");
+            const isSubbaReddy = p.id === "admin-subba-reddy" || p.contact_number?.replace(/\D/g, "").includes("9989079372");
+            const isKarna = p.id === "admin-tejaswar" || p.contact_number?.replace(/\D/g, "").includes("9392551166");
+            const isPraveen = p.id === "admin-praveen" || p.contact_number?.replace(/\D/g, "").includes("9876543219") || p.email?.toLowerCase() === "praveenproq@gmail.com";
+            return !isOwn && !isSubbu && !isSubbaReddy && !isKarna && !isPraveen;
           }
         );
         setProfiles(matches);
@@ -365,6 +421,31 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const filteredMatches = profiles.filter((partner) => {
     // Exclude married profiles
     if ((partner.status as string) === "Married") return false;
+
+    // --- 👑 ADMIN TESTING & MATCH SIMULATOR BYPASS ---
+    // Enables administrators (Sri Subramanyam, Sri Subba Reddy, Sri Tejaswar Reddy)
+    // to test candidate matching and controls before Play Store deployment
+    if (isUserAdmin) {
+      if (adminMatchMode === "all") {
+        return true; // Admins can audit and test all candidates
+      }
+      if (adminMatchMode === "simulate_groom") {
+        // Test as a 28-year-old Groom (Male, Bharadwaja Gotram)
+        if (partner.gender !== "Female") return false;
+        if (partner.gothram?.trim().toLowerCase() === "bharadwaja") return false;
+        const partnerAge = calculateAge(partner.dob);
+        const ageDiff = 28 - partnerAge;
+        return ageDiff >= 1 && ageDiff <= 3;
+      }
+      if (adminMatchMode === "simulate_bride") {
+        // Test as a 25-year-old Bride (Female, Kasyapa Gotram)
+        if (partner.gender !== "Male") return false;
+        if (partner.gothram?.trim().toLowerCase() === "kasyapa") return false;
+        const partnerAge = calculateAge(partner.dob);
+        const ageDiff = partnerAge - 25;
+        return ageDiff >= 1 && ageDiff <= 3;
+      }
+    }
 
     // Exclude disliked / not interested profiles reciprocally
     if (currentProfile.disliked_profiles?.includes(partner.id)) return false;
@@ -500,7 +581,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
   const handleUnlockContact = (matchId: string) => {
     const subStatus = currentProfile.subscription_status || "free";
-    if (subStatus !== "paid_900") {
+    const isPaidMember = subStatus === "paid_900" || subStatus === "paid_1599";
+    if (!isPaidMember) {
       setShowUpgradeModal(true);
       return;
     }
@@ -571,6 +653,89 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   return (
     <>
       <div className="space-y-8">
+      {/* 👑 ADMIN TESTING & MATCH SIMULATOR DOCK */}
+      {isUserAdmin && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-yellow-500/15 border-2 border-amber-400 p-4 sm:p-5 rounded-3xl shadow-sm text-left space-y-3 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-400/30 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-400 text-slate-950 rounded-xl font-black text-xs shadow-xs">
+                👑
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-[#362B5A] uppercase tracking-tight flex items-center gap-1.5">
+                  <span>Admin Match Testing & QA Simulator</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-400/40 text-amber-950 font-black">
+                    Play Store Suite
+                  </span>
+                </h3>
+                <p className="text-[11px] text-amber-950 font-medium">
+                  Admins can bypass age/gender restrictions to test match discovery, 3-dots actions, and 14 Play Store pre-flight tests.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPlayStoreTestingModal(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-center active:scale-95"
+            >
+              <span>🧪 14 Mandatory Play Store Tests</span>
+            </button>
+          </div>
+
+          {/* Testing Mode Selector */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[10px] font-mono font-bold text-gray-600 uppercase tracking-wider">
+              Testing Mode:
+            </span>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "all"
+                  ? "bg-[#362B5A] text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              ✓ All Candidates ({profiles.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("simulate_groom")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "simulate_groom"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              🤵 Simulate Groom (28yo, Bharadwaja)
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("simulate_bride")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "simulate_bride"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              👰 Simulate Bride (25yo, Kasyapa)
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminMatchMode("strict")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                adminMatchMode === "strict"
+                  ? "bg-amber-500 text-slate-950 shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              🔒 Strict Personal Rules
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Intro Match Screen */}
       <div className="bg-gradient-to-r from-[#362B5A] to-[#C2242C]/10 p-6 sm:p-8 rounded-3xl text-[#362B5A] bg-[#EBF6FF] border border-[#362B5A]/10 relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="space-y-2">
@@ -711,7 +876,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         </div>
       </div>
 
-      {currentProfile.subscription_status !== "paid_900" && (
+      {currentProfile.subscription_status !== "paid_900" && currentProfile.subscription_status !== "paid_1599" && (
         <div className="bg-amber-50 border border-amber-200 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
@@ -725,7 +890,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 </span>
               </p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Only <span className="font-bold">Paid ₹900</span> members can retrieve verified phone numbers and sacred Kundali attachments. Upgrade now to unlock immediate access.
+                Only <span className="font-bold">Paid Premium (₹1,599 / ₹900)</span> members can retrieve verified phone numbers and sacred Kundali attachments. Upgrade now to unlock immediate access.
               </p>
             </div>
           </div>
@@ -733,20 +898,22 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             onClick={() => setShowUpgradeModal(true)}
             className="w-full sm:w-auto bg-[#C2242C] text-white hover:bg-opacity-95 active:scale-95 transition-all font-bold text-xs py-2.5 px-5 rounded-xl uppercase tracking-wider cursor-pointer shrink-0 shadow-sm"
           >
-            Upgrade to Paid_900
+            Upgrade to Full Access
           </button>
         </div>
       )}
 
-      {currentProfile.subscription_status === "paid_900" && (
+      {(currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599") && (
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-3xl flex items-center gap-3">
           <div className="p-2 bg-emerald-100 text-emerald-800 rounded-2xl shrink-0">
             <CheckCircle2 className="w-5 h-5 text-emerald-700" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-bold text-emerald-900">Supreme Alignment Active (Paid ₹900)</p>
+            <p className="text-sm font-bold text-emerald-900">
+              Supreme Alignment Active ({currentProfile.subscription_status === "paid_1599" ? "Paid ₹1,599 • 31 Days" : "Paid ₹900"})
+            </p>
             <p className="text-xs text-emerald-700 mt-0.5">
-              You have full, unrestricted access to unlock contact details and establish divine matrimonial connection lines.
+              You have full, unrestricted access to unlock contact details, initiate calls, and establish divine matrimonial connection lines.
             </p>
           </div>
         </div>
@@ -892,12 +1059,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
       )}
 
       {loading ? (
-        <div className="py-20 text-center space-y-4">
-          <svg className="animate-spin h-8 w-8 text-[#C2242C] mx-auto" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <p className="text-sm text-gray-500 font-bold font-mono">Consulting the Constellations...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {[...Array(6)].map((_, i) => <ShimmerCard key={i} />)}
         </div>
       ) : sortedMatches.length === 0 ? (
         <div className="py-12 bg-[#362B5A] text-white rounded-3xl border-2 border-amber-400 text-center max-w-2xl mx-auto p-8 sm:p-12 space-y-6 relative overflow-hidden shadow-xl animate-fade-in">
@@ -987,6 +1150,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                     isFront={index === array.length - 1}
                     handleSwipe={handleSwipe}
                     calculateAge={calculateAge}
+                    onOpenOptions={(p) => setKebabSelectedMatch(p)}
                   />
                 ))}
               </AnimatePresence>
@@ -999,203 +1163,150 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {sortedMatches.map((match) => {
-                const scoreDetails = calculateMatchScore(currentProfile, match);
-                const matchScore = scoreDetails.totalScore;
-                const age = calculateAge(match.dob);
+            <div className="w-full">
+              {/* Virtualized List Container */}
+              <List
+                height={800}
+                rowCount={Math.ceil(sortedMatches.length / (window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1))}
+                rowHeight={600}
+                width="100%"
+                className="scrollbar-hide"
+                rowProps={{}}
+                rowComponent={({ index, style }) => {
+                  const columns = window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1;
+                  const rowMatches = sortedMatches.slice(index * columns, (index + 1) * columns);
+                  
+                  return (
+                    <div style={style} className="px-1 sm:px-4 lg:px-6">
+                      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-8`}>
+                        {rowMatches.map((match) => {
+                        const scoreDetails = calculateMatchScore(currentProfile, match);
+                        const matchScore = scoreDetails.totalScore;
+                        const age = calculateAge(match.dob);
 
-                return (
-                  <div
-                    key={match.id}
-                    className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative"
-                  >
-                    {/* Image Section */}
-                    <div className="h-56 w-full relative overflow-hidden bg-gray-50">
-                      <img
-                        src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
-                        alt={match.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {/* Score Overlap */}
-                      <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm shadow-md px-3 py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
-                        <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
-                        <span className="text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
-                      </div>
+                        return (
+                          <div
+                            key={match.id}
+                            className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-[#362B5A]/15 transition-all duration-300 overflow-hidden flex flex-col group relative min-h-[500px] sm:h-[560px]"
+                          >
+                            {/* Image Section */}
+                            <div className="h-48 sm:h-56 w-full relative overflow-hidden bg-gray-50">
+                              <img
+                                src={match.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
+                                alt={match.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
 
-                      {/* Gender and Subcaste badge */}
-                      <div className="absolute bottom-4 left-4 flex gap-1.5">
-                        <span className="bg-[#362B5A] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
-                          {match.sub_caste}
-                        </span>
-                        <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
-                          {match.height_feet} Ft
-                        </span>
+                              {/* 3-Dots Quick Actions Button (Modern Mobile & Desktop Trigger) */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setKebabSelectedMatch(match);
+                                }}
+                                className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-900/65 hover:bg-slate-900 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center justify-center cursor-pointer transition-transform active:scale-90"
+                                title="3-Dots Quick Controls (Admin & User)"
+                                aria-label={`3-dots actions for ${match.name}`}
+                              >
+                                <MoreVertical className="w-5 h-5 text-amber-300" />
+                              </button>
+
+                              {/* Score Overlap */}
+                              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-white/95 backdrop-blur-sm shadow-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-2xl flex items-center gap-1.5 border border-orange-500/10">
+                                <Compass className="w-3.5 h-3.5 text-[#C2242C] animate-spin" />
+                                <span className="text-[11px] sm:text-xs font-extrabold text-[#362B5A] font-mono">{matchScore}% Match</span>
+                              </div>
+
+                              {/* Gender and Subcaste badge */}
+                              <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 flex gap-1.5">
+                                <span className="bg-[#362B5A] text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                                  {match.sub_caste}
+                                </span>
+                                <span className="bg-[#C2242C] text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wider shadow-sm font-mono">
+                                  {match.height_feet} Ft
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Info Details */}
+                            <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-lg font-bold text-[#362B5A] leading-tight flex items-center gap-1.5 truncate">
+                                      {match.name}
+                                      {match.status === "Premium" && (
+                                        <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
+                                      )}
+                                    </h4>
+                                    <div className="text-[10px] text-[#C2242C] font-extrabold mt-0.5 uppercase">
+                                      {getGenderLabel(match.gender)}
+                                    </div>
+                                    <p className="text-xs text-gray-600 font-semibold mt-1 truncate">{match.profession}</p>
+                                  </div>
+                                  <span className="text-sm font-extrabold text-[#362B5A] font-sans shrink-0 ml-2">{age} yrs</span>
+                                </div>
+
+                                {/* Astrological Micro Indicators */}
+                                {match.astrology && (
+                                  <div className="bg-[#EBF6FF] p-2.5 rounded-xl border border-blue-100 flex items-center justify-between text-[10px]">
+                                    <div>
+                                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">నక్షత్రం</span>
+                                      <span className="font-bold text-[#362B5A]">{getNakshatraTelugu(match.astrology.nakshatra)}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider block">తిథి</span>
+                                      <span className="font-bold text-[#C2242C] truncate max-w-[80px] inline-block">{match.astrology.tithi.split(" (")[0]}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Actions */}
+                              <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSwipe(match, "right")}
+                                    className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                                  >
+                                    <Heart className="w-3.5 h-3.5 fill-white" />
+                                    <span>Express Interest</span>
+                                  </button>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setSelectedMatch(match)}
+                                    className="flex-1 py-2 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
+                                  >
+                                    View Sacred Details
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setKebabSelectedMatch(match);
+                                    }}
+                                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-100 text-[#362B5A] hover:text-amber-900 border border-gray-200 transition-all cursor-pointer flex items-center justify-center min-w-[44px]"
+                                    title="More quick options (WhatsApp, Shortlist, Admin verify)"
+                                    aria-label="More options"
+                                  >
+                                    <MoreVertical className="w-4 h-4 text-amber-600" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                       </div>
                     </div>
-
-                    {/* Info Details */}
-                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="text-xl font-bold text-[#362B5A] leading-tight flex items-center gap-1.5">
-                              {match.name}
-                              {match.status === "Premium" && (
-                                <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
-                              )}
-                            </h4>
-                            <div className="text-xs text-[#C2242C] font-extrabold mt-0.5">
-                              {getGenderLabel(match.gender)}
-                            </div>
-                            <p className="text-sm text-gray-600 font-semibold mt-1">{match.profession}</p>
-                          </div>
-                          <span className="text-lg font-extrabold text-[#362B5A] font-sans shrink-0">{age} yrs</span>
-                        </div>
-
-                        {/* Astrological Micro Indicators */}
-                        {match.astrology && (
-                          <div className="bg-[#EBF6FF] p-3 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
-                            <div>
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">నక్షత్రం (Nakshatra)</span>
-                              <span className="font-bold text-[#362B5A]">{getNakshatraTelugu(match.astrology.nakshatra)} ({match.astrology.nakshatra})</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">తిథి (Lunar Tithi)</span>
-                              <span className="font-bold text-[#C2242C] truncate max-w-[120px] inline-block">{match.astrology.tithi.split(" (")[0]}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Salary & Location stats */}
-                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-semibold pt-1">
-                          <div className="flex items-center gap-1">
-                            <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span>₹ {match.salary_lpa} LPA</span>
-                          </div>
-                          <div className="flex items-center gap-1 justify-end text-right">
-                            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span className="truncate">{match.birth_location || "Varanasi"}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
-                        {(currentProfile.liked_profiles?.includes(match.id) || localSwiped[match.id] === 'right') ? (
-                          <div className="space-y-2">
-                            <div className="bg-pink-50 border border-pink-200 text-pink-700 px-3 py-1.5 rounded-xl text-xs font-black flex items-center justify-between">
-                              <span className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5 fill-pink-600 text-pink-600 animate-pulse" /> Interest Expressed</span>
-                              <span className="text-[10px] font-mono font-bold text-pink-500">3 Actions Active</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-1.5">
-                              <button
-                                onClick={() => setShowPandithModal(true)}
-                                className="py-2 px-1 bg-amber-500 hover:bg-amber-400 text-black font-bold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs"
-                                title="Consult Vedic Priest for Jatakas"
-                              >
-                                <span>📿 Consult</span>
-                                <span className="text-[9px] font-normal font-mono">Priest</span>
-                              </button>
-                              <button
-                                onClick={() => setMeetDateTarget(match)}
-                                className="py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs"
-                                title="Ask for Meet & Date"
-                              >
-                                <span>☕ Meet &</span>
-                                <span className="text-[9px] font-normal font-mono">Date</span>
-                              </button>
-                              <button
-                                onClick={() => setPelliChupuluTarget(match)}
-                                className="py-2 px-1 bg-[#C2242C] hover:bg-red-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 shadow-xs"
-                                title="Ask for Pellikupulu Ceremony"
-                              >
-                                <span>🪔 Pelli</span>
-                                <span className="text-[9px] font-normal font-mono">Chupulu</span>
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSwipe(match, "left")}
-                              className="py-2.5 px-3 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
-                              title="Not Interested"
-                            >
-                              <X className="w-4 h-4" />
-                              <span>Not Interested</span>
-                            </button>
-                            <button
-                              onClick={() => handleSwipe(match, "right")}
-                              className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                              title="Express Interest"
-                            >
-                              <Heart className="w-4 h-4 fill-white animate-pulse" />
-                              <span>Express Interest</span>
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            onClick={() => setSelectedMatch(match)}
-                            className="flex-1 py-2 px-3 rounded-xl border border-[#362B5A]/25 text-[#362B5A] hover:bg-[#362B5A] hover:text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 cursor-pointer text-center"
-                          >
-                            Sacred Details
-                          </button>
-                          <a
-                            href={`tel:${match.contact_number}`}
-                            className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                          >
-                            <Phone className="w-3.5 h-3.5 animate-pulse" />
-                            <span>{maskMobileNumber(match.contact_number)}</span>
-                          </a>
-                        </div>
-                        {/* Instant Chat & Video/Audio Call Action Bar */}
-                        <div className="grid grid-cols-3 gap-1.5 pt-1">
-                          <button
-                            onClick={() => {
-                              markAsRead(match.id);
-                              setActiveChatMatch(match);
-                            }}
-                            className="py-2 px-1 bg-[#362B5A] hover:bg-[#4A3D78] text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer relative"
-                            title="Instant Real-Time Chat"
-                          >
-                            <MessageSquare className="w-3 h-3 text-amber-300" />
-                            <span>Chat</span>
-                            {getUnreadCount(match.id) > 0 && (
-                              <span className="absolute -top-2 -right-1 bg-emerald-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full animate-bounce border-2 border-white shadow-lg font-mono flex items-center gap-0.5">
-                                {getUnreadCount(match.id)}
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleStartCallRequest(match, "audio")}
-                            disabled={isCallingLoading}
-                            className="py-2 px-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                            title="Request Audio Call with Email Alert"
-                          >
-                            <Phone className="w-3 h-3" />
-                            <span>Audio</span>
-                          </button>
-                          <button
-                            onClick={() => handleStartCallRequest(match, "video")}
-                            disabled={isCallingLoading}
-                            className="py-2 px-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                            title="Request Video Call with Email Alert"
-                          >
-                            <Video className="w-3 h-3" />
-                            <span>Video</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                }}
+              />
             </div>
           )}
-      </div>
-    )}
+        </div>
+      )}
 
       {/* Mutual Match Modal */}
       <AnimatePresence>
@@ -1315,43 +1426,49 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
             {/* Divine Photo Gallery */}
             <div className="space-y-3 pb-6 border-b border-gray-100">
-              <h4 className="text-sm font-black text-[#362B5A] uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#C2242C]" />
-                Auspicious Portrait Gallery (చిత్రమాలిక)
+              <h4 className="text-sm font-black text-[#362B5A] uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#C2242C]" />
+                  Auspicious Portrait Gallery (చిత్రమాలిక)
+                </span>
+                <span className="text-[10px] text-zinc-500 font-mono font-normal">Click to view fullscreen lightbox</span>
               </h4>
               <div className="grid grid-cols-3 gap-3">
-                <div className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all">
-                  <img
-                    src={selectedMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400"}
-                    alt="Primary Photo"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
-                    Primary
-                  </div>
-                </div>
-
-                <div className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all">
-                  <img
-                    src={selectedMatch.photo_url_2 || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400"}
-                    alt="Second Photo"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
-                    Portrait 2
-                  </div>
-                </div>
-
-                <div className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all">
-                  <img
-                    src={selectedMatch.photo_url_3 || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400"}
-                    alt="Third Photo"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
-                    Portrait 3
-                  </div>
-                </div>
+                {[
+                  { url: selectedMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400", label: "Primary" },
+                  { url: selectedMatch.photo_url_2 || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400", label: "Portrait 2" },
+                  { url: selectedMatch.photo_url_3 || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400", label: "Portrait 3" }
+                ].map((item, idx) => {
+                  const allPhotos = [
+                    selectedMatch.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=400",
+                    selectedMatch.photo_url_2 || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400",
+                    selectedMatch.photo_url_3 || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400"
+                  ];
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setLightboxPhotos(allPhotos);
+                        setLightboxIndex(idx);
+                        setLightboxOpen(true);
+                      }}
+                      className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 hover:border-[#C2242C] transition-all cursor-pointer"
+                      title="Click to view fullscreen lightbox carousel"
+                    >
+                      <img
+                        src={item.url}
+                        alt={item.label}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute bottom-1.5 left-1.5 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded-md font-mono">
+                        {item.label}
+                      </div>
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1506,6 +1623,16 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                             </div>
                           </div>
                         )}
+
+                        {/* Download Match Astrological Summary PDF */}
+                        <button
+                          type="button"
+                          onClick={() => downloadAstrologyPdf(selectedMatch)}
+                          className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-105 active:scale-[0.99] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+                        >
+                          <Download className="w-4 h-4 text-black" />
+                          <span>Download {selectedMatch.name}'s Kundali & Astrology PDF (జాతక పత్రిక PDF)</span>
+                        </button>
                       </div>
                     )}
 
@@ -2192,6 +2319,94 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 Dismiss
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modern 3-Dots Mobile Action Sheet (Native App Style Drawer) */}
+      <MobileActionSheet
+        isOpen={Boolean(kebabSelectedMatch)}
+        onClose={() => setKebabSelectedMatch(null)}
+        match={kebabSelectedMatch}
+        currentProfile={currentProfile}
+        isAdmin={isUserAdmin}
+        onExpressInterest={(p) => handleSwipe(p, "right")}
+        onViewDetails={(p) => setSelectedMatch(p)}
+        onOpenDateProposal={(p) => {
+          setDateProposalTarget(p);
+          setDateProposalText(`Namaskaram 🙏, I am ${currentProfile.name}. I saw your profile expressed interest in mine. I want a date / meet with you, what do you feel? (మీతో డేట్ లేదా కలవాలని అనుకుంటున్నాను, మీ అభిప్రాయం ఏమిటి?)`);
+        }}
+        onOpenPandith={() => setShowPandithModal(true)}
+        onReportGrievance={() => {
+          alert("Opening Grievance Cell desk for report submission.");
+          window.location.href = "/grievances";
+        }}
+        onStatusUpdated={(updated) => {
+          setProfiles((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+          onUpdateProfile(updated);
+        }}
+      />
+
+      {/* 👑 Google Play Store 14 Mandatory Pre-Flight QA & Testing Cockpit */}
+      <PlayStoreTestingDesk
+        isOpen={showPlayStoreTestingModal}
+        onClose={() => setShowPlayStoreTestingModal(false)}
+        allProfiles={profiles}
+        currentProfile={currentProfile}
+        onActivateAdminTestingMode={(mode) => setAdminMatchMode(mode)}
+      />
+
+      {/* Lightbox-Style Fullscreen Mobile-Optimized Carousel Gallery */}
+      {lightboxOpen && lightboxPhotos.length > 0 && (
+        <div className="fixed inset-0 bg-black/95 z-[500] backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-8 animate-in fade-in duration-200 select-none">
+          <div className="w-full max-w-5xl flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 font-mono text-xs sm:text-sm font-bold text-amber-300">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Auspicious Portrait {lightboxIndex + 1} of {lightboxPhotos.length}</span>
+            </div>
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="p-2.5 bg-zinc-800 hover:bg-[#C2242C] text-white rounded-full transition-all cursor-pointer border border-zinc-700 shadow-xl"
+              title="Close Lightbox"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="relative flex-1 w-full max-w-4xl flex items-center justify-center px-2 py-4">
+            <button
+              onClick={() => setLightboxIndex((prev) => (prev === 0 ? lightboxPhotos.length - 1 : prev - 1))}
+              className="absolute left-2 sm:left-4 z-10 p-3 bg-black/60 hover:bg-black text-white rounded-full transition-all cursor-pointer border border-white/20 shadow-2xl"
+              title="Previous Photo"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+
+            <img
+              src={lightboxPhotos[lightboxIndex]}
+              alt={`Portrait ${lightboxIndex + 1}`}
+              className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl border-2 border-amber-500/40 select-none"
+            />
+
+            <button
+              onClick={() => setLightboxIndex((prev) => (prev === lightboxPhotos.length - 1 ? 0 : prev + 1))}
+              className="absolute right-2 sm:right-4 z-10 p-3 bg-black/60 hover:bg-black text-white rounded-full transition-all cursor-pointer border border-white/20 shadow-2xl"
+              title="Next Photo"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto py-2 px-4 max-w-xl">
+            {lightboxPhotos.map((photo, idx) => (
+              <button
+                key={idx}
+                onClick={() => setLightboxIndex(idx)}
+                className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${idx === lightboxIndex ? "border-amber-400 scale-105 shadow-md" : "border-transparent opacity-60 hover:opacity-100"}`}
+              >
+                <img src={photo} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
           </div>
         </div>
       )}

@@ -3,8 +3,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Singleton S3 Client initialized with Cloudflare R2 Credentials
 function getR2Client() {
-  const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "490939d2e2ba22c6329dc85cbf363ca2";
-  const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "0611e270af2dcac9bf26f85cc533fdb640b7bdc8b649617d504c9deff1bf7f9f";
+  const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "";
+  const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "";
   const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || "https://32b3e56224ba3dca35f04eae6392e78a.r2.cloudflarestorage.com";
 
   return new S3Client({

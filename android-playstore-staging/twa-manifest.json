@@ -1,0 +1,43 @@
+{
+  "packageId": "in.shubhamastu.matrimony",
+  "host": "ais-dev-jr7vjinyphtz42ys53amum-666488258388.asia-east1.run.app",
+  "name": "Shubhamastu Brahmin Matrimony",
+  "launcherName": "Shubhamastu",
+  "themeColor": "#362B5A",
+  "navigationColor": "#362B5A",
+  "backgroundColor": "#FAF7F2",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "/icons/icon-512x512.png",
+  "maskableIconUrl": "/icons/icon-512x512.png",
+  "appVersionName": "2.4.0",
+  "appVersionCode": 240,
+  "shortcuts": [
+    {
+      "name": "Matches",
+      "shortName": "Matches",
+      "url": "/#matches",
+      "icon": "/icons/icon-192x192.png"
+    },
+    {
+      "name": "Kundali Astrology",
+      "shortName": "Kundali",
+      "url": "/#kundali",
+      "icon": "/icons/icon-192x192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://ais-dev-jr7vjinyphtz42ys53amum-666488258388.asia-east1.run.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  }
+}
