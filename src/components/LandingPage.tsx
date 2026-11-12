@@ -759,9 +759,16 @@ export default function LandingPage({
       const match = await databaseService.getProfileByPhone(inputClean);
 
       if (match) {
+        const normalizedEntered = passClean.replace(/[-/]/g, "");
+        const normalizedDob = match.dob.replace(/[-/]/g, "");
+        const dobParts = match.dob.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+        const legacyDobPasswords = dobParts
+          ? [normalizedDob, `${dobParts[3]}${dobParts[2]}${dobParts[1]}`, `${dobParts[3]}${dobParts[2]}${dobParts[1].slice(2)}`]
+          : [normalizedDob];
+        const isLegacyDobPassword = legacyDobPasswords.includes(normalizedEntered);
         const passwordMatches = match.password_hash
           ? await verifyPassword(passClean, match.password_hash)
-          : Boolean(match.password && match.password === passClean);
+          : Boolean(match.password && !isLegacyDobPassword && match.password === passClean);
 
         if (passwordMatches) {
           if (!match.password_hash && match.password) {
