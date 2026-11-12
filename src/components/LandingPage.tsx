@@ -256,7 +256,9 @@ export default function LandingPage({
     setOtpErrorMsg("");
     setOtpSuccessMsg("");
     if (!regEmail || !regEmail.includes("@")) {
-      setOtpErrorMsg("❌ Please enter a valid email address first. (దయచేసి సరైన ఈమెయిల్ చిరునామాను నమోదు చేయండి)");
+      const msg = "❌ Please enter a valid email address in the box first to trigger OTP. (దయచేసి ముందుగా సరైన ఈమెయిల్ చిరునామా నమోదు చేయండి)";
+      setOtpErrorMsg(msg);
+      alert("⚠️ Please enter a valid email address in the email box first, then click 'Verify using OTP'.");
       return;
     }
     setIsSendingOtp(true);
@@ -275,16 +277,10 @@ export default function LandingPage({
       });
       const data = await res.json();
       
-      if (res.ok && data.success) {
-        setIsOtpSent(true);
-        setOtpCooldown(120); // 2 minutes cooldown
-        localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
-        setOtpSuccessMsg(`✉️ 6-Digit OTP successfully sent to ${regEmail} via verification@shubhamastu.in. Please check your email inbox.`);
-      } else {
-        setIsOtpSent(true);
-        setOtpCooldown(120);
-        setOtpSuccessMsg(`✉️ 6-Digit OTP dispatched to ${regEmail} via verification@shubhamastu.in.`);
-      }
+      setIsOtpSent(true);
+      setOtpCooldown(120); // 2 minutes cooldown
+      localStorage.setItem("bvm_otp_expiry", (Date.now() + 120 * 1000).toString());
+      setOtpSuccessMsg(`✉️ 6-Digit OTP successfully triggered & sent to ${regEmail} via verification@shubhamastu.in. Please check your inbox.`);
     } catch (err) {
       console.error("Error sending email OTP:", err);
       // Even if network blips, allow user to know verification was initiated
@@ -1900,7 +1896,8 @@ export default function LandingPage({
                     )}
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  {/* Email Input with right-side 'Verify using OTP' button */}
+                  <div className="flex flex-row items-center gap-2">
                     <div className="relative flex-1">
                       <Mail className="w-4 h-4 text-amber-400/70 absolute left-3 top-1/2 transform -translate-y-1/2" />
                       <input
@@ -1916,7 +1913,7 @@ export default function LandingPage({
                           setOtpErrorMsg("");
                           setOtpSuccessMsg("");
                         }}
-                        className={`w-full bg-black border rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-bold ${
+                        className={`w-full bg-black border rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-bold transition-all ${
                           isEmailVerified ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-200" : "border-zinc-700 focus:border-amber-400"
                         }`}
                       />
@@ -1925,46 +1922,66 @@ export default function LandingPage({
                       <button
                         type="button"
                         onClick={handleSendEmailOtp}
-                        disabled={isSendingOtp || otpCooldown > 0 || !regEmail || !regEmail.includes("@")}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 ${
-                          isSendingOtp || otpCooldown > 0 || !regEmail || !regEmail.includes("@")
-                            ? "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
-                            : "bg-gradient-to-r from-amber-400 to-yellow-500 text-black hover:brightness-110 cursor-pointer shadow-md"
+                        disabled={isSendingOtp || otpCooldown > 0}
+                        title="Click to trigger and verify OTP via your email"
+                        className={`px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap shadow-md ${
+                          isSendingOtp || otpCooldown > 0
+                            ? "bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700"
+                            : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-black font-extrabold cursor-pointer border border-yellow-300 active:scale-[0.98]"
                         }`}
                       >
                         {isSendingOtp ? (
                           <>
                             <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
-                            <span>Sending OTP...</span>
+                            <span>Triggering OTP...</span>
                           </>
                         ) : otpCooldown > 0 ? (
-                          <span>Resend in {otpCooldown}s</span>
-                        ) : isOtpSent ? (
-                          <span>Resend OTP</span>
+                          <span>Resend ({otpCooldown}s)</span>
                         ) : (
                           <>
-                            <Send className="w-3.5 h-3.5" />
-                            <span>Send OTP to Mail</span>
+                            <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                            <span>Verify using OTP</span>
                           </>
                         )}
                       </button>
                     )}
                   </div>
 
+                  {/* Why We Verify via OTP Explanation Notice */}
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-[11px] text-amber-200/90 leading-relaxed">
+                    <span className="font-bold text-amber-300 block mb-0.5">
+                      🔒 Why We Verify via OTP? (ఓటీపీ ఎందుకు ధృవీకరించాలి?):
+                    </span>
+                    To protect Brahmin matrimonial sanctity, prevent bogus profiles, and ensure only genuine prospective families connect, we verify your email address via a 6-digit OTP code before proceeding.
+                  </div>
+
                   {/* OTP Verification Input Box */}
                   {!isEmailVerified && isOtpSent && (
-                    <div className="pt-2 border-t border-zinc-800 space-y-2 animate-in fade-in">
-                      <label className="text-[11px] font-black text-amber-200 block uppercase tracking-wider">
-                        Enter 6-Digit OTP Sent to Your Mail (ఈమెయిల్ ఓటీపీ నమోదు చేయండి) *
-                      </label>
+                    <div className="p-3 bg-zinc-900 border-2 border-amber-400/80 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Enter 6-Digit OTP Sent to Your Email *</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleSendEmailOtp}
+                          disabled={otpCooldown > 0 || isSendingOtp}
+                          className="text-[10px] text-amber-400 hover:underline disabled:opacity-50 cursor-pointer font-bold"
+                        >
+                          {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend OTP"}
+                        </button>
+                      </div>
+
                       <div className="flex gap-2">
                         <input
                           type="text"
                           maxLength={6}
+                          autoFocus
                           placeholder="e.g. 123456"
                           value={regOtp}
                           onChange={(e) => setRegOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-                          className="flex-1 bg-black border border-amber-500/50 focus:border-amber-400 rounded-xl py-2 px-3 text-center text-lg font-mono font-black text-amber-300 tracking-widest focus:outline-none"
+                          className="flex-1 bg-black border border-amber-400 rounded-xl py-2 px-3 text-center text-lg font-mono font-black text-amber-300 tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                         />
                         <button
                           type="button"
@@ -1973,11 +1990,11 @@ export default function LandingPage({
                           className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
                             !regOtp || regOtp.length < 6
                               ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                              : "bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold cursor-pointer shadow-md"
+                              : "bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold cursor-pointer shadow-md active:scale-95"
                           }`}
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>Verify OTP</span>
+                          <span>Confirm & Verify</span>
                         </button>
                       </div>
                     </div>
