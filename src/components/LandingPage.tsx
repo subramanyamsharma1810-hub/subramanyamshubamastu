@@ -113,6 +113,7 @@ export default function LandingPage({
 
   // Language selection state (Telugu / English)
   const [lang, setLang] = useState<"te" | "en">("te");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
 
   // Register form state
   const [regName, setRegName] = useState("");
@@ -1221,12 +1222,26 @@ export default function LandingPage({
     }
   }[lang];
 
+  const handleDistrictSelect = (district: string) => {
+    setSelectedDistrict(district);
+    setRegBirthPlace(district);
+    setShowRegisterModal(true);
+  };
+
   return (
-    <div className="relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none">
+    <div
+      className="relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-fixed"
+      style={{
+        backgroundImage:
+          "linear-gradient(rgba(250,248,245,0.9), rgba(250,248,245,0.96)), url('/images/telugu-wedding-hero.png')",
+      }}
+    >
       
       {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-1.5 px-4 text-center border-b border-amber-400 flex items-center justify-center gap-3 shadow-sm">
-        <span>🌿 బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక 🌿</span>
+      <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-2 px-4 text-center border-b-2 border-amber-400 flex items-center justify-center gap-3 shadow-sm">
+        <span className="tracking-widest">🍃🌿🍃</span>
+        <span>బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక</span>
+        <span className="tracking-widest">🍃🌿🍃</span>
       </div>
 
       {/* Top Header Bar */}
@@ -1236,7 +1251,7 @@ export default function LandingPage({
           {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="bg-[#C2242C] p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border border-amber-300 shrink-0">
-              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200 fill-amber-200 animate-pulse" />
+              <span className="text-lg sm:text-xl" aria-hidden="true">🪔</span>
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
@@ -1347,7 +1362,7 @@ export default function LandingPage({
 
           {/* Center Column: Brahmin Wedding Couple Illustration / Photo */}
           <div className="flex items-center justify-center">
-            <div className="relative w-full max-w-md aspect-[4/3] rounded-3xl overflow-hidden border-2 border-amber-400 shadow-2xl bg-amber-50 group">
+            <div className="relative w-full max-w-md aspect-[4/3] rounded-3xl overflow-hidden border-4 border-amber-400 shadow-2xl bg-amber-50 group">
               <img
                 src="/assets/aistudio/image_239b7b81.png"
                 alt="Telugu Brahmin Bride and Groom at Vivaham Mandapam"
@@ -1462,6 +1477,11 @@ export default function LandingPage({
             <p className="text-xs sm:text-sm text-emerald-100 max-w-2xl mx-auto font-medium">
               Explore verified Brahmin alliances across every district of Andhra Pradesh & Telangana. Select your preferred region below.
             </p>
+            {selectedDistrict && (
+              <p className="inline-flex items-center gap-2 mx-auto px-3 py-1 rounded-full bg-amber-300 text-emerald-950 text-xs font-black">
+                Selected district: {selectedDistrict}
+              </p>
+            )}
           </div>
 
           {/* 3 Regional Cards */}
@@ -1482,7 +1502,7 @@ export default function LandingPage({
                     <button
                       key={dist}
                       type="button"
-                      onClick={() => setShowRegisterModal(true)}
+                      onClick={() => handleDistrictSelect(dist)}
                       className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       {dist}
@@ -1494,7 +1514,7 @@ export default function LandingPage({
                 <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => handleDistrictSelect("Rayalaseema")}
                   className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
                   Search Profiles →
@@ -1517,7 +1537,7 @@ export default function LandingPage({
                     <button
                       key={dist}
                       type="button"
-                      onClick={() => setShowRegisterModal(true)}
+                      onClick={() => handleDistrictSelect(dist)}
                       className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       {dist}
@@ -1529,7 +1549,7 @@ export default function LandingPage({
                 <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => handleDistrictSelect("Godavari")}
                   className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
                   Search Profiles →
@@ -1552,7 +1572,7 @@ export default function LandingPage({
                     <button
                       key={dist}
                       type="button"
-                      onClick={() => setShowRegisterModal(true)}
+                      onClick={() => handleDistrictSelect(dist)}
                       className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       {dist}
@@ -1564,7 +1584,7 @@ export default function LandingPage({
                 <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => handleDistrictSelect("Telangana")}
                   className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
                   Search Profiles →
