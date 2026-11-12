@@ -1391,7 +1391,9 @@ export default function LandingPage({
                 </label>
                 <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
                   <option value="">అన్ని గోత్రాలు (All Gotrams)</option>
-                  {BRAHMIN_GOTRAMS.map(g => <option key={g} value={g}>{g}</option>)}
+                  {BRAHMIN_GOTRAMS.map(g => (
+                    <option key={g.id} value={g.id}>{g.labelEn}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1401,7 +1403,9 @@ export default function LandingPage({
                 </label>
                 <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
                   <option value="">అన్ని ఉపగోత్రాలు (All Sub-castes)</option>
-                  {BRAHMIN_SUB_CASTES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {BRAHMIN_SUB_CASTES.map(s => (
+                    <option key={s.id} value={s.id}>{s.labelEn}</option>
+                  ))}
                 </select>
               </div>
 
