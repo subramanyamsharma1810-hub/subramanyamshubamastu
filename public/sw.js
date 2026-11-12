@@ -1,11 +1,12 @@
 // Shubhamastu Matrimony Service Worker (Offline Cache & Call Push)
-const CACHE_NAME = 'shubhamastu-cache-v2';
+const CACHE_NAME = 'shubhamastu-cache-v3';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icons/icon-512x512.png',
+  '/images/telugu-wedding-hero.png'
 ];
 
 self.addEventListener('install', (event) => {

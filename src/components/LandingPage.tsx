@@ -113,6 +113,7 @@ export default function LandingPage({
 
   // Language selection state (Telugu / English)
   const [lang, setLang] = useState<"te" | "en">("te");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
 
   // Register form state
   const [regName, setRegName] = useState("");
@@ -1200,33 +1201,65 @@ export default function LandingPage({
 
   const t = {
     te: {
-      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని • పవిత్ర బ్రాహ్మణ వేదిక",
-      title1: "తెలుగు బ్రాహ్మణుల కొరకు",
-      title2: "ప్రత్యేక వివాహ మ్యాట్రిమోనీ వెబ్‌సైట్",
-      bullet1: "బ్రాహ్మణులకు ప్రత్యేకంగా",
-      bullet2: "గోత్రం ఆధారిత శోధన",
-      bullet3: "సురక్షితమైన & గోప్యతల సేవ",
-      bullet4: "సంప్రదాయ వివాహ విలువలకు ప్రాధాన్యం",
-      districtSearchTitle: "ప్రాంతాల వారీగా వధువు / వరుడు శోధన",
+      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని • 100% Dedicated Brahmin Matrimony",
+      title1: "తెలుగు బ్రాహ్మణుల కొరకు • For Telugu Brahmin Families",
+      title2: "ప్రత్యేక వివాహ మ్యాట్రిమోనీ వేదిక • Trusted Matrimonial Platform",
+      bullet1: "బ్రాహ్మణులకు ప్రత్యేకంగా • Exclusive for Brahmin Families",
+      bullet2: "గోత్రం ఆధారిత శోధన • Gotram-based Search",
+      bullet3: "సురక్షితమైన & గోప్యతల సేవ • Secure & Confidential",
+      bullet4: "సంప్రదాయ విలువలకు ప్రాధాన్యం • Traditional Family Values",
+      districtSearchTitle: "ప్రాంతాల వారీగా వధువు / వరుడు శోధన • District-wise Bride / Groom Search",
     },
     en: {
-      badge: "100% Dedicated to Brahmin Matrimony • Sacred Vedic Platform",
-      title1: "Exclusive Matrimonial Website",
-      title2: "For Telugu Brahmin Families",
-      bullet1: "Exclusive for Brahmin Families",
-      bullet2: "Gotram-based Advanced Search",
-      bullet3: "Secure & 100% Confidential Service",
-      bullet4: "Emphasis on Traditional Family Values",
-      districtSearchTitle: "District-wise Bride / Groom Search (AP & Telangana)",
+      badge: "100% Dedicated Brahmin Matrimony • 100% బ్రాహ్మణ మ్యాట్రిమోని",
+      title1: "For Telugu Brahmin Families • తెలుగు బ్రాహ్మణుల కొరకు",
+      title2: "Trusted Matrimonial Platform • ప్రత్యేక వివాహ మ్యాట్రిమోనీ వేదిక",
+      bullet1: "Exclusive for Brahmin Families • బ్రాహ్మణులకు ప్రత్యేకంగా",
+      bullet2: "Gotram-based Search • గోత్రం ఆధారిత శోధన",
+      bullet3: "Secure & Confidential • సురక్షితమైన & గోప్యతల సేవ",
+      bullet4: "Traditional Family Values • సంప్రదాయ విలువలకు ప్రాధాన్యం",
+      districtSearchTitle: "District-wise Bride / Groom Search • ప్రాంతాల వారీగా వధువు / వరుడు శోధన",
     }
   }[lang];
 
+  const handleDistrictSelect = (district: string) => {
+    setSelectedDistrict(district);
+    setRegBirthPlace(district);
+    setShowRegisterModal(true);
+  };
+
   return (
-    <div className="relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none">
+    <div
+      className="landing-light-theme relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-fixed"
+      style={{
+        backgroundImage:
+          "linear-gradient(rgba(250,248,245,0.72), rgba(250,248,245,0.86)), url('/images/telugu-wedding-hero.png')",
+      }}
+    >
+      <style>{`
+        .landing-light-theme [class*="bg-black"],
+        .landing-light-theme [class*="bg-zinc-9"],
+        .landing-light-theme [class*="bg-gray-9"] {
+          background-color: #fffaf0 !important;
+          color: #4a1f1f !important;
+        }
+        .landing-light-theme [class*="text-white"],
+        .landing-light-theme [class~="text-black"] {
+          color: #4a1f1f !important;
+        }
+        .landing-light-theme [class*="border-zinc-"] {
+          border-color: #e8c982 !important;
+        }
+        .landing-light-theme [class*="placeholder-zinc-"]::placeholder {
+          color: #9b8060 !important;
+        }
+      `}</style>
       
       {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-1.5 px-4 text-center border-b border-amber-400 flex items-center justify-center gap-3 shadow-sm">
-        <span>🌿 బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక 🌿</span>
+      <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-2 px-4 text-center border-b-2 border-amber-400 flex items-center justify-center gap-3 shadow-sm">
+        <span className="tracking-widest">🍃🌿🍃</span>
+        <span>బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • Honouring Tradition, Creating Sacred Alliances</span>
+        <span className="tracking-widest">🍃🌿🍃</span>
       </div>
 
       {/* Top Header Bar */}
@@ -1235,20 +1268,20 @@ export default function LandingPage({
           
           {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="bg-[#C2242C] p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border border-amber-300 shrink-0">
-              <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200 fill-amber-200 animate-pulse" />
+            <div className="bg-white p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border-2 border-[#C2242C] shrink-0">
+              <span className="text-lg sm:text-xl" aria-hidden="true">🪔</span>
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#99151B] to-[#C2242C] uppercase font-sans truncate block">
-                  Subhamastu
+                  Subhamastu • శుభమస్తు
                 </span>
                 <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden sm:inline-block">
                   తెలుగు బ్రాహ్మణ మ్యాట్రిమోని
                 </span>
               </div>
               <p className="text-[8px] sm:text-[9px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
-                బ్రాహ్మణ సంప్రదాయాలకు గౌరవం... శుభ వివాహ బంధాలకు విశ్వసనీయ వేదిక
+                బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • Trusted Telugu Brahmin Matrimony
               </p>
             </div>
           </div>
@@ -1267,14 +1300,14 @@ export default function LandingPage({
               <button
                 type="button"
                 onClick={() => setLang("te")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "te" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-black"}`}
+                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "te" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-[#99151B]"}`}
               >
                 తెలుగు
               </button>
               <button
                 type="button"
                 onClick={() => setLang("en")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "en" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-black"}`}
+                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "en" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-[#99151B]"}`}
               >
                 English
               </button>
@@ -1301,7 +1334,7 @@ export default function LandingPage({
 
       {/* Main Hero Section: 3-Column Layout (Left: Title & Checklist, Center: Brahmin Wedding Couple Illustration, Right: Partner Search Card) */}
       <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr_1.05fr] items-center gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1.05fr] items-center gap-10">
           
           {/* Left Column: Title & Feature Checklist */}
           <div className="space-y-6 text-left">
@@ -1345,32 +1378,15 @@ export default function LandingPage({
             </div>
           </div>
 
-          {/* Center Column: Brahmin Wedding Couple Illustration / Photo */}
-          <div className="flex items-center justify-center">
-            <div className="relative w-full max-w-md aspect-[4/3] rounded-3xl overflow-hidden border-2 border-amber-400 shadow-2xl bg-amber-50 group">
-              <img
-                src="/assets/aistudio/image_239b7b81.png"
-                alt="Telugu Brahmin Bride and Groom at Vivaham Mandapam"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4">
-                <span className="px-3 py-1 bg-amber-500 text-black text-xs font-mono font-black uppercase tracking-wider rounded-full shadow-md">
-                  🌿 Subha Muhurtham Vivaham
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Right Column: Partner Search Card */}
-          <div className="bg-gradient-to-b from-white to-amber-50/90 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl space-y-4 text-left">
+          <div className="bg-white/95 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl space-y-4 text-left">
             <div className="flex items-center gap-3 pb-3 border-b border-amber-200">
               <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
                 <Heart className="w-5 h-5 fill-amber-600 text-amber-700" />
               </div>
               <div>
                 <h3 className="font-extrabold text-amber-900 text-base">మీ జీవిత భాగస్వామిని కనుగొనండి</h3>
-                <p className="text-[10px] text-zinc-600">Gotram & Sub-caste Verified Matchmaking</p>
+                <p className="text-[10px] text-zinc-600">Find your life partner • Gotram & Sub-caste verified matching</p>
               </div>
             </div>
 
@@ -1391,7 +1407,9 @@ export default function LandingPage({
                 </label>
                 <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
                   <option value="">అన్ని గోత్రాలు (All Gotrams)</option>
-                  {BRAHMIN_GOTRAMS.map(g => <option key={g} value={g}>{g}</option>)}
+                  {BRAHMIN_GOTRAMS.map(g => (
+                    <option key={g.id} value={g.id}>{g.labelEn}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1401,7 +1419,9 @@ export default function LandingPage({
                 </label>
                 <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
                   <option value="">అన్ని ఉపగోత్రాలు (All Sub-castes)</option>
-                  {BRAHMIN_SUB_CASTES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {BRAHMIN_SUB_CASTES.map(s => (
+                    <option key={s.id} value={s.id}>{s.labelEn}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1438,6 +1458,24 @@ export default function LandingPage({
 
 
 
+      {/* Trust strip inspired by the traditional reference layout */}
+      <section className="relative z-20 w-full border-y-2 border-amber-300 bg-[#FFF8E8]/95 shadow-sm">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-amber-300/80">
+          {[
+            ["🪔", "తెలుగు బ్రాహ్మణులకు", "Dedicated to Telugu Brahmin Families"],
+            ["🛡️", "సురక్షితమైన వేదిక", "Safe & Confidential Platform"],
+            ["🔒", "నమ్మకమైన ప్రొఫైల్స్", "Verified Profile Experience"],
+            ["🤝", "వివాహ బంధాలకు సహాయం", "Support for Sacred Alliances"],
+          ].map(([icon, teLabel, enLabel]) => (
+            <div key={enLabel} className="px-3 py-4 text-center">
+              <div className="text-xl mb-1" aria-hidden="true">{icon}</div>
+              <p className="text-xs sm:text-sm font-black text-[#99151B]">{teLabel}</p>
+              <p className="text-[10px] sm:text-xs font-semibold text-amber-900">{enLabel}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* SECTION: DISTRICT-WISE BRIDE / GROOM SEARCH (AP & TELANGANA) */}
       <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="bg-gradient-to-br from-[#0B3B17] via-[#0E4720] to-[#06240E] rounded-3xl border-4 border-amber-400 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-left">
@@ -1458,6 +1496,11 @@ export default function LandingPage({
             <p className="text-xs sm:text-sm text-emerald-100 max-w-2xl mx-auto font-medium">
               Explore verified Brahmin alliances across every district of Andhra Pradesh & Telangana. Select your preferred region below.
             </p>
+            {selectedDistrict && (
+              <p className="inline-flex items-center gap-2 mx-auto px-3 py-1 rounded-full bg-amber-300 text-emerald-950 text-xs font-black">
+                Selected district: {selectedDistrict}
+              </p>
+            )}
           </div>
 
           {/* 3 Regional Cards */}
@@ -1478,7 +1521,7 @@ export default function LandingPage({
                     <button
                       key={dist}
                       type="button"
-                      onClick={() => setShowRegisterModal(true)}
+                      onClick={() => handleDistrictSelect(dist)}
                       className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       {dist}
@@ -1490,7 +1533,7 @@ export default function LandingPage({
                 <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => handleDistrictSelect("Rayalaseema")}
                   className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
                   Search Profiles →
@@ -1513,7 +1556,7 @@ export default function LandingPage({
                     <button
                       key={dist}
                       type="button"
-                      onClick={() => setShowRegisterModal(true)}
+                      onClick={() => handleDistrictSelect(dist)}
                       className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       {dist}
@@ -1525,7 +1568,7 @@ export default function LandingPage({
                 <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => handleDistrictSelect("Godavari")}
                   className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
                   Search Profiles →
@@ -1548,7 +1591,7 @@ export default function LandingPage({
                     <button
                       key={dist}
                       type="button"
-                      onClick={() => setShowRegisterModal(true)}
+                      onClick={() => handleDistrictSelect(dist)}
                       className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       {dist}
@@ -1560,7 +1603,7 @@ export default function LandingPage({
                 <span className="text-emerald-700 font-bold">✓ Free Registration</span>
                 <button
                   type="button"
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => handleDistrictSelect("Telangana")}
                   className="text-amber-700 hover:underline font-extrabold cursor-pointer"
                 >
                   Search Profiles →
