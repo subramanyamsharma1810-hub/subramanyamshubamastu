@@ -1233,7 +1233,7 @@ export default function LandingPage({
       className="relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-fixed"
       style={{
         backgroundImage:
-          "linear-gradient(rgba(250,248,245,0.9), rgba(250,248,245,0.96)), url('/images/telugu-wedding-hero.png')",
+          "linear-gradient(rgba(250,248,245,0.72), rgba(250,248,245,0.86)), url('/images/telugu-wedding-hero.png')",
       }}
     >
       
@@ -1364,14 +1364,14 @@ export default function LandingPage({
           <div className="flex items-center justify-center">
             <div className="relative w-full max-w-md aspect-[4/3] rounded-3xl overflow-hidden border-4 border-amber-400 shadow-2xl bg-amber-50 group">
               <img
-                src="/assets/aistudio/image_239b7b81.png"
-                alt="Telugu Brahmin Bride and Groom at Vivaham Mandapam"
+                src="/images/telugu-wedding-hero.png"
+                alt="Telugu Brahmin bride and groom in a traditional wedding ceremony"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                referrerPolicy="no-referrer"
+                loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4">
                 <span className="px-3 py-1 bg-amber-500 text-black text-xs font-mono font-black uppercase tracking-wider rounded-full shadow-md">
-                  🌿 Subha Muhurtham Vivaham
+                  🌿 శుభ ముహూర్తం • Subha Muhurtham
                 </span>
               </div>
             </div>
