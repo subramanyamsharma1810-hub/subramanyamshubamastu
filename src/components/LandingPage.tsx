@@ -1230,12 +1230,30 @@ export default function LandingPage({
 
   return (
     <div
-      className="relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-fixed"
+      className="landing-light-theme relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-fixed"
       style={{
         backgroundImage:
           "linear-gradient(rgba(250,248,245,0.72), rgba(250,248,245,0.86)), url('/images/telugu-wedding-hero.png')",
       }}
     >
+      <style>{`
+        .landing-light-theme [class*="bg-black"],
+        .landing-light-theme [class*="bg-zinc-9"],
+        .landing-light-theme [class*="bg-gray-9"] {
+          background-color: #fffaf0 !important;
+          color: #4a1f1f !important;
+        }
+        .landing-light-theme [class*="text-white"],
+        .landing-light-theme [class~="text-black"] {
+          color: #4a1f1f !important;
+        }
+        .landing-light-theme [class*="border-zinc-"] {
+          border-color: #e8c982 !important;
+        }
+        .landing-light-theme [class*="placeholder-zinc-"]::placeholder {
+          color: #9b8060 !important;
+        }
+      `}</style>
       
       {/* Mango Leaf Toran Decorative Top Bar */}
       <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-2 px-4 text-center border-b-2 border-amber-400 flex items-center justify-center gap-3 shadow-sm">
@@ -1250,7 +1268,7 @@ export default function LandingPage({
           
           {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="bg-[#C2242C] p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border border-amber-300 shrink-0">
+            <div className="bg-white p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border-2 border-[#C2242C] shrink-0">
               <span className="text-lg sm:text-xl" aria-hidden="true">🪔</span>
             </div>
             <div className="text-left min-w-0">
@@ -1282,14 +1300,14 @@ export default function LandingPage({
               <button
                 type="button"
                 onClick={() => setLang("te")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "te" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-black"}`}
+                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "te" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-[#99151B]"}`}
               >
                 తెలుగు
               </button>
               <button
                 type="button"
                 onClick={() => setLang("en")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "en" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-black"}`}
+                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "en" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-[#99151B]"}`}
               >
                 English
               </button>
@@ -1316,7 +1334,7 @@ export default function LandingPage({
 
       {/* Main Hero Section: 3-Column Layout (Left: Title & Checklist, Center: Brahmin Wedding Couple Illustration, Right: Partner Search Card) */}
       <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr_1.05fr] items-center gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1.05fr] items-center gap-10">
           
           {/* Left Column: Title & Feature Checklist */}
           <div className="space-y-6 text-left">
@@ -1360,25 +1378,8 @@ export default function LandingPage({
             </div>
           </div>
 
-          {/* Center Column: Brahmin Wedding Couple Illustration / Photo */}
-          <div className="flex items-center justify-center">
-            <div className="relative w-full max-w-md aspect-[4/3] rounded-3xl overflow-hidden border-4 border-amber-400 shadow-2xl bg-amber-50 group">
-              <img
-                src="/images/telugu-wedding-hero.png"
-                alt="Telugu Brahmin bride and groom in a traditional wedding ceremony"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-4">
-                <span className="px-3 py-1 bg-amber-500 text-black text-xs font-mono font-black uppercase tracking-wider rounded-full shadow-md">
-                  🌿 శుభ ముహూర్తం • Subha Muhurtham
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Right Column: Partner Search Card */}
-          <div className="bg-gradient-to-b from-white to-amber-50/90 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl space-y-4 text-left">
+          <div className="bg-white/95 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl space-y-4 text-left">
             <div className="flex items-center gap-3 pb-3 border-b border-amber-200">
               <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
                 <Heart className="w-5 h-5 fill-amber-600 text-amber-700" />
