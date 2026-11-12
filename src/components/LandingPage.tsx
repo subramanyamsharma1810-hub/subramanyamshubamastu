@@ -1269,7 +1269,19 @@ export default function LandingPage({
           {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="bg-white p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border-2 border-[#C2242C] shrink-0">
-              <span className="text-lg sm:text-xl" aria-hidden="true">🪔</span>
+              <svg
+                viewBox="0 0 48 48"
+                className="w-6 h-6 sm:w-7 sm:h-7"
+                role="img"
+                aria-label="Kalasam logo"
+              >
+                <path d="M24 5c-2 4-5 6-9 7 3 2 6 3 9 2 3 1 6 0 9-2-4-1-7-3-9-7Z" fill="#2f7d32" />
+                <path d="M24 5c1 4 3 7 6 9M24 5c-1 4-3 7-6 9" stroke="#1b5e20" strokeWidth="1.5" fill="none" />
+                <path d="M16 17h16l-2 5H18l-2-5Z" fill="#d79b18" stroke="#99151b" strokeWidth="1.5" />
+                <path d="M18 22h12l3 14c-3 4-15 4-18 0l3-14Z" fill="#f3bd35" stroke="#99151b" strokeWidth="1.5" />
+                <path d="M20 27h8M19 31h10" stroke="#99151b" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="24" cy="24" r="1.5" fill="#99151b" />
+              </svg>
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
@@ -1423,22 +1435,6 @@ export default function LandingPage({
                     <option key={s.id} value={s.id}>{s.labelEn}</option>
                   ))}
                 </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                  <span className="text-amber-700">•</span> వయసు (Age Range)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <select className="w-full bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs font-bold text-zinc-900">
-                    <option value="21">21 సం.</option>
-                    <option value="24">24 సం.</option>
-                  </select>
-                  <select className="w-full bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs font-bold text-zinc-900">
-                    <option value="36">36 సం.</option>
-                    <option value="42">42 సం.</option>
-                  </select>
-                </div>
               </div>
 
               <button
