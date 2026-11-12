@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import firebaseConfig from "../../firebase-applet-config.json" with { type: "json" };
 
 function getBucketName() {
   return process.env.CLOUDFLARE_R2_MEDIA_BUCKET_NAME
@@ -21,6 +22,30 @@ function getClient() {
 
 function safeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 128) || "unknown";
+}
+
+export async function verifyFirebaseToken(authorizationHeader: string | undefined) {
+  const token = authorizationHeader?.startsWith("Bearer ")
+    ? authorizationHeader.slice("Bearer ".length).trim()
+    : "";
+  if (!token) return null;
+
+  const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
+  if (!apiKey) return null;
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idToken: token })
+    }
+  );
+  if (!response.ok) return null;
+
+  const payload = await response.json() as { users?: Array<{ localId?: string }> };
+  const uid = payload.users?.[0]?.localId;
+  return uid ? { uid } : null;
 }
 
 export async function uploadUserMedia(

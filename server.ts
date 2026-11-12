@@ -10,7 +10,7 @@ import multer from "multer";
 import { referralCouponEngine } from "./src/server/referralCouponEngine.ts";
 import { contactRevealEngine } from "./src/server/contactRevealEngine.ts";
 import { callSessionEngine } from "./src/server/callSessionEngine.ts";
-import { getUserMediaUrl, uploadUserMedia } from "./src/server/uploadUserMedia.ts";
+import { getUserMediaUrl, uploadUserMedia, verifyFirebaseToken } from "./src/server/uploadUserMedia.ts";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./src/lib/firebase.ts";
 
@@ -50,14 +50,14 @@ const upload = multer({
 // short-lived signed URLs. The owner id is kept in object metadata for audits.
 app.post("/api/media/upload", upload.single("file"), async (req, res) => {
   try {
-    const userId = String(req.headers["x-user-id"] || req.body?.userId || "").trim();
+    const firebaseUser = await verifyFirebaseToken(req.headers.authorization);
     const kind = req.body?.kind === "kundali" ? "kundali" : "photo";
-    if (!userId || !req.file) {
-      return res.status(400).json({ success: false, error: "Authenticated user and media file are required." });
+    if (!firebaseUser || !req.file) {
+      return res.status(401).json({ success: false, error: "A valid Firebase login and media file are required." });
     }
 
     const result = await uploadUserMedia(
-      userId,
+      firebaseUser.uid,
       req.file.buffer,
       req.file.mimetype || "application/octet-stream",
       kind
@@ -78,9 +78,9 @@ app.post("/api/media/upload", upload.single("file"), async (req, res) => {
 app.get("/api/media/url", async (req, res) => {
   try {
     const mediaKey = String(req.query.key || "");
-    const requestedUserId = String(req.headers["x-user-id"] || "").trim();
+    const firebaseUser = await verifyFirebaseToken(req.headers.authorization);
     const ownerId = mediaKey.split("/")[1] || "";
-    if (!requestedUserId || requestedUserId !== ownerId) {
+    if (!firebaseUser || firebaseUser.uid !== ownerId) {
       return res.status(403).json({ success: false, error: "Not authorized to access this media." });
     }
     return res.json({ success: true, url: await getUserMediaUrl(mediaKey) });

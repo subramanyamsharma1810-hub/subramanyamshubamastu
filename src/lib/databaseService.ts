@@ -1421,14 +1421,18 @@ export const databaseService = {
   },
 
   // Storage Methods (Upload base64 representation to Firestore/Local storage simulated)
-  async uploadFile(file: File, bucket: string, userId: string): Promise<string> {
+  async uploadFile(file: File, bucket: string, _userId: string): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("kind", bucket === "kundali" ? "kundali" : "photo");
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      throw new Error("Please sign in before uploading private media.");
+    }
 
     const response = await fetch("/api/media/upload", {
       method: "POST",
-      headers: { "x-user-id": userId },
+      headers: { Authorization: `Bearer ${token}` },
       body: formData
     });
     const result = await response.json().catch(() => null);
