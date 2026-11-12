@@ -177,11 +177,14 @@ export default function Register() {
       alert("Please enter a password of at least 4 characters.");
       return;
     }
-    /* OTP is now optional for regular users as per preference, but we still track it if they did it */
-    // if (email && !isEmailVerified) {
-    //   alert("Please verify your email address via OTP first.");
-    //   return;
-    // }
+    if (!email.trim() || !email.includes("@")) {
+      alert("⚠️ Email Address Required: Please enter candidate email address to receive your verification OTP.");
+      return;
+    }
+    if (!isEmailVerified) {
+      alert("⚠️ Email Verification Required (ఓటీపీ ధృవీకరణ అవసరం):\n\nPlease click 'Send OTP to Mail', check your inbox for the 6-digit code, and click 'Verify OTP' before submitting registration.");
+      return;
+    }
 
     if (planChoice !== "free" && !paymentVerified) {
       if (!utrNumber.trim()) {
@@ -529,9 +532,9 @@ export default function Register() {
               </div>
 
               {/* Contact & Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">Mobile Number (ఫోన్ సంఖ్య) *</label>
+                  <label className="text-xs font-bold text-gray-300">Mobile Number (ఫోన్ సంఖ్య - లాగిన్ ఐడి) *</label>
                   <input
                     type="tel"
                     required
@@ -540,17 +543,7 @@ export default function Register() {
                     onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 font-mono"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">Email ID (ఐచ్ఛికం - Optional)</label>
-                  <input
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-400 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
-                  />
-                  <p className="text-[10px] text-emerald-400/90 font-medium">✓ Direct registration without OTP</p>
+                  <p className="text-[10px] text-gray-400">Used as your primary login User ID.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-300">Create Password (పాస్‌వర్డ్) *</label>
@@ -562,7 +555,121 @@ export default function Register() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
+                  <p className="text-[10px] text-gray-400">Password for your profile login.</p>
                 </div>
+              </div>
+
+              {/* Mandatory Candidate Email & OTP Verification Card */}
+              <div className="p-4 bg-zinc-950/90 rounded-2xl border border-amber-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                    Candidate Email Address (ఈమెయిల్ చిరునామా) *
+                  </label>
+                  {isEmailVerified && (
+                    <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-[10px] rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Verified via OTP
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="email"
+                    required
+                    disabled={isEmailVerified}
+                    placeholder="Enter candidate email to receive OTP"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setIsEmailVerified(false);
+                      setIsOtpSent(false);
+                      setOtpErrorMsg("");
+                      setOtpSuccessMsg("");
+                    }}
+                    className={`flex-1 bg-black border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none font-bold ${
+                      isEmailVerified ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-200" : "border-zinc-700 focus:border-amber-400"
+                    }`}
+                  />
+                  {!isEmailVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={otpLoading || otpCooldown > 0 || !email || !email.includes("@")}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+                        otpLoading || otpCooldown > 0 || !email || !email.includes("@")
+                          ? "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"
+                          : "bg-gradient-to-r from-amber-400 to-yellow-500 text-black hover:brightness-110 cursor-pointer shadow-md"
+                      }`}
+                    >
+                      {otpLoading ? (
+                        <>
+                          <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
+                          <span>Sending OTP...</span>
+                        </>
+                      ) : otpCooldown > 0 ? (
+                        <span>Resend in {otpCooldown}s</span>
+                      ) : isOtpSent ? (
+                        <span>Resend OTP</span>
+                      ) : (
+                        <span>Send OTP to Mail</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* OTP Verification Input Box */}
+                {!isEmailVerified && isOtpSent && (
+                  <div className="pt-2 border-t border-zinc-800/80 space-y-2 animate-in fade-in">
+                    <label className="text-[11px] font-bold text-amber-200 block uppercase tracking-wider">
+                      Enter 6-Digit OTP Sent to Your Mail (ఈమెయిల్ ఓటీపీ నమోదు చేయండి) *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        ref={otpInputRef}
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 123456"
+                        value={regOtp}
+                        onChange={(e) => setRegOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                        className="flex-1 max-w-xs bg-black border border-amber-500/50 focus:border-amber-400 rounded-xl py-2 px-3 text-center text-lg font-mono font-black text-amber-300 tracking-widest focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={!regOtp || regOtp.length < 6}
+                        className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
+                          !regOtp || regOtp.length < 6
+                            ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold cursor-pointer shadow-md"
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Verify OTP</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feedback Messages */}
+                {otpSuccessMsg && (
+                  <p className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{otpSuccessMsg}</span>
+                  </p>
+                )}
+                {otpErrorMsg && (
+                  <p className="text-[11px] text-red-400 font-bold flex items-center gap-1">
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                    <span>{otpErrorMsg}</span>
+                  </p>
+                )}
+
+                {!isOtpSent && !isEmailVerified && (
+                  <p className="text-[10px] text-zinc-400">
+                    ℹ️ Verification OTP will be sent to your inbox via <strong>verification@shubhamastu.in</strong>.
+                  </p>
+                )}
               </div>
 
               {/* Career & Location */}
