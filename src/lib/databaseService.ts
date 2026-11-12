@@ -2,7 +2,7 @@ import { db, auth } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, onSnapshot } from "firebase/firestore";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, Pandit } from "../types";
 import { calculateMatchScore } from "./matchEngine";
-import { hashPassword } from "./passwordSecurity";
+import { hashPassword, verifyPassword } from "./passwordSecurity";
 
 // --- Firestore Error Handling Infrastructure ---
 export enum OperationType {
@@ -58,6 +58,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-subbu",
     name: "Sri G.V. Subramanyam",
     mobile: "9347359489",
+    password_hash: "pbkdf2-sha256$210000$CHjXhRAb7XmbmiEO1eAq4w$WXyhUHv4f21mGMJMHvdj2NmO-8qFWWk7z35G0tx7PwA",
     email: "subramanyamghadiyaram@gmail.com",
     role: "super_admin",
     stage: 1,
@@ -70,6 +71,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-subba-reddy",
     name: "Mr. Posham Venkata Subba Reddy",
     mobile: "9989079372",
+    password_hash: "pbkdf2-sha256$210000$pVLZ3NA4vJgXGI3BP8XpRA$w135Id1jF8Xa5EDY2rTPh9zz8SdbFiYzbks1MMlT0hY",
     email: "subbareddyposham@gmail.com",
     role: "super_admin",
     stage: 2,
@@ -82,6 +84,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-tejaswar",
     name: "Mr. Karna Tejaswar Reddy",
     mobile: "9392551166",
+    password_hash: "pbkdf2-sha256$210000$IEuMRVxSW9SVSsn2CIG6Yg$Zs4IoUWtui2S5EPvt4Fo_WGV_JruxMVCx1V__wLcORo",
     email: "k.tejaswar567@gmail.com",
     role: "super_admin",
     stage: 2,
@@ -94,6 +97,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-praveen",
     name: "Mr. Praveen",
     mobile: "9876543219",
+    password_hash: "pbkdf2-sha256$210000$CQL0sJiB2-i1DPfu6mxlbw$unic0svd6aMYa3UFCAK63pqDx2vDzLPNxA8UcCi5t44",
     email: "praveenproq@gmail.com",
     role: "super_admin",
     stage: 1,
@@ -466,6 +470,7 @@ export function generateRandomPassword(): string {
 const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "admin-subbu",
+    password_hash: "pbkdf2-sha256$210000$CHjXhRAb7XmbmiEO1eAq4w$WXyhUHv4f21mGMJMHvdj2NmO-8qFWWk7z35G0tx7PwA",
     reg_number: "BVM-1001",
     name: "Sri G.V. Subramanyam (Founder, Managing Director & Proprietor)",
     dob: "1995-08-15",
@@ -499,6 +504,7 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   },
   {
     id: "admin-subba-reddy",
+    password_hash: "pbkdf2-sha256$210000$pVLZ3NA4vJgXGI3BP8XpRA$w135Id1jF8Xa5EDY2rTPh9zz8SdbFiYzbks1MMlT0hY",
     reg_number: "BVM-1007",
     name: "PV Subba Reddy (Stage 2 Super Admin & Co-Founder)",
     dob: "1980-01-01",
@@ -532,6 +538,7 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   },
   {
     id: "admin-tejaswar",
+    password_hash: "pbkdf2-sha256$210000$IEuMRVxSW9SVSsn2CIG6Yg$Zs4IoUWtui2S5EPvt4Fo_WGV_JruxMVCx1V__wLcORo",
     reg_number: "BVM-1010",
     name: "Mr. Karna Teajushwar Reddy (Stage 2 Super Admin & Chief Grievance Officer)",
     dob: "1992-05-20",
@@ -564,6 +571,7 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   },
   {
     id: "admin-praveen",
+    password_hash: "pbkdf2-sha256$210000$CQL0sJiB2-i1DPfu6mxlbw$unic0svd6aMYa3UFCAK63pqDx2vDzLPNxA8UcCi5t44",
     reg_number: "BVM-1011",
     name: "Mr. Praveen (Super Admin)",
     dob: "1994-06-15",
@@ -1734,6 +1742,16 @@ export const databaseService = {
       }
     }
 
+    for (const admin of list) {
+      if (admin.password && !admin.password_hash) {
+        admin.password_hash = await hashPassword(admin.password);
+        delete admin.password;
+        setDoc(doc(db, "admins", admin.id), admin).catch(() => {});
+      } else if (admin.password) {
+        delete admin.password;
+      }
+    }
+
     localStorage.setItem("matrimonial_admins", JSON.stringify(list));
     return list;
   },
@@ -1819,9 +1837,10 @@ export const databaseService = {
     return true;
   },
 
-  async verifyAdminCredentials(mobileInput: string, _passwordInput: string): Promise<AdminUser | null> {
+  async verifyAdminCredentials(mobileInput: string, passwordInput: string): Promise<AdminUser | null> {
     const cleanInputMobile = mobileInput.trim().replace(/\D/g, "");
-    if (!cleanInputMobile) return null;
+    const cleanInputPassword = passwordInput.trim();
+    if (!cleanInputMobile || !cleanInputPassword) return null;
 
     const admins = await this.getAdmins();
     for (const a of admins) {
@@ -1831,7 +1850,7 @@ export const databaseService = {
         adminMobileClean === cleanInputMobile ||
         adminMobileClean.slice(-10) === cleanInputMobile.slice(-10);
       
-      if (mobileMatch && a.status === "active") {
+      if (mobileMatch && a.status === "active" && a.password_hash && await verifyPassword(cleanInputPassword, a.password_hash)) {
         const stageInfo = getAdminStageInfo(a.role, a.stage);
         return {
           ...a,
