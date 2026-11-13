@@ -44,7 +44,7 @@ export default function Register() {
   const [motherName, setMotherName] = useState("");
 
   // Payment choice
-  const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("paid_1599");
+  const [planChoice] = useState<"free">("free");
   const [utrNumber, setUtrNumber] = useState("");
   const [referralCode, setReferralCode] = useState("");
 
@@ -175,8 +175,8 @@ export default function Register() {
       alert("Please enter a valid 10-digit mobile number.");
       return;
     }
-    if (!password.trim() || password.length < 4) {
-      alert("Please enter a password of at least 4 characters.");
+    if (!password.trim() || password.length < 8) {
+      alert("Please set a password of at least 8 characters. DOB cannot be used as a password.");
       return;
     }
     if (!email.trim() || !email.includes("@")) {
@@ -557,7 +557,7 @@ export default function Register() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
-                  <p className="text-[10px] text-gray-400">Password for your profile login.</p>
+                  <p className="text-[10px] text-gray-400">Choose at least 8 characters. It is stored as a one-way salted hash.</p>
                 </div>
               </div>
 

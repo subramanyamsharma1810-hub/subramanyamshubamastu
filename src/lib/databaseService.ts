@@ -1,7 +1,9 @@
-import { db, auth } from "./firebase";
+import { db, auth, storage } from "./firebase";
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, onSnapshot } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Profile, PartnerPreferences, AdminSettings, Grievance, MarriageRecord, AdminUser, getAdminStageInfo, Pandit } from "../types";
 import { calculateMatchScore } from "./matchEngine";
+import { hashPassword, verifyPassword } from "./passwordSecurity";
 
 // --- Firestore Error Handling Infrastructure ---
 export enum OperationType {
@@ -57,7 +59,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-subbu",
     name: "Sri G.V. Subramanyam",
     mobile: "9347359489",
-    password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
+    password_hash: "pbkdf2-sha256$210000$CHjXhRAb7XmbmiEO1eAq4w$WXyhUHv4f21mGMJMHvdj2NmO-8qFWWk7z35G0tx7PwA",
     email: "subramanyamghadiyaram@gmail.com",
     role: "super_admin",
     stage: 1,
@@ -70,7 +72,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-subba-reddy",
     name: "Mr. Posham Venkata Subba Reddy",
     mobile: "9989079372",
-    password: "SubbaReddy@2026!#",
+    password_hash: "pbkdf2-sha256$210000$pVLZ3NA4vJgXGI3BP8XpRA$w135Id1jF8Xa5EDY2rTPh9zz8SdbFiYzbks1MMlT0hY",
     email: "subbareddyposham@gmail.com",
     role: "super_admin",
     stage: 2,
@@ -83,7 +85,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-tejaswar",
     name: "Mr. Karna Tejaswar Reddy",
     mobile: "9392551166",
-    password: "grievance123",
+    password_hash: "pbkdf2-sha256$210000$IEuMRVxSW9SVSsn2CIG6Yg$Zs4IoUWtui2S5EPvt4Fo_WGV_JruxMVCx1V__wLcORo",
     email: "k.tejaswar567@gmail.com",
     role: "super_admin",
     stage: 2,
@@ -96,7 +98,7 @@ export const ROOT_ADMINS: AdminUser[] = [
     id: "admin-praveen",
     name: "Mr. Praveen",
     mobile: "9876543219",
-    password: "Praveen@2026!#",
+    password_hash: "pbkdf2-sha256$210000$CQL0sJiB2-i1DPfu6mxlbw$unic0svd6aMYa3UFCAK63pqDx2vDzLPNxA8UcCi5t44",
     email: "praveenproq@gmail.com",
     role: "super_admin",
     stage: 1,
@@ -465,23 +467,12 @@ export function generateRandomPassword(): string {
   return `${part1}_${part2}`;
 }
 
-export function generateDefaultDobPassword(dob?: string): string {
-  if (!dob) return generateRandomPassword();
-  const cleanDob = dob.trim();
-  const match = cleanDob.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
-  if (match) {
-    const [_, yyyy, mm, dd] = match;
-    return `${dd}${mm}${yyyy}`;
-  }
-  return cleanDob.replace(/[-/]/g, "") || generateRandomPassword();
-}
-
 // Pre-seeded, beautiful profiles reflecting the "Shiva & Sati" spiritual theme
 const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "admin-subbu",
+    password_hash: "pbkdf2-sha256$210000$CHjXhRAb7XmbmiEO1eAq4w$WXyhUHv4f21mGMJMHvdj2NmO-8qFWWk7z35G0tx7PwA",
     reg_number: "BVM-1001",
-    password: "xG9$mK2!wP7#rT5_tV4*yC8&nB3%fX1_zS5hQ2",
     name: "Sri G.V. Subramanyam (Founder, Managing Director & Proprietor)",
     dob: "1995-08-15",
     gender: "Male",
@@ -514,8 +505,8 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   },
   {
     id: "admin-subba-reddy",
+    password_hash: "pbkdf2-sha256$210000$pVLZ3NA4vJgXGI3BP8XpRA$w135Id1jF8Xa5EDY2rTPh9zz8SdbFiYzbks1MMlT0hY",
     reg_number: "BVM-1007",
-    password: "SubbaReddy@2026!#",
     name: "PV Subba Reddy (Stage 2 Super Admin & Co-Founder)",
     dob: "1980-01-01",
     gender: "Male",
@@ -548,8 +539,8 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   },
   {
     id: "admin-tejaswar",
+    password_hash: "pbkdf2-sha256$210000$IEuMRVxSW9SVSsn2CIG6Yg$Zs4IoUWtui2S5EPvt4Fo_WGV_JruxMVCx1V__wLcORo",
     reg_number: "BVM-1010",
-    password: "grievance123",
     name: "Mr. Karna Teajushwar Reddy (Stage 2 Super Admin & Chief Grievance Officer)",
     dob: "1992-05-20",
     gender: "Male",
@@ -581,8 +572,8 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   },
   {
     id: "admin-praveen",
+    password_hash: "pbkdf2-sha256$210000$CQL0sJiB2-i1DPfu6mxlbw$unic0svd6aMYa3UFCAK63pqDx2vDzLPNxA8UcCi5t44",
     reg_number: "BVM-1011",
-    password: "Praveen@2026!#",
     name: "Mr. Praveen (Super Admin)",
     dob: "1994-06-15",
     gender: "Male",
@@ -616,7 +607,6 @@ const PRE_SEEDED_PROFILES: Profile[] = [
   {
     id: "prof-yeashwini-9876543210",
     reg_number: "BVM-2026",
-    password: "yeashawini.p@phonepe",
     name: "Yeashwini",
     surname: "P",
     dob: "1998-05-15",
@@ -895,7 +885,7 @@ export const databaseService = {
         if (isAdminSession) {
           for (const p of PRE_SEEDED_PROFILES) {
             const existingAdmin = rawProfiles.find(rp => rp.id === p.id);
-            if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.password !== p.password || existingAdmin.name !== p.name) {
+            if (!existingAdmin || existingAdmin.contact_number !== p.contact_number || existingAdmin.name !== p.name) {
               setDoc(doc(db, "profiles", p.id), p).catch(() => {});
               if (existingAdmin) {
                 const idx = rawProfiles.indexOf(existingAdmin);
@@ -986,12 +976,12 @@ export const databaseService = {
     });
   },
 
-  async getPrivateProfileData(profileId: string): Promise<{ contact_number: string, email?: string, password?: string } | null> {
+  async getPrivateProfileData(profileId: string): Promise<{ contact_number: string, email?: string, password_hash?: string } | null> {
     try {
       const docRef = doc(db, "profiles", profileId, "private", "data");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return docSnap.data() as { contact_number: string, email?: string, password?: string };
+        return docSnap.data() as { contact_number: string, email?: string, password_hash?: string };
       }
     } catch (err) {
       console.warn(`Error fetching private data for ${profileId}:`, err);
@@ -1059,7 +1049,7 @@ export const databaseService = {
               ...profile,
               contact_number: privateData?.contact_number || profile.contact_number,
               email: privateData?.email || profile.email,
-              password: privateData?.password || profile.password
+              password_hash: privateData?.password_hash || profile.password_hash
             };
           }
         }
@@ -1105,9 +1095,10 @@ export const databaseService = {
       finalProfile.created_at = new Date().toISOString();
     }
     
-    if (!finalProfile.password) {
-      finalProfile.password = generateDefaultDobPassword(finalProfile.dob);
+    if (finalProfile.password && !finalProfile.password_hash) {
+      finalProfile.password_hash = await hashPassword(finalProfile.password);
     }
+    delete finalProfile.password;
     
     // Generate next sequential reg_number based on all central profiles
     if (!finalProfile.reg_number) {
@@ -1186,6 +1177,7 @@ export const databaseService = {
     (async () => {
       try {
         const publicProfile = { ...finalProfile };
+        delete publicProfile.password_hash;
         if (publicProfile.contact_number) {
           publicProfile.contact_number = publicProfile.contact_number.replace(/(\d{3})\d{4}(\d{2})/, "$1****$2");
         }
@@ -1198,7 +1190,7 @@ export const databaseService = {
           setDoc(doc(db, "profiles", finalProfile.id, "private", "data"), {
             contact_number: profile.contact_number,
             email: profile.email || "",
-            password: finalProfile.password
+            password_hash: finalProfile.password_hash
           }).catch(() => {})
         ];
 
@@ -1430,15 +1422,22 @@ export const databaseService = {
   },
 
   // Storage Methods (Upload base64 representation to Firestore/Local storage simulated)
-  async uploadFile(file: File, bucket: string, userId: string): Promise<string> {
-    // Return a base64 representation which works everywhere flawlessly without complex setup
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  async uploadFile(file: File, bucket: string, _userId: string): Promise<string> {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      throw new Error("Please sign in before uploading private media.");
+    }
+
+    const mediaKind = bucket === "kundali" ? "kundali" : "photo";
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80) || "upload";
+    const mediaRef = ref(storage, `private-media/${firebaseUser.uid}/${mediaKind}/${crypto.randomUUID()}-${safeName}`);
+    await uploadBytes(mediaRef, file, {
+      contentType: file.type || "application/octet-stream",
+      customMetadata: { ownerId: firebaseUser.uid, mediaKind }
     });
+
+    // Firebase Storage rules require authentication; no Cloudflare/R2 URL is used.
+    return getDownloadURL(mediaRef);
   },
 
   async getAdminSettings(): Promise<AdminSettings> {
@@ -1751,6 +1750,16 @@ export const databaseService = {
       }
     }
 
+    for (const admin of list) {
+      if (admin.password && !admin.password_hash) {
+        admin.password_hash = await hashPassword(admin.password);
+        delete admin.password;
+        setDoc(doc(db, "admins", admin.id), admin).catch(() => {});
+      } else if (admin.password) {
+        delete admin.password;
+      }
+    }
+
     localStorage.setItem("matrimonial_admins", JSON.stringify(list));
     return list;
   },
@@ -1764,6 +1773,10 @@ export const databaseService = {
       createdAt: adminData.createdAt || new Date().toISOString(),
       status: adminData.status || "active"
     };
+    if (admin.password && !admin.password_hash) {
+      admin.password_hash = await hashPassword(admin.password);
+    }
+    delete admin.password;
 
     try {
       await setDoc(doc(db, "admins", admin.id), admin);
@@ -1791,7 +1804,6 @@ export const databaseService = {
         name: admin.name,
         contact_number: cleanPhone,
         email: admin.email || `${cleanPhone}@shubhamastu.in`,
-        password: admin.password,
         role: "admin",
         status: "Active",
         subscription_status: "paid_900",
@@ -1835,9 +1847,8 @@ export const databaseService = {
 
   async verifyAdminCredentials(mobileInput: string, passwordInput: string): Promise<AdminUser | null> {
     const cleanInputMobile = mobileInput.trim().replace(/\D/g, "");
-    const cleanInputPass = passwordInput.trim();
-
-    if (!cleanInputMobile || !cleanInputPass) return null;
+    const cleanInputPassword = passwordInput.trim();
+    if (!cleanInputMobile || !cleanInputPassword) return null;
 
     const admins = await this.getAdmins();
     for (const a of admins) {
@@ -1847,7 +1858,7 @@ export const databaseService = {
         adminMobileClean === cleanInputMobile ||
         adminMobileClean.slice(-10) === cleanInputMobile.slice(-10);
       
-      if (mobileMatch && a.password === cleanInputPass && a.status === "active") {
+      if (mobileMatch && a.status === "active" && a.password_hash && await verifyPassword(cleanInputPassword, a.password_hash)) {
         const stageInfo = getAdminStageInfo(a.role, a.stage);
         return {
           ...a,
@@ -1863,7 +1874,7 @@ export const databaseService = {
       {
         id: "pandit-1",
         name: "Brahmashri Vedula Subrahmanya Sharma",
-        photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80",
+        photoUrl: "/images/telugu-wedding-hero.png",
         message: "Dedicated to conducting sacred Vedic marriages, Kundali matching, Gothra shuddhi, and providing divine blessings according to traditional Shastras.",
         phone: "+91 9441234567",
         specialization: "Vedic Astrology & Vivaha Muhurtam",
@@ -1873,7 +1884,7 @@ export const databaseService = {
       {
         id: "pandit-2",
         name: "Brahmashri Challa Sastry",
-        photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80",
+        photoUrl: "/images/telugu-wedding-hero.png",
         message: "Expert in Ashtakoota Guna Milan, horoscope matching, dosha pariharam, and traditional Brahmin wedding rituals.",
         phone: "+91 9887654321",
         specialization: "Kundali Matching & Pariharam",

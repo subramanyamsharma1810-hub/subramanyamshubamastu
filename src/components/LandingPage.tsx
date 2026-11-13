@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Profile, Pandit } from "../types";
-import { databaseService, generateRandomPassword, generateDefaultDobPassword, adminNotificationService } from "../lib/databaseService";
-import PhonePeQRCode from "./PhonePeQRCode";
+import { databaseService, generateRandomPassword, adminNotificationService } from "../lib/databaseService";
+import { verifyPassword } from "../lib/passwordSecurity";
 import { KundaliChart } from "./KundaliChart";
 import { calculatePanchangam, lookupByStartingLetter, TELUGU_PHONETIC_MAPPINGS } from "../lib/panchangam";
 import { ensureAuth, auth, googleProvider } from "../lib/firebase";
@@ -103,8 +103,6 @@ export default function LandingPage({
   const [targetAdminOtp, setTargetAdminOtp] = useState<string>("");
   const [adminOtpNotice, setAdminOtpNotice] = useState<string>("");
   const [registeredProfile, setRegisteredProfile] = useState<Profile | null>(null);
-  const [regTxnId, setRegTxnId] = useState("");
-  const [regPaymentSuccess, setRegPaymentSuccess] = useState(false);
 
   // Contact form state
   const [contactName, setContactName] = useState("");
@@ -122,7 +120,7 @@ export default function LandingPage({
   const [regDob, setRegDob] = useState("");
   const [regBirthPlace, setRegBirthPlace] = useState("");
   const [regBirthPincode, setRegBirthPincode] = useState("");
-  const [regSubscriptionStatus, setRegSubscriptionStatus] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("paid_1599");
+  const regSubscriptionStatus = "free" as const;
   const [regBirthTime, setRegBirthTime] = useState("08:30");
   const [regTimeType, setRegTimeType] = useState<"exact" | "buffer">("exact");
   const [regBufferFrom, setRegBufferFrom] = useState("09:00");
@@ -191,13 +189,10 @@ export default function LandingPage({
   const [regMealPreference, setRegMealPreference] = useState("Vegetarian");
   const [regPartnerMealPreference, setRegPartnerMealPreference] = useState("Only My Meal");
   const [regPartnerProfessionPreference, setRegPartnerProfessionPreference] = useState("Any Profession");
-  const [regIdCardUrl, setRegIdCardUrl] = useState("");
 
-  // Coupon & Referral states
-  const [regCouponCode, setRegCouponCode] = useState("");
+  // Referral state
   const [regReferredBy, setRegReferredBy] = useState("");
   const [myReferralCode] = useState("SUBHA-" + Math.random().toString(36).substring(2, 8).toUpperCase());
-  const [couponAppliedSuccess, setCouponAppliedSuccess] = useState<string | null>(null);
   const [panditsList, setPanditsList] = useState<Pandit[]>([]);
 
   useEffect(() => {
@@ -208,46 +203,6 @@ export default function LandingPage({
       setRegReferredBy(ref);
     }
   }, []);
-
-  const handleApplyCoupon = async () => {
-    const code = regCouponCode.trim().toUpperCase();
-    if (!code) return;
-
-    if (code === "AGNIVEERA!1857") {
-      const profLower = regProfession.toLowerCase();
-      if (!profLower.includes("defence") && !profLower.includes("army") && !profLower.includes("navy") && !profLower.includes("air force") && !profLower.includes("military") && !regIdCardUrl) {
-        alert("❌ Coupon AGNIVEERA!1857 is exclusively for Indian Defence Personnel. Please enter your Defence profession or upload your Service ID Card.");
-        return;
-      }
-      setRegSubscriptionStatus("paid_750");
-      setCouponAppliedSuccess("AGNIVEERA!1857 (50% Off - ₹750 Defence Honor Applied | Admin Verification Pending)");
-      alert("✅ AGNIVEERA!1857 Applied Successfully! ₹1500 plan discounted to ₹750 (50% Off). Admin notification scheduled for manual service verification.");
-    } else if (code === "NEWUSER2026") {
-      setRegSubscriptionStatus("paid_900");
-      setCouponAppliedSuccess("NEWUSER2026 (New User Discount - ₹900 Applied)");
-      alert("✅ NEWUSER2026 Applied Successfully! ₹1500 plan discounted to ₹900.");
-    } else if (code === "REFERED" || code === "REFERRAL") {
-      try {
-        const profiles = await databaseService.getProfiles(true);
-        const referrer = profiles.find(p => p.referral_code && p.referral_code.toUpperCase() === regReferredBy.toUpperCase());
-        const myReferrals = referrer ? (referrer.referral_count || 0) : 0;
-        
-        if (myReferrals >= 4 || regReferredBy) {
-          setRegSubscriptionStatus("paid_referral");
-          setCouponAppliedSuccess("REFERED (Referral Reward - Free / ₹0 Premium Applied)");
-          alert("🎉 'refered' Coupon Applied Successfully! Free Premium access unlocked through referral network.");
-        } else {
-          alert(`⚠️ Referral Requirement Not Met: You need at least 4 successful referrals who took subscriptions to use the 'refered' coupon. (Current referrals: ${myReferrals}/4). Please share your referral link with friends!`);
-        }
-      } catch (err) {
-        setRegSubscriptionStatus("paid_referral");
-        setCouponAppliedSuccess("REFERED (Referral Reward Applied)");
-        alert("🎉 'refered' Coupon Applied Successfully!");
-      }
-    } else {
-      alert("❌ Invalid Coupon Code. Please check the code (e.g. AGNIVEERA!1857, NEWUSER2026, refered) and try again.");
-    }
-  };
 
   const handleWhatsAppShare = () => {
     const inviteText = encodeURIComponent(
@@ -387,8 +342,8 @@ export default function LandingPage({
 
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPasswordValue || newPasswordValue.length < 4) {
-      alert("Please enter a valid password (at least 4 characters).");
+    if (!newPasswordValue || newPasswordValue.length < 8) {
+      alert("Please enter a valid password (at least 8 characters).");
       return;
     }
 
@@ -745,7 +700,7 @@ export default function LandingPage({
           email: emailTrim,
           status: "Verified",
           role: "super_admin",
-          subscription_status: "paid_900"
+          subscription_status: "free"
         };
       }
 
@@ -804,53 +759,26 @@ export default function LandingPage({
       const match = await databaseService.getProfileByPhone(inputClean);
 
       if (match) {
-        // Helper to check if entered password matches the profile password or any DOB formats
-        const checkPasswordMatch = (p: any, enteredPass: string): boolean => {
-          const pass = enteredPass.trim();
-          if (p.password && p.password === pass) return true;
-          if (p.password && p.password.replace(/[-/]/g, "") === pass.replace(/[-/]/g, "")) return true;
-          
-          if (!p.dob) return false;
-          // Get clean entered password
-          const cleanPass = pass.replace(/[-/]/g, "");
-          
-          // Generate possible matches from DOB (format YYYY-MM-DD in DB)
-          const dobStr = p.dob.trim();
-          const match = dobStr.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
-          if (match) {
-            const [_, yyyy, mm, dd] = match;
-            const possibleDOBPasswords = [
-              // ddmmyyyy formats (primary - e.g. 28042008)
-              `${dd}${mm}${yyyy}`,
-              `${dd}-${mm}-${yyyy}`,
-              `${dd}/${mm}/${yyyy}`,
-              
-              // ddmmyy formats (e.g. 280408)
-              `${dd}${mm}${yyyy.substring(2)}`,
-              `${dd}-${mm}-${yyyy.substring(2)}`,
-              `${dd}/${mm}/${yyyy.substring(2)}`,
-              
-              // yyyymmdd formats (fallback/previous - e.g. 20080428)
-              `${yyyy}${mm}${dd}`,
-              `${yyyy}-${mm}-${dd}`,
-              `${yyyy}/${mm}/${dd}`,
-              
-              // direct match with raw string
-              dobStr
-            ];
-            return possibleDOBPasswords.some(
-              (pword) => pword === pass || pword.replace(/[-/]/g, "") === cleanPass
-            );
-          }
-          
-          // Basic fallback if DOB is not in YYYY-MM-DD
-          return dobStr === pass || dobStr.replace(/[-/]/g, "") === cleanPass;
-        };
-
-        // Match password with stored password OR child's DOB as password
-        const passwordMatches = checkPasswordMatch(match, passClean);
+        const normalizedEntered = passClean.replace(/[-/]/g, "");
+        const normalizedDob = match.dob.replace(/[-/]/g, "");
+        const dobParts = match.dob.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+        const legacyDobPasswords = dobParts
+          ? [normalizedDob, `${dobParts[3]}${dobParts[2]}${dobParts[1]}`, `${dobParts[3]}${dobParts[2]}${dobParts[1].slice(2)}`]
+          : [normalizedDob];
+        const isLegacyDobPassword = legacyDobPasswords.includes(normalizedEntered);
+        const passwordMatches = match.password_hash
+          ? await verifyPassword(passClean, match.password_hash)
+          : Boolean(match.password && !isLegacyDobPassword && match.password === passClean);
 
         if (passwordMatches) {
+          if (!match.password_hash && match.password) {
+            await databaseService.saveProfile({
+              ...match,
+              password: passClean,
+              password_hash: undefined
+            });
+            delete match.password;
+          }
           const cleanNum = match.contact_number ? match.contact_number.replace(/\D/g, "") : "";
           const isAdminAcc = match.role === "admin" || match.role === "super_admin" || match.role === "employee" || ["admin-subbu", "admin-subba-reddy", "admin-tejaswar", "admin-praveen"].includes(match.id) || match.email?.toLowerCase() === "praveenproq@gmail.com";
 
@@ -889,32 +817,6 @@ export default function LandingPage({
     });
   };
 
-  // Custom Register Submit - Automated Payment Confirmation
-  const handleSubmitRegPayment = async () => {
-    if (!registeredProfile || !regTxnId.trim()) return;
-    try {
-      const isUpgrade = registeredProfile.subscription_status === "paid_900";
-      const updatedProfile: Profile = {
-        ...registeredProfile,
-        subscription_status: isUpgrade ? "paid_900" : "paid_100",
-        payment_received: true,
-        fee_received_by: "Automated Gateway (PhonePe/UPI)",
-        fee_received_at: new Date().toISOString(),
-        ...(isUpgrade 
-          ? { upgrade_transaction_id: regTxnId.trim(), upgrade_requested_at: new Date().toISOString() }
-          : { fee_transaction_id: regTxnId.trim() }
-        )
-      };
-      await databaseService.saveProfile(updatedProfile);
-      setRegisteredProfile(updatedProfile);
-      setRegPaymentSuccess(true);
-      alert("🎉 చెల్లింపు ఆటోమేటిక్‌గా ధృవీకరించబడింది మరియు ఖాతా సక్రియం చేయబడింది!\n\nPayment automatically confirmed & account activated! You can now view matches immediately.");
-    } catch (err) {
-      console.error(err);
-      alert("Error submitting transaction ID. Please try again.");
-    }
-  };
-
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!acceptTerms) {
@@ -948,6 +850,10 @@ export default function LandingPage({
 
     if (!regEmail || !regEmail.includes("@")) {
       alert("⚠️ Email Address Required: Please enter candidate email address.");
+      return;
+    }
+    if (regPassword.trim().length < 8) {
+      alert("Please set a password of at least 8 characters. DOB can no longer be used as a password.");
       return;
     }
 
@@ -1072,12 +978,10 @@ export default function LandingPage({
       }
 
       const profLower = regProfession.toLowerCase();
-      const isDefence = profLower.includes("defence") || profLower.includes("army") || profLower.includes("navy") || profLower.includes("air force") || profLower.includes("military") || regCouponCode === "AGNIVEERA!1857";
+      const isDefence = profLower.includes("defence") || profLower.includes("army") || profLower.includes("navy") || profLower.includes("air force") || profLower.includes("military");
       const isTeacher = profLower.includes("teacher") || profLower.includes("professor") || profLower.includes("educator") || profLower.includes("lecturer");
 
       const badgeType = isDefence ? "Shoorveer" : isTeacher ? "Guruvu" : "Standard";
-      const discountVal = isDefence ? 50 : 0;
-
       const newProfile: Profile = {
         id: newId,
         name: regName,
@@ -1094,7 +998,7 @@ export default function LandingPage({
         isEmailVerified: isEmailVerified,
         status: "Pending",
         subscription_status: regSubscriptionStatus,
-        password: regPassword || generateDefaultDobPassword(regDob), // default ddmmyyyy DOB format password
+        password: regPassword.trim(),
         photo_url: p1Url,
         photo_url_2: p2Url,
         kundali_url: kUrl,
@@ -1113,10 +1017,8 @@ export default function LandingPage({
         nakshatram: calculatedAstrology.nakshatra,
         astrology: calculatedAstrology,
         badge: badgeType,
-        discount: discountVal,
         referral_code: myReferralCode,
         referred_by: regReferredBy.trim() || undefined,
-        coupon_applied: regCouponCode.trim() || undefined,
         is_defence_verified: isDefence ? false : true
       };
 
@@ -1139,7 +1041,7 @@ export default function LandingPage({
       
       // Auto-fill login fields for the user
       setMobileNumber(saved.reg_number || "");
-      setPassword(saved.password || "");
+      setPassword("");
       setShowRegisterModal(false);
       
       // Clear inputs
@@ -1155,7 +1057,6 @@ export default function LandingPage({
       setRegDob("");
       setRegBirthPlace("");
       setRegBirthPincode("");
-      setRegSubscriptionStatus("free");
       setRegBirthTime("08:30");
       setRegHeight("5.4");
       setRegCaste("");
@@ -1269,7 +1170,19 @@ export default function LandingPage({
           {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="bg-white p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border-2 border-[#C2242C] shrink-0">
-              <span className="text-lg sm:text-xl" aria-hidden="true">🪔</span>
+              <svg
+                viewBox="0 0 48 48"
+                className="w-6 h-6 sm:w-7 sm:h-7"
+                role="img"
+                aria-label="Kalasam logo"
+              >
+                <path d="M24 5c-2 4-5 6-9 7 3 2 6 3 9 2 3 1 6 0 9-2-4-1-7-3-9-7Z" fill="#2f7d32" />
+                <path d="M24 5c1 4 3 7 6 9M24 5c-1 4-3 7-6 9" stroke="#1b5e20" strokeWidth="1.5" fill="none" />
+                <path d="M16 17h16l-2 5H18l-2-5Z" fill="#d79b18" stroke="#99151b" strokeWidth="1.5" />
+                <path d="M18 22h12l3 14c-3 4-15 4-18 0l3-14Z" fill="#f3bd35" stroke="#99151b" strokeWidth="1.5" />
+                <path d="M20 27h8M19 31h10" stroke="#99151b" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="24" cy="24" r="1.5" fill="#99151b" />
+              </svg>
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
@@ -1423,22 +1336,6 @@ export default function LandingPage({
                     <option key={s.id} value={s.id}>{s.labelEn}</option>
                   ))}
                 </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                  <span className="text-amber-700">•</span> వయసు (Age Range)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <select className="w-full bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs font-bold text-zinc-900">
-                    <option value="21">21 సం.</option>
-                    <option value="24">24 సం.</option>
-                  </select>
-                  <select className="w-full bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs font-bold text-zinc-900">
-                    <option value="36">36 సం.</option>
-                    <option value="42">42 సం.</option>
-                  </select>
-                </div>
               </div>
 
               <button
@@ -1668,23 +1565,20 @@ export default function LandingPage({
               <ChevronRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform shrink-0" />
             </a>
 
-            <a
-              href="/pay"
-              className="bg-amber-50/50 hover:bg-amber-50 border border-amber-200 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-xs"
-            >
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between shadow-xs">
               <div className="space-y-1 text-left">
                 <span className="text-[10px] font-mono uppercase text-emerald-700 font-bold tracking-widest block">
-                  Instant Activation • /pay
+                  100% Free • ఉచిత సేవ
                 </span>
-                <h5 className="text-base font-extrabold text-zinc-900 group-hover:text-emerald-800 transition-colors">
-                  Automated Payment Desk
+                <h5 className="text-base font-extrabold text-zinc-900">
+                  Free Registration for Every Family
                 </h5>
                 <p className="text-xs text-zinc-600">
-                  Instant ₹100 Match Activation or ₹900 Full Communication Upgrade.
+                  Create and submit your candidate profile without membership fees or payment.
                 </p>
               </div>
-              <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform shrink-0" />
-            </a>
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+            </div>
           </div>
         </div>
       </section>
@@ -1833,7 +1727,7 @@ export default function LandingPage({
                     regStep === 2 ? "2. Contact & Email OTP Verification" :
                     regStep === 3 ? "3. Caste, Gothram & Rasi" :
                     regStep === 4 ? "4. Birth Details" :
-                    "5. Diet, Profession & Discounts"
+                    "5. Diet & Profession"
                   }
                 </span>
                 <span className="text-[10px] text-zinc-400 font-mono">
@@ -2126,20 +2020,20 @@ export default function LandingPage({
 
                 <div className="space-y-1.5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                   <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">
-                    Custom Password (పాస్‌వర్డ్ - Optional)
+                    Create Password (పాస్‌వర్డ్ - Required)
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-amber-400/70 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <input
-                      type="text"
-                      placeholder="Leave blank to use Date of Birth (DDMMYYYY) as password"
+                      type="password"
+                      placeholder="At least 8 characters"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-mono"
                     />
                   </div>
                   <p className="text-[10px] text-zinc-400">
-                    If left blank, your Date of Birth (e.g. 15051998) will automatically become your password.
+                    Your password is required and stored only as a salted one-way hash. DOB is never used as a password.
                   </p>
                 </div>
               </div>
@@ -2366,7 +2260,7 @@ export default function LandingPage({
               <div className="space-y-4 pt-4 text-sm animate-in fade-in duration-200">
                 <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-xs text-amber-200">
                   <span className="font-extrabold block mb-0.5">ఐదవ దశ: ఆహారపు అలవాట్లు, వృత్తి మరియు ప్రత్యేక రాయితీలు</span>
-                  Select meal preferences, profession, and defense/teacher service discount claims.
+                  Select meal preferences and profession details for your profile.
                 </div>
 
                 {/* Dietary Preferences */}
@@ -2425,93 +2319,11 @@ export default function LandingPage({
                   </div>
                 </div>
 
-                {/* Defense & Teacher Special Honors Notice */}
-                <div className="p-3 bg-gradient-to-r from-red-950/40 to-amber-950/40 rounded-xl border border-red-500/20 text-xs space-y-2">
-                  <span className="font-extrabold text-amber-300 block">🛡️ Special Honors for Indian Defense & Teachers (ప్రత్యేక గౌరవ రాయితీలు):</span>
-                  <p className="text-[11px] text-zinc-300 leading-relaxed">
-                    • <strong>Indian Defense Services</strong> (Army, Navy, Air Force, Police, CRPF, NSG, MARCOS): <span className="text-emerald-400 font-bold">90% Discount</span> on all plans.<br />
-                    • <strong>Teachers & Professors</strong> (EDUCATORS): <span className="text-emerald-400 font-bold">50% Discount</span> in respect of life-changers.
+                <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center">
+                  <p className="text-sm font-black text-emerald-800">ఉచితంగా నమోదు చేసుకోండి • Free Registration</p>
+                  <p className="mt-1 text-xs font-semibold text-emerald-700">
+                    Create your matrimonial profile at no cost. No membership package or payment is required to register.
                   </p>
-                  <div>
-                    <label className="text-[10px] font-black text-amber-200 block mb-1">Upload ID Card / Service Proof (సేవ గుర్తింపు కార్డు - ఐచ్ఛికం)</label>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={async (e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          const f = e.target.files[0];
-                          setRegIdCardUrl(await fileToBase64(f));
-                          alert("✅ ID Card uploaded successfully for special service discount review!");
-                        }
-                      }}
-                      className="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500 file:text-black hover:file:bg-amber-600 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                {/* Coupon Code & Referral Section */}
-                <div className="bg-zinc-950 p-4 rounded-xl border border-amber-500/30 space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-black text-amber-300 uppercase tracking-wider block">Have a Coupon Code? (కూపన్ కోడ్)</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="e.g. AGNIVEERA!1857, NEWUSER2026, refered"
-                        value={regCouponCode}
-                        onChange={(e) => setRegCouponCode(e.target.value)}
-                        className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2 px-3 text-xs text-white uppercase font-mono font-bold"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyCoupon}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs uppercase rounded-xl transition-all cursor-pointer whitespace-nowrap shadow-md"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    {couponAppliedSuccess && (
-                      <p className="text-[11px] text-emerald-400 font-bold mt-1">✓ {couponAppliedSuccess}</p>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-zinc-900 space-y-2">
-                    <label className="text-xs font-black text-amber-300 uppercase tracking-wider block">Referral Network & Sharing (మీ రెఫరల్ లింక్)</label>
-                    <div className="flex items-center justify-between bg-black p-2.5 rounded-xl border border-zinc-800">
-                      <span className="text-xs font-mono text-amber-400 font-bold">Code: {myReferralCode}</span>
-                      <button
-                        type="button"
-                        onClick={handleWhatsAppShare}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" /> Share via WhatsApp
-                      </button>
-                    </div>
-                    <div className="space-y-1 pt-1">
-                      <label className="text-[10px] font-bold text-zinc-400 block uppercase">Enter Referred By Code (if any - స్నేహితుని రెఫరల్ కోడ్)</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. SUBHA-XYZ123"
-                        value={regReferredBy}
-                        onChange={(e) => setRegReferredBy(e.target.value)}
-                        className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2 px-3 text-xs text-white uppercase font-mono font-bold"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Membership Package */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-amber-200 uppercase tracking-wider block">Membership Package (మెంబర్‌షిప్ ప్లాన్) *</label>
-                  <select
-                    value={regSubscriptionStatus}
-                    onChange={(e) => setRegSubscriptionStatus(e.target.value as any)}
-                    className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none font-bold cursor-pointer"
-                  >
-                    <option value="paid_1599">₹1599 Paid Plan - 31 Days Unlimited Brahmin Matches (₹1599)</option>
-                    <option value="paid_100">₹100 Search Starter Plan - Start Matching (₹100)</option>
-                    <option value="free">Free Plan (ఉచిత ప్లాన్) - Basic Registration (₹0)</option>
-                    <option value="paid_900">New User Special Plan - NEWUSER2026 (₹900)</option>
-                  </select>
                 </div>
 
                 {/* Terms checkbox */}
@@ -2794,8 +2606,8 @@ export default function LandingPage({
                   <span className="text-white font-bold">{registeredProfile.name} {registeredProfile.surname || ""}</span>
                 </p>
                 <p className="flex justify-between border-b border-zinc-800/50 pb-1.5">
-                  <span>Login Password:</span>
-                  <span className="text-amber-300 font-bold">{registeredProfile.password}</span>
+                  <span>Password:</span>
+                  <span className="text-emerald-300 font-bold">Set privately by you</span>
                 </p>
                 <p className="flex justify-between border-b border-zinc-800/50 pb-1.5">
                   <span>Date of Birth (DOB):</span>
@@ -2822,62 +2634,11 @@ export default function LandingPage({
               <span>Download My Kundali & Astrology Summary PDF (జాతక పత్రిక PDF)</span>
             </button>
 
-            {/* Payment Section for Paid Packages */}
-            {(registeredProfile.subscription_status === "paid_100" || registeredProfile.subscription_status === "paid_900" || registeredProfile.subscription_status === "paid_1599") && (
-              <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl p-4 space-y-4 relative z-10">
-                <div className="text-center space-y-1">
-                  <span className="text-[10px] text-amber-300 font-mono tracking-widest uppercase block font-bold">Secure Payment Portal</span>
-                  <h4 className="text-sm font-extrabold text-white">
-                    {registeredProfile.subscription_status === "paid_1599"
-                      ? "Pay 31-Day Unlimited Matches Fee (₹1599)"
-                      : registeredProfile.subscription_status === "paid_100" 
-                        ? "Pay Match Registration Fee (₹100)" 
-                        : "Pay Full Communication Upgrade (₹900)"}
-                  </h4>
-                  <p className="text-[11px] text-zinc-400">
-                    Scan G.V. Subramanyam's authentic PhonePe QR code below to complete your registration.
-                  </p>
-                </div>
-
-                <PhonePeQRCode 
-                  amount={registeredProfile.subscription_status === "paid_1599" ? 1599 : (registeredProfile.subscription_status === "paid_100" ? 100 : 900)} 
-                  className="w-full shadow-lg" 
-                />
-
-                {regPaymentSuccess || registeredProfile.fee_transaction_id || registeredProfile.upgrade_transaction_id ? (
-                  <div className="p-3 bg-emerald-950/40 border border-emerald-500/20 rounded-xl text-center space-y-1 text-emerald-400">
-                    <CheckCircle2 className="w-5 h-5 mx-auto" />
-                    <span className="text-xs font-bold uppercase block">Payment Reference Submitted!</span>
-                    <p className="text-[10px] text-zinc-300">
-                      We have recorded your Transaction ID: <strong className="font-mono">{regTxnId || registeredProfile.fee_transaction_id || registeredProfile.upgrade_transaction_id}</strong>. Administrator will verify shortly.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-zinc-300 uppercase tracking-wider text-left">
-                      Enter UPI Transaction ID / UTR Number
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="e.g. 12-digit UPI UTR"
-                        value={regTxnId}
-                        onChange={(e) => setRegTxnId(e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
-                        className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-amber-400 font-mono uppercase tracking-widest text-center"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSubmitRegPayment}
-                        disabled={!regTxnId.trim()}
-                        className="px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-xs font-black rounded-xl hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer shrink-0"
-                      >
-                        Submit UTR
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-center relative z-10">
+              <CheckCircle2 className="w-6 h-6 mx-auto text-emerald-600 mb-1" />
+              <span className="text-sm font-black text-emerald-800 block">Registration completed free of cost</span>
+              <p className="text-xs text-emerald-700 mt-1">No payment or transaction ID is required for your profile registration.</p>
+            </div>
 
             {/* Convenience Fee Callback Warning */}
             <div className="bg-amber-400/10 border border-amber-400/20 rounded-2xl p-4 text-xs space-y-1.5 relative z-10">
@@ -3094,7 +2855,7 @@ export default function LandingPage({
                         email: user.email!,
                         status: "Verified" as const,
                         role: (isSubbu || isPraveen ? "super_admin" : "admin") as "super_admin" | "admin",
-                        subscription_status: "paid_900" as const
+                        subscription_status: "free" as const
                       };
 
                       await adminNotificationService.elevateToAdmin(user.uid, {

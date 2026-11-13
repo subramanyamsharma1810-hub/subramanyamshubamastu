@@ -189,8 +189,8 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
       return;
     }
 
-    if (!cleanPass || cleanPass.length < 6) {
-      setFormError("Password must be at least 6 characters long.");
+    if (!cleanPass || cleanPass.length < 8) {
+      setFormError("Password must be at least 8 characters long.");
       return;
     }
 
@@ -218,8 +218,8 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
         addedBy: "Sri G.V. Subramanyam (Proprietor)"
       };
 
-      await databaseService.saveAdmin(newAdmin);
-      setCreatedAdmin(newAdmin);
+      const savedAdmin = await databaseService.saveAdmin(newAdmin);
+      setCreatedAdmin(savedAdmin);
       setToastMsg(`Administrator "${newAdmin.name}" added successfully.`);
       await loadAdmins();
     } catch (err) {
@@ -276,7 +276,7 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
   };
 
   const copyCredentials = (admin: AdminUser) => {
-    const text = `SHUBHAMASTU.IN ADMIN CREDENTIALS\nName: ${admin.name}\nDesignation: ${admin.designation || "Admin"}\nLogin Mobile: ${admin.mobile}\nPassword: ${admin.password}\nPortal Link: https://shubhamastu.in`;
+    const text = `SHUBHAMASTU.IN ADMIN ACCESS\nName: ${admin.name}\nDesignation: ${admin.designation || "Admin"}\nLogin Mobile: ${admin.mobile}\nPassword: Set privately by the administrator\nPortal Link: https://shubhamastu.in`;
     navigator.clipboard.writeText(text);
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 3000);
@@ -289,7 +289,7 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
       `You have been appointed as an authorized administrator on Shubhamastu.in.\n\n` +
       `*Designation:* ${admin.designation || "Administrator"}\n` +
       `*Login Mobile:* ${admin.mobile}\n` +
-      `*Password:* ${admin.password}\n` +
+      `*Password:* Set privately by the administrator\n` +
       `*Admin Portal:* https://shubhamastu.in\n\n` +
       `_Issued by Sri G.V. Subramanyam (Proprietor, Glark Solutions)_`
     );
@@ -767,7 +767,7 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
                     <div className="flex justify-between">
                       <span className="text-gray-500">Password:</span>
                       <span className="font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded">
-                        {createdAdmin.password}
+                        Password saved securely as a one-way hash. It is not displayed.
                       </span>
                     </div>
                     <div className="flex justify-between">

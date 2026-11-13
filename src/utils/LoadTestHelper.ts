@@ -35,7 +35,6 @@ export const LoadTestHelper = {
         height_feet: 5.4 + Math.random() * 0.8,
         contact_number: `9${Math.floor(100000000 + Math.random() * 900000000)}`,
         email: `test-${i}@shubhamastu.in`,
-        password: "password123",
         profession: professions[Math.floor(Math.random() * professions.length)],
         salary_lpa: 10 + Math.floor(Math.random() * 50),
         status: "Verified",
