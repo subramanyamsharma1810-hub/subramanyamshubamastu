@@ -58,11 +58,13 @@ export function PandithConsultationModal({ isOpen, onClose }: PandithConsultatio
               <div key={p.id} className="bg-black/40 border border-amber-500/30 hover:border-amber-400 rounded-2xl p-5 space-y-4 shadow-lg flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={p.photoUrl}
-                      alt={p.name}
-                      className="w-14 h-14 rounded-xl object-cover border-2 border-amber-400 shrink-0 shadow-md"
-                    />
+                    {p.photoUrl && (
+                      <img
+                        src={p.photoUrl}
+                        alt={p.name}
+                        className="w-14 h-14 rounded-xl object-cover border-2 border-amber-400 shrink-0 shadow-md"
+                      />
+                    )}
                     <div className="space-y-1">
                       <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                         {p.specialization || "Vedic Astrologer"}
@@ -113,4 +115,3 @@ export function PandithConsultationModal({ isOpen, onClose }: PandithConsultatio
     </div>
   );
 }
-

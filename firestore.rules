@@ -103,7 +103,8 @@ service cloud.firestore {
 
     // Pandits (Sacred Service Registry)
     match /pandits/{panditId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

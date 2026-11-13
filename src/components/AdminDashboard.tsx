@@ -102,7 +102,6 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
     const newPandit: Pandit = {
       id: editingPandit ? editingPandit.id : `pandit-${Date.now()}`,
       name: panditName.trim(),
-      photoUrl: "/images/telugu-wedding-hero.png",
       message: panditMessage.trim(),
       phone: panditPhone.trim() || "+91 9347359489",
       specialization: panditSpecialization.trim() || "Vedic Astrology & Vivaha Muhurtam",
@@ -8715,11 +8714,13 @@ Ph: ${adminPhone}`;
             {pandits.map((p) => (
               <div key={p.id} className="bg-white rounded-3xl p-6 border border-amber-200/60 shadow-sm hover:shadow-md transition-all space-y-4 text-left">
                 <div className="flex items-start gap-4">
-                  <img
-                    src={p.photoUrl}
-                    alt={p.name}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0 shadow-sm"
-                  />
+                  {p.photoUrl && (
+                    <img
+                      src={p.photoUrl}
+                      alt={p.name}
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0 shadow-sm"
+                    />
+                  )}
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
@@ -8800,7 +8801,7 @@ Ph: ${adminPhone}`;
 
               <div className="space-y-1.5">
                 <label className="text-xs font-black uppercase text-[#362B5A] tracking-wider block">Photo</label>
-                <p className="text-[10px] text-gray-500">Pandit photos use the local protected asset. External image URLs are not accepted.</p>
+                <p className="text-[10px] text-gray-500">Pandit images are stored privately in Firebase and are not shown in the public directory.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

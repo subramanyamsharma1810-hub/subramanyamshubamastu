@@ -1923,52 +1923,22 @@ export const databaseService = {
   },
 
   async getPandits(): Promise<Pandit[]> {
-    let list: Pandit[] = [
-      {
-        id: "pandit-1",
-        name: "Brahmashri Vedula Subrahmanya Sharma",
-        photoUrl: "/images/telugu-wedding-hero.png",
-        message: "Dedicated to conducting sacred Vedic marriages, Kundali matching, Gothra shuddhi, and providing divine blessings according to traditional Shastras.",
-        phone: "+91 9441234567",
-        specialization: "Vedic Astrology & Vivaha Muhurtam",
-        availableDays: "Mon - Sat (9 AM - 6 PM)",
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: "pandit-2",
-        name: "Brahmashri Challa Sastry",
-        photoUrl: "/images/telugu-wedding-hero.png",
-        message: "Expert in Ashtakoota Guna Milan, horoscope matching, dosha pariharam, and traditional Brahmin wedding rituals.",
-        phone: "+91 9887654321",
-        specialization: "Kundali Matching & Pariharam",
-        availableDays: "All Days (By Appointment)",
-        createdAt: new Date().toISOString()
-      }
-    ];
-
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("matrimonial_pandits");
+    }
     try {
       const snap = await getDocs(collection(db, "pandits"));
-      if (!snap.empty) {
-        const fetched: Pandit[] = [];
-        snap.forEach((d) => fetched.push(d.data() as Pandit));
-        if (fetched.length > 0) list = fetched;
-      }
+      const list: Pandit[] = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        const { photoUrl: _privatePhotoUrl, ...publicPandit } = data;
+        list.push({ id: d.id, ...publicPandit } as Pandit);
+      });
+      return list;
     } catch (e) {
-      console.warn("Could not fetch pandits from Firestore:", e);
+      console.error("Could not fetch pandits from Firestore:", e);
+      return [];
     }
-
-    const local = localStorage.getItem("matrimonial_pandits");
-    if (local) {
-      try {
-        const localList: Pandit[] = JSON.parse(local);
-        if (localList.length > 0) {
-          list = localList;
-        }
-      } catch (e) {}
-    }
-
-    localStorage.setItem("matrimonial_pandits", JSON.stringify(list));
-    return list;
   },
 
   async savePandit(pandit: Pandit): Promise<Pandit> {
@@ -1977,14 +1947,6 @@ export const databaseService = {
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, `pandits/${pandit.id}`);
     }
-    const current = await this.getPandits();
-    const idx = current.findIndex(p => p.id === pandit.id);
-    if (idx >= 0) {
-      current[idx] = pandit;
-    } else {
-      current.push(pandit);
-    }
-    localStorage.setItem("matrimonial_pandits", JSON.stringify(current));
     return pandit;
   },
 
@@ -1994,9 +1956,6 @@ export const databaseService = {
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, `pandits/${id}`);
     }
-    const current = await this.getPandits();
-    const filtered = current.filter(p => p.id !== id);
-    localStorage.setItem("matrimonial_pandits", JSON.stringify(filtered));
     return true;
   }
 };

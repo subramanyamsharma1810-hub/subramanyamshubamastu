@@ -1,7 +1,7 @@
 export interface Pandit {
   id: string;
   name: string;
-  photoUrl: string;
+  photoUrl?: string;
   message: string;
   phone?: string;
   specialization?: string;
