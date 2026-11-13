@@ -1113,10 +1113,11 @@ export default function LandingPage({
 
   return (
     <div
-      className="landing-light-theme relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-fixed"
+      className="landing-light-theme relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-scroll md:bg-fixed"
       style={{
         backgroundImage:
-          "linear-gradient(rgba(250,248,245,0.72), rgba(250,248,245,0.86)), url('/images/telugu-wedding-hero.png')",
+          "linear-gradient(rgba(250,248,245,0.64), rgba(250,248,245,0.88)), url('/images/telugu-wedding-hero.png')",
+        backgroundPosition: "center top",
       }}
     >
       <style>{`
@@ -1139,23 +1140,30 @@ export default function LandingPage({
       `}</style>
       
       {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="relative w-full h-14 sm:h-20 bg-[#fffaf0] border-b-2 border-amber-400 shadow-sm overflow-hidden">
-        <img src="/images/mango-toranam.svg" alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="relative z-10 h-full flex items-end justify-center pb-1 text-[9px] sm:text-xs font-black text-[#99151B] tracking-wide">
-          {lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "Honouring Tradition • Creating Sacred Alliances"}
+      <div className="relative w-full h-20 sm:h-28 lg:h-32 bg-[#fffaf0]/95 border-b-2 border-amber-400 shadow-sm overflow-hidden">
+        <img
+          src="/images/mango-toranam.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover object-top"
+        />
+        <div className="absolute inset-x-0 bottom-1 sm:bottom-2 flex justify-center px-4">
+          <span className="rounded-full bg-[#fffaf0]/90 px-3 py-1 text-[8px] sm:text-[10px] font-black text-[#99151B] tracking-[0.12em] shadow-sm">
+            {lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "HONOURING TRADITION • CREATING SACRED ALLIANCES"}
+          </span>
         </div>
       </div>
 
       {/* Top Header Bar */}
       <header className="relative z-30 w-full bg-white/95 backdrop-blur-md border-b border-amber-200/90 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-24 sm:min-h-28 lg:min-h-32 py-3 flex items-center justify-between gap-3">
           
           {/* Webpage Name & Slogan */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="bg-white p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border-2 border-[#C2242C] shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="bg-white p-2 sm:p-3 rounded-full flex items-center justify-center shadow-lg border-2 border-[#C2242C] shrink-0">
               <svg
                 viewBox="0 0 48 48"
-                className="w-12 h-12 sm:w-16 sm:h-16"
+                className="w-14 h-14 sm:w-20 sm:h-20 lg:w-24 lg:h-24"
                 role="img"
                 aria-label="Kalasam logo"
               >
@@ -1169,14 +1177,14 @@ export default function LandingPage({
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-3xl font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
+                <span className="text-3xl sm:text-5xl lg:text-6xl leading-none font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
                   {lang === "te" ? "శుభమస్తు" : "SHUBHAMASTU"}
                 </span>
-                <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden sm:inline-block">
+                <span className="text-[10px] lg:text-xs bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden md:inline-block">
                   {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "TELUGU BRAHMIN MATRIMONY"}
                 </span>
               </div>
-              <p className="text-[8px] sm:text-[9px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
+              <p className="text-[9px] sm:text-[11px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
                 {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "Trusted Telugu Brahmin Matrimony"}
               </p>
             </div>
