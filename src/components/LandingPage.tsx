@@ -1139,10 +1139,11 @@ export default function LandingPage({
       `}</style>
       
       {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-2 px-4 text-center border-b-2 border-amber-400 flex items-center justify-center gap-3 shadow-sm">
-        <span className="tracking-widest text-lg">🌿🍃🌿🍃🌿</span>
-        <span>{lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "Honouring Tradition • Creating Sacred Alliances"}</span>
-        <span className="tracking-widest text-lg">🌿🍃🌿🍃🌿</span>
+      <div className="relative w-full h-14 sm:h-20 bg-[#fffaf0] border-b-2 border-amber-400 shadow-sm overflow-hidden">
+        <img src="/images/mango-toranam.svg" alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="relative z-10 h-full flex items-end justify-center pb-1 text-[9px] sm:text-xs font-black text-[#99151B] tracking-wide">
+          {lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "Honouring Tradition • Creating Sacred Alliances"}
+        </div>
       </div>
 
       {/* Top Header Bar */}
