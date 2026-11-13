@@ -209,7 +209,7 @@ export function getAdminStageInfo(role?: string, explicitStage?: number): AdminS
 export interface AdminUser {
   id: string;
   name: string;
-  mobile: string;
+  mobile?: string;
   password?: string;
   password_hash?: string;
   email?: string;

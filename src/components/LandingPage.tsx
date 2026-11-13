@@ -605,7 +605,7 @@ export default function LandingPage({
 
     const emailTrim = verifiedAdmin.email.toLowerCase();
     setAdminEmail(emailTrim);
-    setAdminMobile(verifiedAdmin.mobile);
+    setAdminMobile(verifiedAdmin.mobile || "");
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP matching input maxLength={6}
     setAdminGeneratedOtp(otp);
 
@@ -725,7 +725,7 @@ export default function LandingPage({
     setLoginError("");
 
     if (!mobileNumber || !password) {
-      setLoginError("Please enter both Mobile Number and Password.");
+      setLoginError("Please enter your mobile number or email and password.");
       return;
     }
 
@@ -782,7 +782,7 @@ export default function LandingPage({
           setLoginError(`Incorrect password. Please verify your login credentials or contact administration.`);
         }
       } else {
-        setLoginError("Invalid credentials. No profile matches that Mobile Number.");
+        setLoginError("Invalid credentials. No profile matches that mobile number or email.");
       }
     } catch (err) {
       setLoginError("Credentials check failed. Please try again.");
@@ -2691,7 +2691,7 @@ export default function LandingPage({
                 {lang === "te" ? "వినియోగదారు లాగిన్" : "User Login"}
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                {lang === "te" ? "మొబైల్ నంబర్ మరియు పాస్‌వర్డ్‌తో లాగిన్ అవ్వండి" : "Login with your mobile number and password"}
+                {lang === "te" ? "మొబైల్ నంబర్ లేదా ఈమెయిల్ మరియు పాస్‌వర్డ్‌తో లాగిన్ అవ్వండి" : "Login with your mobile number or email and password"}
               </p>
             </div>
             {loginError && (
@@ -2700,13 +2700,13 @@ export default function LandingPage({
               </div>
             )}
             <label className="block text-xs font-bold text-[#362B5A]">
-              {lang === "te" ? "మొబైల్ నంబర్" : "Mobile Number"}
+              {lang === "te" ? "మొబైల్ నంబర్ లేదా ఈమెయిల్" : "Mobile Number or Email"}
               <input
-                type="tel"
+                type="text"
                 required
                 value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="10-digit mobile number"
+                onChange={(e) => setMobileNumber(e.target.value)}
+                placeholder="Mobile number or email"
                 className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C2242C]"
               />
             </label>

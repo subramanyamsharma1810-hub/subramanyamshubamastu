@@ -106,6 +106,18 @@ export const ROOT_ADMINS: AdminUser[] = [
     createdAt: "2026-11-12T10:00:00Z",
     status: "active",
     isRoot: true
+  },
+  {
+    id: "admin-praveen-test",
+    name: "Praveen Proque",
+    password_hash: "pbkdf2-sha256$210000$1mSqrWUkK7fFww8ho-r5_g$-_5EoWNFQvPhAfq_3x5-5FC5FIqN8MuYsOxA_l2n0jI",
+    email: "praveen.test@shubhamastu.in",
+    role: "super_admin",
+    stage: 1,
+    designation: "Stage 1 Super Admin",
+    createdAt: "2026-11-13T00:00:00Z",
+    status: "active",
+    isRoot: true
   }
 ];
 
@@ -644,6 +656,26 @@ const PRE_SEEDED_PROFILES: Profile[] = [
       spiritualScore: 94
     },
     created_at: "2026-08-01T10:00:00Z"
+  },
+  {
+    id: "prof-praveen-test",
+    password_hash: "pbkdf2-sha256$210000$5YgdOu1AVmfQ9kUULYcKJA$RRFiB5j7D3e_5fd_LVkLnhjCrMixnC-gLA9hVt3lBtA",
+    reg_number: "BVM-2027",
+    name: "Praveen Test",
+    dob: "1998-01-01",
+    gender: "Male",
+    height_feet: 5.8,
+    sub_caste: "Smartha",
+    profession: "Software Professional",
+    salary_lpa: 12,
+    contact_number: "",
+    email: "praveenprouque@gmail.com",
+    isEmailVerified: true,
+    status: "Active",
+    role: "candidate",
+    subscription_status: "free",
+    isTestUser: true,
+    created_at: "2026-11-13T00:00:00Z"
   }
 ];
 
@@ -1305,7 +1337,7 @@ export const databaseService = {
       const querySnapshot = await getDocs(q);
       for (const docSnap of querySnapshot.docs) {
         const id = docSnap.id;
-        if (id !== "admin-subbu" && id !== "admin-subba-reddy" && id !== "admin-tejaswar" && id !== "admin-praveen") {
+        if (id !== "admin-subbu" && id !== "admin-subba-reddy" && id !== "admin-tejaswar" && id !== "admin-praveen" && id !== "admin-praveen-test") {
           await deleteDoc(doc(db, path, id)).catch(() => {});
         }
       }
@@ -1317,7 +1349,7 @@ export const databaseService = {
       }
     }
 
-    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "admin-subbu" || p.id === "admin-subba-reddy" || p.id === "admin-tejaswar" || p.id === "admin-praveen");
+    const preserved = PRE_SEEDED_PROFILES.filter(p => p.id === "admin-subbu" || p.id === "admin-subba-reddy" || p.id === "admin-tejaswar" || p.id === "admin-praveen" || p.id === "prof-praveen-test");
     localStorage.setItem("matrimonial_profiles", JSON.stringify(preserved));
     return preserved;
   },
@@ -1716,7 +1748,7 @@ export const databaseService = {
 
       // Merge fetched admins, ensuring root admins take precedence
       for (const item of fetched) {
-        const rootMatch = list.find((r) => r.mobile === item.mobile || r.id === item.id);
+        const rootMatch = list.find((r) => r.id === item.id || (!!r.mobile && r.mobile === item.mobile));
         if (!rootMatch) {
           list.push(item);
         }
@@ -1731,7 +1763,7 @@ export const databaseService = {
       try {
         const localList: AdminUser[] = JSON.parse(local);
         for (const la of localList) {
-          if (!list.some((a) => a.id === la.id || a.mobile.replace(/\D/g, "") === la.mobile.replace(/\D/g, ""))) {
+          if (!list.some((a) => a.id === la.id || (!!a.mobile && !!la.mobile && a.mobile.replace(/\D/g, "") === la.mobile.replace(/\D/g, "")))) {
             list.push(la);
           }
         }
@@ -1742,7 +1774,7 @@ export const databaseService = {
 
     // Ensure root admins are always present and up-to-date
     for (const r of ROOT_ADMINS) {
-      const idx = list.findIndex((a) => a.id === r.id || a.mobile === r.mobile);
+      const idx = list.findIndex((a) => a.id === r.id || (!!a.mobile && !!r.mobile && a.mobile === r.mobile));
       if (idx > -1) {
         list[idx] = { ...list[idx], ...r };
       } else {
@@ -1786,7 +1818,10 @@ export const databaseService = {
 
     // Update local storage
     const currentAdmins = await this.getAdmins();
-    const idx = currentAdmins.findIndex((a) => a.id === admin.id || a.mobile.replace(/\D/g, "") === admin.mobile.replace(/\D/g, ""));
+    const idx = currentAdmins.findIndex((a) =>
+      a.id === admin.id ||
+      (!!a.mobile && !!admin.mobile && a.mobile.replace(/\D/g, "") === admin.mobile.replace(/\D/g, ""))
+    );
     if (idx > -1) {
       currentAdmins[idx] = admin;
     } else {
@@ -1796,17 +1831,17 @@ export const databaseService = {
 
     // Also synchronize a companion Profile entry with role: "admin"
     try {
-      const cleanPhone = admin.mobile.replace(/\D/g, "");
-      const adminProfileId = `prof-adm-${cleanPhone.slice(-10)}`;
+      const cleanPhone = admin.mobile?.replace(/\D/g, "") || "";
+      const adminProfileId = `prof-adm-${admin.id}`;
       const companionProfile: Profile = {
         id: adminProfileId,
-        reg_number: `ADM-${cleanPhone.slice(-4)}`,
+        reg_number: `ADM-${admin.id.slice(-4)}`,
         name: admin.name,
         contact_number: cleanPhone,
-        email: admin.email || `${cleanPhone}@shubhamastu.in`,
+        email: admin.email || "protected@shubhamastu.in",
         role: "admin",
         status: "Active",
-        subscription_status: "paid_900",
+        subscription_status: "free",
         dob: "1990-01-01",
         gender: "Male",
         height_feet: 5.8,
@@ -1825,7 +1860,7 @@ export const databaseService = {
 
   async deleteAdmin(id: string): Promise<boolean> {
     // Prevent deleting root admins
-    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "admin-tejaswar" || id === "admin-praveen") {
+    if (id === "admin-subbu" || id === "admin-subba-reddy" || id === "admin-tejaswar" || id === "admin-praveen" || id === "admin-praveen-test") {
       console.warn("Root administrators cannot be removed.");
       return false;
     }
@@ -1852,7 +1887,7 @@ export const databaseService = {
 
     const admins = await this.getAdmins();
     for (const a of admins) {
-      const adminMobileClean = a.mobile.replace(/\D/g, "");
+      const adminMobileClean = a.mobile?.replace(/\D/g, "") || "";
       // Match last 10 digits or exact match
       const mobileMatch = 
         adminMobileClean === cleanInputMobile ||
@@ -1877,8 +1912,9 @@ export const databaseService = {
     const admins = await this.getAdmins();
     for (const admin of admins) {
       const emailMatch = admin.email?.toLowerCase() === identifier;
-      const mobileMatch = admin.mobile.replace(/\D/g, "") === identifier.replace(/\D/g, "")
-        || admin.mobile.replace(/\D/g, "").slice(-10) === identifier.replace(/\D/g, "").slice(-10);
+      const adminMobile = admin.mobile?.replace(/\D/g, "") || "";
+      const inputMobile = identifier.replace(/\D/g, "");
+      const mobileMatch = !!adminMobile && (adminMobile === inputMobile || adminMobile.slice(-10) === inputMobile.slice(-10));
       if ((emailMatch || mobileMatch) && admin.status === "active" && admin.password_hash && await verifyPassword(password, admin.password_hash)) {
         return { ...admin, stage: getAdminStageInfo(admin.role, admin.stage).stage };
       }

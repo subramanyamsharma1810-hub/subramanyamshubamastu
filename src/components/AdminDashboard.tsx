@@ -216,10 +216,10 @@ export default function AdminDashboard({ onRefreshTrigger }: AdminDashboardProps
 
   const currentAdminProfile = useMemo(() => {
     if (!currentAdmin) return null;
-    return profiles.find(p => p.id === currentAdmin.id || p.contact_number?.replace(/\D/g, "") === currentAdmin.mobile.replace(/\D/g, "")) || {
+    return profiles.find(p => p.id === currentAdmin.id || p.contact_number?.replace(/\D/g, "") === currentAdmin.mobile?.replace(/\D/g, "")) || {
       id: currentAdmin.id,
       name: currentAdmin.name,
-      contact_number: currentAdmin.mobile,
+      contact_number: currentAdmin.mobile || "",
       email: currentAdmin.email,
       role: currentAdmin.role,
       status: "Verified",
@@ -2836,7 +2836,7 @@ Ph: ${adminPhone}`;
             </div>
             {currentAdmin && (
               <span className="text-[10px] sm:text-xs font-medium text-amber-100/90 bg-white/10 px-2.5 py-0.5 sm:py-1 rounded-full border border-white/15">
-                👤 {currentAdmin.name} ({currentAdmin.mobile})
+                👤 {currentAdmin.name} ({currentAdmin.mobile || "email login"})
               </span>
             )}
           </div>

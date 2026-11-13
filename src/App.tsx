@@ -277,7 +277,7 @@ export default function App() {
           sub_caste: "Smartha",
           profession: verifiedAdmin.designation || "Administrator",
           salary_lpa: 15,
-          contact_number: verifiedAdmin.mobile,
+          contact_number: verifiedAdmin.mobile || "",
           email: verifiedAdmin.email,
           status: "Active",
           role: "admin",
@@ -295,7 +295,7 @@ export default function App() {
           name: verifiedAdmin.name,
           role: verifiedAdmin.role,
           stage: verifiedAdmin.stage,
-          mobile: verifiedAdmin.mobile
+          mobile: verifiedAdmin.mobile || ""
         });
       }
 

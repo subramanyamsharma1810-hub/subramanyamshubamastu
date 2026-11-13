@@ -196,7 +196,7 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
 
     // Check if mobile already in use by another admin
     const mobileExists = admins.some(
-      (a) => a.mobile.replace(/\D/g, "").slice(-10) === cleanMobile.slice(-10)
+      (a) => !!a.mobile && a.mobile.replace(/\D/g, "").slice(-10) === cleanMobile.slice(-10)
     );
     if (mobileExists) {
       setFormError(`An administrator with mobile number ending in ${cleanMobile.slice(-10)} already exists.`);
@@ -283,6 +283,10 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
   };
 
   const shareViaWhatsApp = (admin: AdminUser) => {
+    if (!admin.mobile) {
+      setFormError("This administrator uses email login and has no mobile number for WhatsApp sharing.");
+      return;
+    }
     const text = encodeURIComponent(
       `*SHUBHAMASTU.IN ADMIN ACCESS GRANTED*\n` +
       `Namaste *${admin.name}*,\n` +
@@ -611,7 +615,7 @@ export default function AdminManagementTab({ onAdminCountChange, currentAdmin }:
                     <td className="p-4">
                       <div className="flex items-center gap-1.5 font-mono text-slate-800 font-semibold">
                         <Phone className="w-3.5 h-3.5 text-stone-400" />
-                        <span>+91 {admin.mobile.replace(/\D/g, "").slice(-10)}</span>
+                        <span>{admin.mobile ? `+91 ${admin.mobile.replace(/\D/g, "").slice(-10)}` : "Email login only"}</span>
                       </div>
                     </td>
 
