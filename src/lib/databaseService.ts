@@ -1869,6 +1869,23 @@ export const databaseService = {
     return null;
   },
 
+  async verifyAdminLogin(identifierInput: string, passwordInput: string): Promise<AdminUser | null> {
+    const identifier = identifierInput.trim().toLowerCase();
+    const password = passwordInput.trim();
+    if (!identifier || !password) return null;
+
+    const admins = await this.getAdmins();
+    for (const admin of admins) {
+      const emailMatch = admin.email?.toLowerCase() === identifier;
+      const mobileMatch = admin.mobile.replace(/\D/g, "") === identifier.replace(/\D/g, "")
+        || admin.mobile.replace(/\D/g, "").slice(-10) === identifier.replace(/\D/g, "").slice(-10);
+      if ((emailMatch || mobileMatch) && admin.status === "active" && admin.password_hash && await verifyPassword(password, admin.password_hash)) {
+        return { ...admin, stage: getAdminStageInfo(admin.role, admin.stage).stage };
+      }
+    }
+    return null;
+  },
+
   async getPandits(): Promise<Pandit[]> {
     let list: Pandit[] = [
       {

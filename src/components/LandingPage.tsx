@@ -85,6 +85,7 @@ export default function LandingPage({
   
   // Modals state
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showUserLoginModal, setShowUserLoginModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showStatusAlert, setShowStatusAlert] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -590,24 +591,21 @@ export default function LandingPage({
     setAdminError("");
     setAdminOtpSuccessMsg("");
 
-    const emailTrim = adminEmail.trim().toLowerCase();
-    if (!emailTrim) {
-      setAdminError("Please enter authorized admin email ID.");
+    const identifier = adminEmail.trim().toLowerCase();
+    if (!identifier || !adminPassword.trim()) {
+      setAdminError("Enter your authorized admin email/mobile and password.");
       return;
     }
 
-    const authorizedEmails = [
-      "subramanyamghadiyaram@gmail.com",
-      "subbareddyposham@gmail.com",
-      "k.tejaswar567@gmail.com",
-      "praveenproq@gmail.com"
-    ];
-
-    if (!authorizedEmails.includes(emailTrim)) {
-      setAdminError("Access Denied: Only authorized administrators can access the Admin Sanctuary.");
+    const verifiedAdmin = await databaseService.verifyAdminLogin(identifier, adminPassword);
+    if (!verifiedAdmin || !verifiedAdmin.email) {
+      setAdminError("Access denied. Check the authorized admin email/mobile and password.");
       return;
     }
 
+    const emailTrim = verifiedAdmin.email.toLowerCase();
+    setAdminEmail(emailTrim);
+    setAdminMobile(verifiedAdmin.mobile);
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP matching input maxLength={6}
     setAdminGeneratedOtp(otp);
 
@@ -640,18 +638,7 @@ export default function LandingPage({
   const handleAdminLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminError("");
-
     const emailTrim = adminEmail.trim().toLowerCase();
-    const authorizedEmails = [
-      "subramanyamghadiyaram@gmail.com",
-      "subbareddyposham@gmail.com",
-      "k.tejaswar567@gmail.com",
-      "praveenproq@gmail.com"
-    ];
-    if (!emailTrim || !authorizedEmails.includes(emailTrim)) {
-      setAdminError("Access Denied: Please enter a valid authorized admin email.");
-      return;
-    }
 
     if (!isAdminOtpSent) {
       return handleSendAdminOtp(e);
@@ -766,19 +753,13 @@ export default function LandingPage({
           ? [normalizedDob, `${dobParts[3]}${dobParts[2]}${dobParts[1]}`, `${dobParts[3]}${dobParts[2]}${dobParts[1].slice(2)}`]
           : [normalizedDob];
         const isLegacyDobPassword = legacyDobPasswords.includes(normalizedEntered);
-        const passwordMatches = match.password_hash
-          ? await verifyPassword(passClean, match.password_hash)
-          : Boolean(match.password && !isLegacyDobPassword && match.password === passClean);
+        const passwordMatches = Boolean(
+          match.password_hash &&
+          !isLegacyDobPassword &&
+          await verifyPassword(passClean, match.password_hash)
+        );
 
         if (passwordMatches) {
-          if (!match.password_hash && match.password) {
-            await databaseService.saveProfile({
-              ...match,
-              password: passClean,
-              password_hash: undefined
-            });
-            delete match.password;
-          }
           const cleanNum = match.contact_number ? match.contact_number.replace(/\D/g, "") : "";
           const isAdminAcc = match.role === "admin" || match.role === "super_admin" || match.role === "employee" || ["admin-subbu", "admin-subba-reddy", "admin-tejaswar", "admin-praveen"].includes(match.id) || match.email?.toLowerCase() === "praveenproq@gmail.com";
 
@@ -795,6 +776,7 @@ export default function LandingPage({
 
           await ensureAuth();
           localStorage.setItem("bramhana_logged_in_user_id", match.id);
+          setShowUserLoginModal(false);
           onLoginSuccess(match);
         } else {
           setLoginError(`Incorrect password. Please verify your login credentials or contact administration.`);
@@ -1102,24 +1084,24 @@ export default function LandingPage({
 
   const t = {
     te: {
-      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని • 100% Dedicated Brahmin Matrimony",
-      title1: "తెలుగు బ్రాహ్మణుల కొరకు • For Telugu Brahmin Families",
-      title2: "ప్రత్యేక వివాహ మ్యాట్రిమోనీ వేదిక • Trusted Matrimonial Platform",
-      bullet1: "బ్రాహ్మణులకు ప్రత్యేకంగా • Exclusive for Brahmin Families",
-      bullet2: "గోత్రం ఆధారిత శోధన • Gotram-based Search",
-      bullet3: "సురక్షితమైన & గోప్యతల సేవ • Secure & Confidential",
-      bullet4: "సంప్రదాయ విలువలకు ప్రాధాన్యం • Traditional Family Values",
-      districtSearchTitle: "ప్రాంతాల వారీగా వధువు / వరుడు శోధన • District-wise Bride / Groom Search",
+      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని",
+      title1: "తెలుగు బ్రాహ్మణ కుటుంబాల కోసం",
+      title2: "ప్రత్యేక వివాహ వేదిక",
+      bullet1: "బ్రాహ్మణ కుటుంబాల కోసం ప్రత్యేకంగా",
+      bullet2: "గోత్రం ఆధారిత శోధన",
+      bullet3: "సురక్షితమైన మరియు గోప్యమైన సేవ",
+      bullet4: "సంప్రదాయ విలువలకు ప్రాధాన్యం",
+      districtSearchTitle: "ప్రాంతాల వారీగా వధూవరుల శోధన",
     },
     en: {
-      badge: "100% Dedicated Brahmin Matrimony • 100% బ్రాహ్మణ మ్యాట్రిమోని",
-      title1: "For Telugu Brahmin Families • తెలుగు బ్రాహ్మణుల కొరకు",
-      title2: "Trusted Matrimonial Platform • ప్రత్యేక వివాహ మ్యాట్రిమోనీ వేదిక",
-      bullet1: "Exclusive for Brahmin Families • బ్రాహ్మణులకు ప్రత్యేకంగా",
-      bullet2: "Gotram-based Search • గోత్రం ఆధారిత శోధన",
-      bullet3: "Secure & Confidential • సురక్షితమైన & గోప్యతల సేవ",
-      bullet4: "Traditional Family Values • సంప్రదాయ విలువలకు ప్రాధాన్యం",
-      districtSearchTitle: "District-wise Bride / Groom Search • ప్రాంతాల వారీగా వధువు / వరుడు శోధన",
+      badge: "100% Dedicated Brahmin Matrimony",
+      title1: "For Telugu Brahmin Families",
+      title2: "A Trusted Matrimonial Platform",
+      bullet1: "Exclusive for Brahmin Families",
+      bullet2: "Gotram-based Search",
+      bullet3: "Secure and Confidential Service",
+      bullet4: "Traditional Family Values",
+      districtSearchTitle: "District-wise Bride and Groom Search",
     }
   }[lang];
 
@@ -1158,9 +1140,9 @@ export default function LandingPage({
       
       {/* Mango Leaf Toran Decorative Top Bar */}
       <div className="w-full bg-[#0B3B17] text-amber-300 text-xs font-bold py-2 px-4 text-center border-b-2 border-amber-400 flex items-center justify-center gap-3 shadow-sm">
-        <span className="tracking-widest">🍃🌿🍃</span>
-        <span>బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • Honouring Tradition, Creating Sacred Alliances</span>
-        <span className="tracking-widest">🍃🌿🍃</span>
+        <span className="tracking-widest text-lg">🌿🍃🌿🍃🌿</span>
+        <span>{lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "Honouring Tradition • Creating Sacred Alliances"}</span>
+        <span className="tracking-widest text-lg">🌿🍃🌿🍃🌿</span>
       </div>
 
       {/* Top Header Bar */}
@@ -1172,7 +1154,7 @@ export default function LandingPage({
             <div className="bg-white p-2 sm:p-2.5 rounded-full flex items-center justify-center shadow-md border-2 border-[#C2242C] shrink-0">
               <svg
                 viewBox="0 0 48 48"
-                className="w-6 h-6 sm:w-7 sm:h-7"
+                className="w-12 h-12 sm:w-16 sm:h-16"
                 role="img"
                 aria-label="Kalasam logo"
               >
@@ -1186,15 +1168,15 @@ export default function LandingPage({
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm sm:text-xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#99151B] to-[#C2242C] uppercase font-sans truncate block">
-                  Subhamastu • శుభమస్తు
+                <span className="text-xl sm:text-3xl font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
+                  {lang === "te" ? "శుభమస్తు" : "SHUBHAMASTU"}
                 </span>
                 <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden sm:inline-block">
-                  తెలుగు బ్రాహ్మణ మ్యాట్రిమోని
+                  {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "TELUGU BRAHMIN MATRIMONY"}
                 </span>
               </div>
               <p className="text-[8px] sm:text-[9px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
-                బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • Trusted Telugu Brahmin Matrimony
+                {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "Trusted Telugu Brahmin Matrimony"}
               </p>
             </div>
           </div>
@@ -1203,9 +1185,8 @@ export default function LandingPage({
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Nav Links */}
             <div className="hidden lg:flex items-center gap-3 text-xs font-extrabold text-zinc-800">
-              <a href="#home" className="hover:text-amber-700 transition-colors">హోమ్ (Home)</a>
-              <a href="#pricing-packages" className="hover:text-amber-700 transition-colors">సభ్యత్వ పధకాలు (Plans)</a>
-              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">వధూవరుల శోధన (Search)</button>
+              <a href="#home" className="hover:text-amber-700 transition-colors">{lang === "te" ? "హోమ్" : "Home"}</a>
+              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "వధూవరుల శోధన" : "Search Matches"}</button>
             </div>
 
             {/* Language Toggle */}
@@ -1228,18 +1209,27 @@ export default function LandingPage({
 
             {/* Login & Register Buttons */}
             <button
-              onClick={() => setShowAdminModal(true)}
+              type="button"
+              onClick={() => setShowUserLoginModal(true)}
               className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <User className="w-3.5 h-3.5 text-amber-700" />
-              <span>లాగిన్ (Login)</span>
+              <span>{lang === "te" ? "వినియోగదారు లాగిన్" : "User Login"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAdminModal(true)}
+              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-700" />
+              <span>{lang === "te" ? "అడ్మిన్ లాగిన్" : "Admin Login"}</span>
             </button>
             <button
               onClick={() => setShowRegisterModal(true)}
               className="px-4 py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-xs font-extrabold rounded-xl transition-all border border-amber-400 uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>ఉచితంగా నమోదు (Register Free)</span>
+              <span>{lang === "te" ? "ఉచితంగా నమోదు" : "Register Free"}</span>
             </button>
           </div>
         </div>
@@ -2675,6 +2665,83 @@ export default function LandingPage({
         </div>
       )}
 
+      {/* MODAL: USER PASSWORD LOGIN (NO OTP) */}
+      {showUserLoginModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[105] flex items-center justify-center p-4">
+          <form
+            onSubmit={handleLogin}
+            className="bg-white border-2 border-[#C2242C] rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl relative text-left space-y-5"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setShowUserLoginModal(false);
+                setLoginError("");
+                setMobileNumber("");
+                setPassword("");
+              }}
+              className="absolute top-4 right-4 p-1.5 bg-gray-100 text-[#362B5A] hover:bg-[#C2242C] hover:text-white rounded-full cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="text-center border-b border-amber-100 pb-4">
+              <div className="mx-auto mb-2 w-14 h-14 rounded-full border-2 border-[#C2242C] flex items-center justify-center text-3xl">🪷</div>
+              <h3 className="text-xl font-black text-[#C2242C]">
+                {lang === "te" ? "వినియోగదారు లాగిన్" : "User Login"}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                {lang === "te" ? "మొబైల్ నంబర్ మరియు పాస్‌వర్డ్‌తో లాగిన్ అవ్వండి" : "Login with your mobile number and password"}
+              </p>
+            </div>
+            {loginError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl text-center font-semibold">
+                {loginError}
+              </div>
+            )}
+            <label className="block text-xs font-bold text-[#362B5A]">
+              {lang === "te" ? "మొబైల్ నంబర్" : "Mobile Number"}
+              <input
+                type="tel"
+                required
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="10-digit mobile number"
+                className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C2242C]"
+              />
+            </label>
+            <label className="block text-xs font-bold text-[#362B5A]">
+              {lang === "te" ? "పాస్‌వర్డ్" : "Password"}
+              <div className="relative">
+                <input
+                  type={showLoginPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:border-[#C2242C]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer"
+                >
+                  {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </label>
+            <button
+              type="submit"
+              className="w-full py-3 bg-[#C2242C] hover:bg-[#99151B] text-white rounded-xl font-black text-sm cursor-pointer"
+            >
+              {lang === "te" ? "లాగిన్" : "Login"}
+            </button>
+            <p className="text-center text-[11px] text-gray-500">
+              {lang === "te" ? "వినియోగదారులకు OTP అవసరం లేదు." : "User login does not require an OTP."}
+            </p>
+          </form>
+        </div>
+      )}
+
       {/* MODAL 4: RESTRICTED ADMIN PORTAL PASSWORD MODAL */}
       {showAdminModal && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[110] flex items-center justify-center p-4 overflow-y-auto">
@@ -2712,31 +2779,16 @@ export default function LandingPage({
               {!isAdminOtpSent ? (
                 <>
                   <div className="space-y-1.5 text-xs text-left">
-                    <label className="font-bold text-gray-400 uppercase tracking-wider block">Admin Email ID (అధికారిక ఈమెయిల్)</label>
+                    <label className="font-bold text-gray-400 uppercase tracking-wider block">Admin Email or Mobile (అధికారిక ఈమెయిల్ / మొబైల్)</label>
                     <div className="relative text-left">
                       <span className="w-4 h-4 text-amber-400/60 absolute left-3 top-1/2 transform -translate-y-1/2">✉️</span>
                       <input
-                        type="email"
+                        type="text"
                         required
-                        placeholder="praveenproq@gmail.com / subramanyamghadiyaram@gmail.com"
+                        placeholder="Email ID or registered mobile number"
                         value={adminEmail}
                         onChange={(e) => setAdminEmail(e.target.value)}
                         className="w-full bg-black border border-zinc-800 focus:border-amber-400 rounded-xl py-2 pl-9 pr-3 text-white focus:outline-none font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-left">
-                    <label className="font-bold text-gray-400 uppercase tracking-wider block">Pandiri Mobile Number (మొబైల్ నంబర్)</label>
-                    <div className="relative text-left">
-                      <Phone className="w-4 h-4 text-amber-400/60 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Enter Pandiri Mobile Number"
-                        value={adminMobile}
-                        onChange={(e) => setAdminMobile(e.target.value)}
-                        className="w-full bg-black border border-zinc-800 focus:border-amber-400 rounded-xl py-2 pl-9 pr-3 text-white focus:outline-none"
                       />
                     </div>
                   </div>
