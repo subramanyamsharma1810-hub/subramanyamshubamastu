@@ -731,7 +731,10 @@ export default function LandingPage({
       return;
     }
 
-    const inputClean = mobileNumber.trim().toLowerCase();
+    const rawIdentifier = mobileNumber.trim();
+    const inputClean = rawIdentifier.includes("@")
+      ? rawIdentifier.toLowerCase()
+      : rawIdentifier.replace(/\D/g, "");
     const passClean = password.trim();
 
     // If candidate tries to login with an admin email, reject them
@@ -1158,7 +1161,7 @@ export default function LandingPage({
       `}</style>
       
       {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="relative w-full h-7 sm:h-9 lg:h-10 bg-[#fffaf0]/95 border-b border-amber-400 shadow-sm overflow-hidden">
+      <div className="relative w-full h-7 sm:h-9 lg:h-12 bg-[#fffaf0]/95 border-b border-amber-400 shadow-sm overflow-hidden">
         <img
           src={mangoToranamUrl}
           alt=""
@@ -1174,14 +1177,14 @@ export default function LandingPage({
 
       {/* Top Header Bar */}
       <header className="relative z-30 w-full bg-white/95 backdrop-blur-md border-b border-amber-200/90 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 sm:h-[104px] lg:h-[124px] py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 sm:h-24 lg:h-[96px] py-2 sm:py-2 flex items-center justify-between gap-2 sm:gap-3">
           
           {/* Webpage Name & Slogan */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="bg-white p-1 sm:p-2 rounded-full flex items-center justify-center border-2 border-[#C2242C] shrink-0">
               <svg
                 viewBox="0 0 48 48"
-                className="w-14 h-14 sm:w-20 sm:h-20 lg:w-[112px] lg:h-[112px]"
+                className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                 role="img"
                 aria-label="Kalasam logo"
               >
@@ -1195,7 +1198,7 @@ export default function LandingPage({
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-2xl sm:text-4xl lg:text-[48px] leading-none font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
+                <span className="text-2xl sm:text-3xl lg:text-[44px] leading-none font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
                   {lang === "te" ? "శుభమస్తు" : "SHUBHAMASTU"}
                 </span>
                 <span className="text-[10px] lg:text-xs bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden md:inline-block">
@@ -2742,6 +2745,8 @@ export default function LandingPage({
                 value={mobileNumber}
                 onChange={(e) => setMobileNumber(e.target.value)}
                 placeholder="Mobile number or email"
+                autoComplete="username"
+                inputMode="text"
                 className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#C2242C]"
               />
             </label>
@@ -2754,6 +2759,7 @@ export default function LandingPage({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Your password"
+                  autoComplete="current-password"
                   className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:border-[#C2242C]"
                 />
                 <button

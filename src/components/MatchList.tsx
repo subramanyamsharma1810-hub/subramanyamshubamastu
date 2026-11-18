@@ -97,7 +97,6 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   const [unlockedContacts, setUnlockedContacts] = useState<Record<string, boolean>>({});
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showMatchCountModal, setShowMatchCountModal] = useState(false);
-  const [txnId, setTxnId] = useState("");
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
   const [copySuccess, setCopySuccess] = useState<"phone" | "upi" | null>(null);
@@ -602,20 +601,25 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
   };
 
   const handleSubmitPayment = async () => {
-    if (!txnId.trim()) {
-      alert("Please enter your 12-digit UPI Transaction ID or UTR number first.");
-      return;
-    }
     setIsSubmittingPayment(true);
     try {
-      const upgraded = {
-        ...currentProfile,
-        upgrade_transaction_id: txnId.trim(),
-        upgrade_requested_at: new Date().toISOString()
-      };
-      await onUpdateProfile(upgraded);
-      setPaymentSubmitted(true);
-      setTxnId("");
+      const response = await fetch("/api/payment/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: "paid_900",
+          orderAmount: 900,
+          customerId: currentProfile.id,
+          customerPhone: currentProfile.contact_number,
+          customerEmail: currentProfile.email,
+          customerName: currentProfile.name,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.payment_link) {
+        throw new Error(data.message || "Secure payment checkout could not be created.");
+      }
+      window.location.assign(data.payment_link);
     } catch (err) {
       console.error("Failed to submit payment details:", err);
       alert("Failed to submit payment details. Please try again.");
@@ -1756,7 +1760,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-3 text-left text-xs text-amber-900">
                   <div className="flex justify-between border-b border-amber-200/50 pb-2">
                     <span className="font-semibold text-gray-500">Submitted Transaction ID / UTR:</span>
-                    <span className="font-mono font-bold text-[#C2242C]">{currentProfile.upgrade_transaction_id || txnId}</span>
+                    <span className="font-mono font-bold text-[#C2242C]">{currentProfile.upgrade_transaction_id || "Verified gateway payment"}</span>
                   </div>
                   <p className="leading-relaxed font-medium text-[11px]">
                     ⏳ <strong className="text-[#362B5A]">Verification in Progress:</strong> Our administrator is currently validating your payment. Full communication and Kundali access will be activated within 1 to 2 hours of payment receipt validation.
@@ -1767,7 +1771,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                   {/* Whatsapp Launcher to share screenshot */}
                   <a
                     href={`https://api.whatsapp.com/send?phone=919347359489&text=${encodeURIComponent(
-                      `Hi Admin, I have submitted the ₹900 payment details for my Bramhana Vivaha Vedika profile.\n\nName: ${currentProfile.name}\nRegistered Mobile: ${currentProfile.contact_number}\nSubmitted Transaction ID: ${currentProfile.upgrade_transaction_id || txnId}\n\nPlease verify and activate my premium access. Here is the payment receipt screenshot:`
+                      `Hi Admin, I am verifying my ₹900 gateway payment for my Bramhana Vivaha Vedika profile.\n\nName: ${currentProfile.name}\nRegistered Mobile: ${currentProfile.contact_number}\nGateway Transaction: ${currentProfile.upgrade_transaction_id || "Pending gateway confirmation"}\n\nPlease verify and activate my premium access.`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
@@ -1867,29 +1871,12 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                   </p>
                 </div>
 
-                {/* Submit Form */}
+                {/* Secure Gateway */}
                 <div className="space-y-3.5">
-                  <div className="text-left">
-                    <label className="block text-[11px] font-black text-[#362B5A] uppercase tracking-wider mb-1.5">
-                      Enter UPI Transaction ID / UTR Number (తప్పనిసరి)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={30}
-                      placeholder="e.g. 623490158293 (12-digit number)"
-                      value={txnId}
-                      onChange={(e) => setTxnId(e.target.value.replace(/[^0-9A-Za-z]/g, ""))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#362B5A] focus:border-transparent bg-[#EBF6FF]/20 font-mono font-bold text-sm text-center tracking-widest placeholder:font-sans placeholder:text-xs"
-                    />
-                    <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
-                      Please enter the exact transaction reference/UTR number from your UPI payment success screen.
-                    </p>
-                  </div>
-
                   <div className="pt-2 space-y-2">
                     <button
                       onClick={handleSubmitPayment}
-                      disabled={isSubmittingPayment || !txnId.trim()}
+                      disabled={isSubmittingPayment}
                       className="w-full py-3.5 bg-[#C2242C] disabled:bg-gray-200 disabled:text-gray-400 hover:bg-opacity-95 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {isSubmittingPayment ? (

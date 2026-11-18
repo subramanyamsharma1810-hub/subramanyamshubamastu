@@ -27,7 +27,6 @@ export default function Payment() {
 
   const [selectedPlan, setSelectedPlan] = useState<"paid_100" | "paid_900">("paid_100");
   const paymentTestMode = isPaymentTestMode();
-  const [utrNumber, setUtrNumber] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState<{
@@ -104,45 +103,28 @@ export default function Payment() {
 
   const handleAutomatedPayment = async () => {
     if (!candidateProfile) return;
-    if (!utrNumber.trim() || utrNumber.trim().length < 6) {
-      alert("Please enter a valid 12-digit UPI Transaction ID or UTR number from PhonePe/GPay.");
-      return;
-    }
-
     setIsProcessing(true);
     try {
       const isUpgrade = selectedPlan === "paid_900";
       const amount = getPaymentAmount(selectedPlan);
-      const cleanTxn = utrNumber.trim().toUpperCase();
-
-      // AUTOMATED ACTIVATION: update profile immediately in database
-      const updatedProfile: Profile = {
-        ...candidateProfile,
-        subscription_status: selectedPlan,
-        status: "Active",
-        payment_received: true,
-        fee_received_by: "Automated Gateway (PhonePe/UPI)",
-        fee_received_at: new Date().toISOString(),
-        ...(isUpgrade
-          ? { upgrade_transaction_id: cleanTxn, upgrade_requested_at: new Date().toISOString() }
-          : { fee_transaction_id: cleanTxn })
-      };
-
-      await databaseService.saveProfile(updatedProfile);
-      setCandidateProfile(updatedProfile);
-
-      setReceiptDetails({
-        txnId: cleanTxn,
-        amount,
-        plan: isUpgrade
-          ? `Full 31 Days Premium Membership (₹${amount})`
-          : `Match Discovery Pass (₹${amount})`,
-        timestamp: new Date().toLocaleString(),
+      const response = await fetch("/api/payment/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          orderAmount: amount,
+          customerId: candidateProfile.id,
+          customerPhone: candidateProfile.contact_number,
+          customerEmail: candidateProfile.email,
+          customerName: candidateProfile.name,
+        }),
       });
-
-      setPaymentSuccess(true);
-      // Auto save login session
-      localStorage.setItem("bramhana_logged_in_user_id", updatedProfile.id);
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.payment_link) {
+        throw new Error(data.message || "Secure payment checkout could not be created.");
+      }
+      localStorage.setItem("bramhana_logged_in_user_id", candidateProfile.id);
+      window.location.assign(data.payment_link);
     } catch (err) {
       console.error("Payment activation error:", err);
       alert("Failed to activate payment automatically. Please retry.");
@@ -266,7 +248,7 @@ export default function Payment() {
                 Automated Payment & Activation Desk
               </h1>
               <p className="text-xs sm:text-sm text-gray-400 max-w-lg mx-auto">
-                Scan PhonePe / UPI QR code, enter UTR number, and your subscription will be automatically and instantly activated. No waiting!
+                Choose a plan, then complete payment through the verified Cashfree checkout. Subscription activation occurs only after gateway confirmation.
               </p>
             </div>
 
@@ -404,24 +386,17 @@ export default function Payment() {
                 <PhonePeQRCode amount={getPaymentAmount(selectedPlan)} className="w-full shadow-lg" />
               </div>
 
-              {/* Automated Verification Input */}
+              {/* Secure Gateway Checkout */}
               <div className="max-w-md mx-auto space-y-3 pt-2 text-left">
                 <label className="text-[11px] font-bold text-gray-300 uppercase tracking-wider block text-center">
-                  Enter 12-digit UPI UTR / Transaction Reference Number
+                  Complete the verified payment in the secure gateway
                 </label>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. 12-digit UPI UTR Number"
-                    value={utrNumber}
-                    onChange={(e) => setUtrNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
-                    className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl py-2.5 px-3 text-xs text-white font-mono tracking-widest uppercase text-center focus:outline-none focus:border-amber-400"
-                  />
                   <button
                     type="button"
                     onClick={handleAutomatedPayment}
                     disabled={isProcessing || !candidateProfile}
-                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer shrink-0"
+                    className="w-full px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
                   >
                     {isProcessing ? "Activating..." : "Automate & Activate"}
                   </button>

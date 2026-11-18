@@ -254,17 +254,12 @@ export default function CheckoutPricing({
 
     setIsProcessingPayment(true);
     try {
-      const testMode = typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" ||
-          window.location.hostname.endsWith(".vercel.app") ||
-          new URLSearchParams(window.location.search).get("payment_test") === "1");
       const response = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           plan: "paid_1599",
-          testMode,
-          orderAmount: testMode ? 2 : finalPayable,
+          orderAmount: finalPayable,
           customerId: currentProfile.id,
           customerPhone: currentProfile.contact_number,
           customerName: currentProfile.name,
@@ -274,11 +269,10 @@ export default function CheckoutPricing({
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Gateway order creation failed");
       }
-      alert(
-        testMode
-          ? `Test payment order created for ₹2. Order ID: ${data.order_id}`
-          : "Payment gateway order created. Complete checkout through the configured gateway."
-      );
+      if (!data.payment_link) {
+        throw new Error("Gateway did not return a secure checkout link.");
+      }
+      window.location.assign(data.payment_link);
     } catch (err) {
       console.error("Payment failure:", err);
       alert("Payment processing encountered an issue. Please try again.");
