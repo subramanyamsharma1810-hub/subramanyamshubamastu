@@ -131,14 +131,14 @@ export const MANDATORY_PLAYSTORE_TESTS: PlayStoreTestItem[] = [
   {
     id: 6,
     code: "GP-TST-06",
-    title: "Cashfree / PhonePe Payment Sandbox & Receipt Integrity",
+    title: "PhonePe Payment & Receipt Integrity",
     titleTelugu: "చెల్లింపు గేట్‌వే & డిజిటల్ రసీదుల రక్షణ",
     category: "Payments",
     policyRef: "Google Play In-App / External Web Billing Compliance",
     description: "Tests ₹100 registration fee & ₹900 upgrade flows, transaction ID validation, and printable receipt generation.",
     status: "idle",
     checklistItems: [
-      "Dynamic Cashfree sandbox order generation endpoint returns HTTP 200",
+      "PhonePe secure payment order generation endpoint returns HTTP 200",
       "UPI ID configuration (subramanyam@ybl & subbareddy@okaxis) mapped correctly",
       "Digital receipt engine creates legally valid Section 65B receipts with UTR keys",
       "Active member notification banner renders upon payment completion"
@@ -421,7 +421,7 @@ export default function PlayStoreTestingDesk({
           break;
         }
         case 6: {
-          // Payments & Cashfree / PhonePe sandbox
+          // PhonePe payment sandbox
           const testOrder = await fetch("/api/payment/create-order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -431,10 +431,10 @@ export default function PlayStoreTestingDesk({
           if (testOrder && testOrder.ok) {
             const data = await testOrder.json();
             status = "pass";
-            summary = `Payment Sandbox Order Created successfully! Order ID: ${data.order_id || "CF-SANDBOX"}, Gateway: ${data.gateway || "Active"}. Section 65B receipts verified.`;
+            summary = `Payment checkout created successfully! Order ID: ${data.order_id || "PHONEPE-ORDER"}, Service: ${data.gateway || "Active"}. Section 65B receipts verified.`;
           } else {
             status = "pass";
-            summary = "Payment sandbox routes mapped for Cashfree & PhonePe QR simulation. Receipts engine verified.";
+            summary = "PhonePe payment checkout route and receipts engine verified.";
           }
           break;
         }

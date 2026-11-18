@@ -783,29 +783,35 @@ const verifyPhonePeWebhookSignature = (req: express.Request & { rawBody?: Buffer
   });
 };
 
-app.post("/api/phonepe/webhook", (req, res) => {
+app.post("/api/phonepe/webhook", async (req, res) => {
   if (!verifyPhonePeWebhookSignature(req)) {
     console.error("Rejected unsigned or invalid PhonePe webhook request");
     return res.status(401).json({ success: false, message: "Invalid webhook signature." });
   }
 
   const body = req.body || {};
+  const payload = body.payload || {};
   const eventName = String(
     body.event ||
     body.event_name ||
     body.type ||
     body.data?.event ||
+    payload.type ||
+    payload.event ||
+    payload.state ||
     ""
   ).toLower();
   const isSuccess = eventName.includes("success") ||
     eventName.includes("paid") ||
     eventName.includes("completed") ||
     body.payment?.state === "COMPLETED" ||
-    body.data?.payment?.state === "COMPLETED";
+    body.data?.payment?.state === "COMPLETED" ||
+    payload.state === "COMPLETED";
   const isFailure = eventName.includes("fail") ||
     eventName.includes("error") ||
     body.payment?.state === "FAILED" ||
-    body.data?.payment?.state === "FAILED";
+    body.data?.payment?.state === "FAILED" ||
+    payload.state === "FAILED";
 
   const webhookId = String(
     req.headers["x-phonepe-webhook-id"] ||
@@ -831,21 +837,77 @@ app.post("/api/phonepe/webhook", (req, res) => {
   }
 
   try {
-    const orderId = body.orderId || body.order_id || body.data?.order?.orderId || body.data?.order?.order_id;
-    const paymentId = body.paymentId || body.payment_id || body.data?.payment?.paymentId || body.data?.payment?.payment_id;
-    const userId = body.userId || body.user_id || body.data?.customer?.customerId || body.data?.customer?.customerId;
-    const amount = Number(body.amount || body.orderAmount || body.data?.payment?.amount || body.data?.order?.amount || 0);
+    const orderId = String(
+      payload.merchantOrderId ||
+      body.orderId ||
+      body.order_id ||
+      body.data?.order?.orderId ||
+      body.data?.order?.order_id ||
+      ""
+    );
+    const paymentId = String(
+      payload.transactionId ||
+      body.paymentId ||
+      body.payment_id ||
+      body.data?.payment?.paymentId ||
+      body.data?.payment?.payment_id ||
+      ""
+    );
+    const amountRaw = Number(
+      payload.amount ||
+      body.amount ||
+      body.orderAmount ||
+      body.data?.payment?.amount ||
+      body.data?.order?.amount ||
+      0
+    );
+    const amount = amountRaw >= 10000 ? amountRaw / 100 : amountRaw;
     const couponApplied = body.couponCode || body.coupon_applied || body.data?.order?.couponCode;
 
-    if (!orderId || !paymentId || !userId || amount <= 0) {
-      console.error("PhonePe success event missing order, payment, user, or amount data");
+    if (!orderId || !paymentId || amount <= 0) {
+      console.error("PhonePe success event missing order, payment, or amount data");
       return res.status(400).json({ success: false, message: "Missing verified payment fields." });
     }
 
+    const orderRef = doc(db, "payment_orders", orderId);
+    const orderSnapshot = await getDoc(orderRef);
+    if (!orderSnapshot.exists()) {
+      return res.status(404).json({ success: false, message: "Unknown payment order." });
+    }
+
+    const order = orderSnapshot.data();
+    if (order.status === "SUCCESS") {
+      return res.status(200).json({ success: true, status: "COMPLETED", processed: true, already_processed: true });
+    }
+    if (amount !== Number(order.amount)) {
+      console.error("PhonePe amount mismatch:", { orderId, expected: order.amount, received: amount });
+      return res.status(400).json({ success: false, message: "Verified payment amount does not match the order." });
+    }
+
+    const expiryDate = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    await setDoc(doc(db, "profiles", String(order.customer_id)), {
+      subscription_status: String(order.plan),
+      subscription_expires_at: expiryDate,
+      status: "Verified",
+      fee_transaction_id: paymentId,
+      fee_received_at: new Date().toISOString(),
+      fee_receiver_upi: "phonepe",
+      upgrade_transaction_id: order.plan === "paid_900" || order.plan === "paid_1599" ? paymentId : undefined,
+      payment_received: true,
+    }, { merge: true });
+
+    await setDoc(orderRef, {
+      status: "SUCCESS",
+      payment_id: paymentId,
+      paid_amount: amount,
+      processed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { merge: true });
+
     const result = referralCouponEngine.handlePaymentSuccessWebhook({
-      order_id: String(orderId),
-      payment_id: String(paymentId),
-      user_id: String(userId),
+      order_id: orderId,
+      payment_id: paymentId,
+      user_id: String(order.customer_id),
       amount,
       coupon_applied: couponApplied
     });
@@ -1258,8 +1320,35 @@ app.post("/api/profile/privacy", (req, res) => {
   }
 });
 
-// --- Cashfree Payment Gateway Integration Endpoints ---
-const handleCreateCashfreeOrder = async (req: express.Request, res: express.Response) => {
+// --- PhonePe Payment Checkout Endpoints ---
+const phonePeBaseUrl = (process.env.PHONEPE_BASE_URL || "https://api.phonepe.com/apis").replace(/\/$/, "");
+
+const getPhonePeAccessToken = async (): Promise<string> => {
+  const clientId = process.env.PHONEPE_CLIENT_ID || "";
+  const clientSecret = process.env.PHONEPE_CLIENT_SECRET || "";
+  if (!clientId || !clientSecret) {
+    throw new Error("PhonePe is not configured.");
+  }
+
+  const response = await fetch(`${phonePeBaseUrl}/identity-manager/v1/oauth/token`, {
+    method: "POST",
+    signal: AbortSignal.timeout(10000),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+      client_version: process.env.PHONEPE_CLIENT_VERSION || "1",
+    }),
+  });
+  const data = await response.json() as { access_token?: string; message?: string };
+  if (!response.ok || !data.access_token) {
+    throw new Error(data.message || "PhonePe authorization failed.");
+  }
+  return data.access_token;
+};
+
+const handleCreatePhonePeOrder = async (req: express.Request, res: express.Response) => {
   try {
     const { customerId, customerPhone, customerEmail, customerName, plan } = req.body || {};
     const planAmounts: Record<string, number> = {
@@ -1275,60 +1364,61 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
     if (!customerId || typeof customerId !== "string" || !customerId.trim()) {
       return res.status(400).json({ success: false, message: "A registered customer profile is required." });
     }
-    const cleanCustomerId = customerId.trim();
-    const appId = process.env.CASHFREE_APP_ID || "";
-    const secretKey = process.env.CASHFREE_SECRET_KEY || "";
-    const apiVersion = process.env.CASHFREE_API_VERSION || "2023-08-01";
-    const baseUrl = process.env.CASHFREE_BASE_URL || "https://api.cashfree.com/pg";
 
-    if (!appId || !secretKey) {
+    const merchantId = process.env.PHONEPE_MERCHANT_ID || "";
+    const clientId = process.env.PHONEPE_CLIENT_ID || "";
+    const clientSecret = process.env.PHONEPE_CLIENT_SECRET || "";
+    if (!merchantId || !clientId || !clientSecret) {
       return res.status(503).json({
         success: false,
-        message: "Payment gateway is not configured. Contact administration.",
+        message: "Secure payment is not configured yet.",
       });
     }
-    const orderId = `ORD_SHUBH_${Date.now()}`;
-    const returnUrl = `${req.protocol}://${req.get("host")}/checkout?order_id=${encodeURIComponent(orderId)}&status=success`;
 
-    let cfResponse: Response;
-    try {
-      cfResponse = await fetch(`${baseUrl}/orders`, {
-        method: "POST",
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          "Content-Type": "application/json",
-          "x-client-id": appId,
-          "x-client-secret": secretKey,
-          "x-api-version": apiVersion,
+    const cleanCustomerId = customerId.trim();
+    const orderId = `ORD_SHUBH_${Date.now()}_${cleanCustomerId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-12)}`;
+    const redirectUrl = `${req.protocol}://${req.get("host")}/checkout?order_id=${encodeURIComponent(orderId)}&status=success`;
+    const accessToken = await getPhonePeAccessToken();
+
+    const phonePeResponse = await fetch(`${phonePeBaseUrl}/pg/checkout/v2/pay`, {
+      method: "POST",
+      signal: AbortSignal.timeout(10000),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `O-Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        merchantOrderId: orderId,
+        amount: effectiveAmount * 100,
+        expireAfter: 1200,
+        metaInfo: {
+          udf1: cleanCustomerId,
+          udf2: String(plan),
+          udf3: customerName || "Valued Member",
+          udf4: customerPhone || "",
+          udf5: customerEmail || "",
         },
-        body: JSON.stringify({
-          order_id: orderId,
-          order_amount: effectiveAmount,
-          order_currency: "INR",
-          customer_details: {
-            customer_id: cleanCustomerId,
-            customer_phone: customerPhone || "9876543210",
-            customer_email: customerEmail || "member@shubhamastu.in",
-            customer_name: customerName || "Valued Member"
+        paymentFlow: {
+          type: "PG_CHECKOUT",
+          message: "Shubhamastu membership payment",
+          merchantUrls: {
+            redirectUrl,
           },
-          order_meta: {
-            return_url: returnUrl,
-            plan: String(plan),
-            customer_id: cleanCustomerId
-          }
-        })
-      });
-    } catch (cfErr: any) {
-      console.error("Cashfree order network error:", cfErr);
-      return res.status(502).json({ success: false, message: "Could not reach the payment gateway." });
-    }
+        },
+      }),
+    });
 
-    const cfData = await cfResponse.json();
-    if (!cfResponse.ok || !cfData.payment_session_id) {
-      console.error("Cashfree order rejected:", cfData);
+    const phonePeData = await phonePeResponse.json() as {
+      merchantOrderId?: string;
+      redirectUrl?: string;
+      state?: string;
+      message?: string;
+    };
+    if (!phonePeResponse.ok || !phonePeData.redirectUrl) {
+      console.error("PhonePe order rejected:", phonePeData);
       return res.status(502).json({
         success: false,
-        message: cfData?.message || "Payment gateway rejected the order."
+        message: phonePeData.message || "Secure payment could not be started.",
       });
     }
 
@@ -1337,126 +1427,34 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
       customer_id: cleanCustomerId,
       plan: String(plan),
       amount: effectiveAmount,
-      gateway: "cashfree",
+      gateway: "phonepe",
       status: "CREATED",
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     });
 
     return res.json({
       success: true,
-      order_id: cfData.order_id || orderId,
-      order_amount: cfData.order_amount || effectiveAmount,
-      payment_session_id: cfData.payment_session_id,
-      payment_link: `https://${baseUrl.includes("sandbox") ? "sandbox." : ""}payments.cashfree.com/pay/${cfData.payment_session_id}`,
-      order_status: cfData.order_status,
-      gateway: "cashfree"
+      order_id: phonePeData.merchantOrderId || orderId,
+      order_amount: effectiveAmount,
+      payment_link: phonePeData.redirectUrl,
+      order_status: phonePeData.state || "CREATED",
+      gateway: "phonepe",
     });
   } catch (err: any) {
-    console.error("Cashfree order creation error:", err);
-    return res.status(500).json({ success: false, message: err.message || "Failed to create Cashfree order" });
+    console.error("PhonePe order creation error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to start secure payment.",
+    });
   }
 };
 
-app.post("/api/cashfree/create-order", handleCreateCashfreeOrder);
-app.post("/api/payment/create-order", handleCreateCashfreeOrder);
-
-const verifyCashfreeWebhookSignature = (req: express.Request & { rawBody?: Buffer }): boolean => {
-  const secret = process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || "";
-  if (!secret) return false;
-
-  const timestamp = String(req.headers["x-webhook-timestamp"] || "");
-  const signature = String(req.headers["x-webhook-signature"] || "");
-  if (!timestamp || !signature) return false;
-
-  const rawBody = req.rawBody?.toString("utf8") || JSON.stringify(req.body);
-  const expected = createHmac("sha256", secret).update(`${timestamp}${rawBody}`).digest("base64");
-  const provided = Buffer.from(signature.trim(), "base64");
-  const valid = Buffer.from(expected, "base64");
-  return provided.length === valid.length && timingSafeEqual(provided, valid);
-};
-
-app.post("/api/cashfree/webhook", async (req, res) => {
-  if (!verifyCashfreeWebhookSignature(req)) {
-    console.error("Rejected unsigned or invalid Cashfree webhook request");
-    return res.status(401).json({ success: false, message: "Invalid webhook signature." });
-  }
-
-  const body = req.body || {};
-  const eventType = String(body.type || body.event || "").toUpperCase();
-  const data = body.data || {};
-  const orderId = String(data.order?.order_id || data.order_id || body.order_id || "");
-  const paymentId = String(data.payment?.cf_payment_id || data.payment?.payment_id || data.cf_payment_id || body.payment_id || "");
-  const paymentStatus = String(data.payment?.payment_status || data.payment?.status || data.payment_status || body.payment_status || "").toUpper();
-
-  if (!orderId) {
-    return res.status(400).json({ success: false, message: "Missing Cashfree order ID." });
-  }
-  if (!eventType.includes("PAYMENT") && !eventType.includes("SUCCESS")) {
-    return res.status(200).json({ success: true, status: "IGNORED", processed: false });
-  }
-  if (paymentStatus && paymentStatus !== "SUCCESS") {
-    await setDoc(doc(db, "payment_orders", orderId), {
-      status: paymentStatus,
-      payment_id: paymentId || null,
-      updated_at: new Date().toISOString()
-    }, { merge: true });
-    return res.status(200).json({ success: true, status: paymentStatus, processed: false });
-  }
-
-  try {
-    const orderRef = doc(db, "payment_orders", orderId);
-    const orderSnapshot = await getDoc(orderRef);
-    if (!orderSnapshot.exists()) {
-      return res.status(404).json({ success: false, message: "Unknown payment order." });
-    }
-
-    const order = orderSnapshot.data();
-    if (order.status === "SUCCESS") {
-      return res.status(200).json({ success: true, status: "SUCCESS", processed: true, already_processed: true });
-    }
-
-    const amount = Number(data.order?.order_amount || data.order?.amount || data.order_amount || body.order_amount || 0);
-    const plan = String(order.plan);
-    if (amount !== Number(order.amount)) {
-      console.error("Cashfree amount mismatch:", { orderId, expected: order.amount, received: amount });
-      return res.status(400).json({ success: false, message: "Verified payment amount does not match the order." });
-    }
-    if (!paymentId) {
-      return res.status(400).json({ success: false, message: "Missing verified Cashfree payment ID." });
-    }
-
-    const expiryDate = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-    await setDoc(doc(db, "profiles", String(order.customer_id)), {
-      subscription_status: plan,
-      subscription_expires_at: expiryDate,
-      status: "Verified",
-      fee_transaction_id: paymentId,
-      fee_received_at: new Date().toISOString(),
-      fee_receiver_upi: "cashfree",
-      upgrade_transaction_id: plan === "paid_900" || plan === "paid_1599" ? paymentId : undefined,
-      payment_received: true
-    }, { merge: true });
-
-    await setDoc(orderRef, {
-      status: "SUCCESS",
-      payment_id: paymentId,
-      paid_amount: amount,
-      processed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }, { merge: true });
-
-    referralCouponEngine.handlePaymentSuccessWebhook({
-      order_id: orderId,
-      payment_id: paymentId,
-      user_id: String(order.customer_id),
-      amount
-    });
-
-    return res.status(200).json({ success: true, status: "SUCCESS", processed: true });
-  } catch (err: any) {
-    console.error("Error processing signed Cashfree webhook:", err);
-    return res.status(500).json({ success: false, message: err.message || "Webhook processing error." });
-  }
+app.post("/api/payment/create-order", handleCreatePhonePeOrder);
+app.post("/api/cashfree/create-order", (_req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: "This payment route is no longer available.",
+  });
 });
 
 // Setup Vite Dev Server / Static Production Serving

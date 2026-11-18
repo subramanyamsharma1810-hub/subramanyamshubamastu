@@ -1759,8 +1759,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
                 <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 space-y-3 text-left text-xs text-amber-900">
                   <div className="flex justify-between border-b border-amber-200/50 pb-2">
-                    <span className="font-semibold text-gray-500">Submitted Transaction ID / UTR:</span>
-                    <span className="font-mono font-bold text-[#C2242C]">{currentProfile.upgrade_transaction_id || "Verified gateway payment"}</span>
+                    <span className="font-semibold text-gray-500">Payment Reference:</span>
+                    <span className="font-mono font-bold text-[#C2242C]">{currentProfile.upgrade_transaction_id || "PhonePe payment"}</span>
                   </div>
                   <p className="leading-relaxed font-medium text-[11px]">
                     ⏳ <strong className="text-[#362B5A]">Verification in Progress:</strong> Our administrator is currently validating your payment. Full communication and Kundali access will be activated within 1 to 2 hours of payment receipt validation.

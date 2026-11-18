@@ -309,7 +309,7 @@ export default function TermsPage() {
             </div>
 
             <p className="text-xs text-stone-600 italic">
-              Payments are processed securely via authorized payment aggregators (e.g., Cashfree Payments India Pvt. Ltd. / Unified Payments Interface UPI).
+              Payments are processed securely through PhonePe and supported UPI services.
             </p>
           </div>
         </section>

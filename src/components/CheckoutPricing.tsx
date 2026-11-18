@@ -697,7 +697,7 @@ export default function CheckoutPricing({
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4" />
-                      <span>Pay ₹{finalPayable} via Cashfree / Razorpay / UPI</span>
+                      <span>Pay ₹{finalPayable} securely with PhonePe</span>
                     </>
                   )}
                 </button>
@@ -711,7 +711,7 @@ export default function CheckoutPricing({
                 <div className="pt-2 border-t border-zinc-200 space-y-2 text-[11px] text-zinc-500">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>256-bit Bank-Grade SSL Encryption (Cashfree & Razorpay)</span>
+                    <span>Secure PhonePe payment protection</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 shrink-0" />

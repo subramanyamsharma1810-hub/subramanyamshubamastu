@@ -308,7 +308,7 @@ export default function RefundPolicyPage() {
                   <span>Settlement Channel</span>
                 </div>
                 <p className="text-xs sm:text-sm text-stone-800">
-                  Refunds are credited directly back to the <strong>original payment source</strong> (UPI account, debit card, or net banking) via our payment gateway partner (Cashfree Payments).
+                  Refunds are credited directly back to the <strong>original payment source</strong> (UPI account, debit card, or net banking) through PhonePe.
                 </p>
               </div>
             </div>
@@ -332,8 +332,8 @@ export default function RefundPolicyPage() {
               <p>Glark Solutions (G.V. Subramanyam, Proprietor)</p>
             </div>
             <div>
-              <p className="font-semibold text-stone-900">Payment Gateway Partner:</p>
-              <p>Cashfree Payments India Pvt. Ltd.</p>
+              <p className="font-semibold text-stone-900">Payment Service:</p>
+              <p>PhonePe</p>
             </div>
             <div>
               <p className="font-semibold text-stone-900">Refund Assistance:</p>

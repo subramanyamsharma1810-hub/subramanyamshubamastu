@@ -248,7 +248,7 @@ export default function Payment() {
                 Automated Payment & Activation Desk
               </h1>
               <p className="text-xs sm:text-sm text-gray-400 max-w-lg mx-auto">
-                Choose a plan, then complete payment through the verified Cashfree checkout. Subscription activation occurs only after gateway confirmation.
+                Choose a plan, then complete payment securely through PhonePe. Subscription activation occurs only after payment confirmation.
               </p>
             </div>
 
