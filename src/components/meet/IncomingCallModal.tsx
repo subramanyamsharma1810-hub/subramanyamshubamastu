@@ -3,6 +3,7 @@ import { Phone, PhoneOff, Video } from "lucide-react";
 import { Profile } from "../../types";
 import { ref, onValue, update, remove } from "firebase/database";
 import { rtdb } from "../../lib/firebase";
+import { updateCallHistoryRecord } from "../../lib/callHistory";
 
 interface IncomingCallModalProps {
   currentProfile: Profile | null;
@@ -227,9 +228,12 @@ export default function IncomingCallModal({
       const sessionRef = ref(rtdb, `calls/${currentProfile.id}/${incomingSession.callSessionId}`);
       if (action === "ACCEPT") {
         await update(sessionRef, { status: "ACTIVE", connectedPeerId: currentProfile.id }).catch(() => {});
+        updateCallHistoryRecord(incomingSession.callerId, currentProfile.id, incomingSession.callSessionId, "Accepted", "Accepted");
         onAcceptCall(incomingSession.callSessionId, incomingSession.callType || "video");
       } else {
-        await remove(sessionRef).catch(() => {});
+        updateCallHistoryRecord(incomingSession.callerId, currentProfile.id, incomingSession.callSessionId, "Declined", "Declined");
+        await update(sessionRef, { status: "DECLINED", declinedAt: Date.now() }).catch(() => {});
+        setTimeout(() => remove(sessionRef).catch(() => {}), 2000);
       }
       setIncomingSession(null);
       setCallerProfile(null);

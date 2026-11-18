@@ -3,6 +3,7 @@ import { PhoneOff, Clock } from "lucide-react";
 import { Profile } from "../../types";
 import { ref, onValue, remove, update } from "firebase/database";
 import { rtdb } from "../../lib/firebase";
+import { updateCallHistoryRecord } from "../../lib/callHistory";
 
 interface OutgoingCallModalProps {
   callSessionId: string;
@@ -10,6 +11,7 @@ interface OutgoingCallModalProps {
   callType: "audio" | "video";
   onCancelCall: () => void;
   onCallConnected: () => void;
+  callerProfile: Profile;
 }
 
 export default function OutgoingCallModal({
@@ -18,9 +20,17 @@ export default function OutgoingCallModal({
   callType,
   onCancelCall,
   onCallConnected,
+  callerProfile,
 }: OutgoingCallModalProps) {
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [statusText, setStatusText] = useState("Ringing target user...");
+  const terminalRef = React.useRef(false);
+
+  const markTerminal = (callerStatus: "Accepted" | "Missed" | "Declined", receiverStatus: "Accepted" | "Missed" | "Declined", durationSeconds = 0) => {
+    if (terminalRef.current) return;
+    terminalRef.current = true;
+    updateCallHistoryRecord(callerProfile.id, targetProfile.id, callSessionId, callerStatus, receiverStatus, durationSeconds);
+  };
 
   useEffect(() => {
     // Play subtle Web Audio ringer tone while ringing
@@ -54,6 +64,7 @@ export default function OutgoingCallModal({
           clearInterval(timer);
           if (ringInterval) clearInterval(ringInterval);
           setStatusText("Call timed out. Member was unavailable.");
+          markTerminal("Declined", "Missed");
           setTimeout(() => onCancelCall(), 2000);
           return 0;
         }
@@ -67,10 +78,12 @@ export default function OutgoingCallModal({
       const data = snapshot.val();
       if (!data) return;
       if (data.status === "ACTIVE") {
+        markTerminal("Accepted", "Accepted");
         if (ringInterval) clearInterval(ringInterval);
         if (audioCtx) audioCtx.close().catch(() => {});
         onCallConnected();
       } else if (data.status === "DECLINED") {
+        markTerminal("Declined", "Declined");
         if (ringInterval) clearInterval(ringInterval);
         if (audioCtx) audioCtx.close().catch(() => {});
         setStatusText("Call was declined.");
@@ -86,10 +99,12 @@ export default function OutgoingCallModal({
       const detail = e.detail;
       if (detail && detail.callSessionId === callSessionId) {
         if (detail.status === "ACTIVE") {
+          markTerminal("Accepted", "Accepted");
           if (ringInterval) clearInterval(ringInterval);
           if (audioCtx) audioCtx.close().catch(() => {});
           onCallConnected();
         } else if (detail.status === "DECLINED") {
+          markTerminal("Declined", "Declined");
           if (ringInterval) clearInterval(ringInterval);
           if (audioCtx) audioCtx.close().catch(() => {});
           setStatusText("Call was declined.");
@@ -173,6 +188,7 @@ export default function OutgoingCallModal({
           <button
             onClick={async () => {
               try {
+                markTerminal("Declined", "Declined");
                 const sessionRef = ref(rtdb, `calls/${targetProfile.id}/${callSessionId}`);
                 await update(sessionRef, { status: "CANCELLED" }).catch(() => {});
                 await remove(sessionRef).catch(() => {});

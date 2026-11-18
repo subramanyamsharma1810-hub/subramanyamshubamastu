@@ -13,6 +13,7 @@ import PhoneRevealWidget from "./profile/PhoneRevealWidget";
 import CallRoom from "./meet/CallRoom";
 import OutgoingCallModal from "./meet/OutgoingCallModal";
 import CallHistory from "./meet/CallHistory";
+import { createCallHistoryRecord } from "../lib/callHistory";
 import { ref, set, get } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import { AnimatePresence, motion } from "motion/react";
@@ -311,6 +312,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
       createdAt: Date.now(),
       expiresAt: Date.now() + 60000
     };
+
+    createCallHistoryRecord(currentProfile, receiver, sessionId, callType);
 
     localStorage.setItem(`incoming_call_${receiver.id}`, JSON.stringify(callPayload));
     window.dispatchEvent(new Event("storage"));
@@ -2251,6 +2254,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
           callSessionId={activeCallSession.callSessionId}
           targetProfile={activeCallSession.receiver}
           callType={activeCallSession.callType}
+          callerProfile={currentProfile}
           onCancelCall={() => setActiveCallSession(null)}
           onCallConnected={() => {
             setActiveCallSession(prev => prev ? { ...prev, status: "connected" } : null);

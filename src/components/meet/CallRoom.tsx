@@ -8,6 +8,7 @@ import { Profile } from "../../types";
 import { rtdb } from "../../lib/firebase";
 import { ref, get, remove, update, set } from "firebase/database";
 import { useCallDiagnostics } from "../../hooks/useCallDiagnostics";
+import { updateCallHistoryRecord } from "../../lib/callHistory";
 import {
   Mic,
   MicOff,
@@ -303,6 +304,7 @@ export default function CallRoom({
     addLog(`[DIAGNOSTIC HANGUP] User confirmed termination. SessionId: ${callSessionId}`);
 
     try {
+      updateCallHistoryRecord(caller.id, receiver.id, callSessionId, "Accepted", "Accepted", durationSeconds);
       // 1. Await Firebase RTDB status update confirmation
       const receiverCallRef = ref(rtdb, `calls/${receiver.id}/${callSessionId}`);
       const callerCallRef = ref(rtdb, `calls/${caller.id}/${callSessionId}`);
