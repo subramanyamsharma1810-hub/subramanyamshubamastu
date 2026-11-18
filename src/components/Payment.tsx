@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { databaseService } from "../lib/databaseService";
 import { Profile } from "../types";
 import PhonePeQRCode from "./PhonePeQRCode";
+import { getPaymentAmount, isPaymentTestMode } from "../lib/paymentTestMode";
 import { 
   CreditCard, 
   CheckCircle2, 
@@ -25,6 +26,7 @@ export default function Payment() {
   const [searchError, setSearchError] = useState("");
 
   const [selectedPlan, setSelectedPlan] = useState<"paid_100" | "paid_900">("paid_100");
+  const paymentTestMode = isPaymentTestMode();
   const [utrNumber, setUtrNumber] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -110,7 +112,7 @@ export default function Payment() {
     setIsProcessing(true);
     try {
       const isUpgrade = selectedPlan === "paid_900";
-      const amount = isUpgrade ? 1599 : 100;
+      const amount = getPaymentAmount(selectedPlan);
       const cleanTxn = utrNumber.trim().toUpperCase();
 
       // AUTOMATED ACTIVATION: update profile immediately in database
@@ -132,7 +134,9 @@ export default function Payment() {
       setReceiptDetails({
         txnId: cleanTxn,
         amount,
-        plan: isUpgrade ? "Full 31 Days Premium Membership (₹1,599)" : "Match Discovery Pass (₹100)",
+        plan: isUpgrade
+          ? `Full 31 Days Premium Membership (₹${amount})`
+          : `Match Discovery Pass (₹${amount})`,
         timestamp: new Date().toLocaleString(),
       });
 
@@ -249,6 +253,11 @@ export default function Payment() {
           <div className="bg-gradient-to-b from-zinc-900/90 to-black/90 border border-amber-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8">
             {/* Header */}
             <div className="text-center space-y-3">
+              {paymentTestMode && (
+                <div className="mx-auto max-w-lg rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-2 text-xs font-bold text-emerald-300">
+                  Gateway test mode: ₹1 for Match Test and ₹2 for Premium Test (31 days).
+                </div>
+              )}
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-widest">
                 <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 <span>Automated Matrimony Payments</span>
@@ -334,11 +343,15 @@ export default function Payment() {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-extrabold text-white">Match Registration Fee</h4>
-                      <p className="text-[11px] text-zinc-400">Unlocks opposite-gender matches & Jataka</p>
+                      <h4 className="text-sm font-extrabold text-white">
+                        {paymentTestMode ? "1-Month Match Test" : "Match Registration Fee"}
+                      </h4>
+                      <p className="text-[11px] text-zinc-400">
+                        {paymentTestMode ? "Unlocks matches for a 31-day test membership" : "Unlocks opposite-gender matches & Jataka"}
+                      </p>
                       <span className="text-[10px] text-emerald-400 font-semibold block mt-1">100% Conditional Refund</span>
                     </div>
-                    <span className="text-base font-mono font-black text-amber-400">₹100</span>
+                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_100")}</span>
                   </div>
                 </div>
 
@@ -352,11 +365,13 @@ export default function Payment() {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-extrabold text-white">Full 31 Days Premium Membership</h4>
+                      <h4 className="text-sm font-extrabold text-white">
+                        {paymentTestMode ? "1-Month Premium Test" : "Full 31 Days Premium Membership"}
+                      </h4>
                       <p className="text-[11px] text-zinc-400">Unlocks direct phone numbers, WhatsApp & 31 days unlimited access</p>
                       <span className="text-[10px] text-amber-400 font-semibold block mt-1">31 Days Complete Access</span>
                     </div>
-                    <span className="text-base font-mono font-black text-amber-400">₹1,599</span>
+                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_900")}</span>
                   </div>
                 </div>
               </div>
@@ -366,7 +381,11 @@ export default function Payment() {
                 <Link to="/refund" target="_blank" className="text-emerald-400 underline font-semibold hover:text-emerald-300">
                   Cancellation and Refund Policy
                 </Link>
-                <span> (₹100 refundable if zero viable matches within 60 days; ₹1,599 non-refundable upon activation).</span>
+                <span>
+                  {paymentTestMode
+                    ? " (Test payments activate 31-day memberships only; no real subscription charges are applied)."
+                    : " (₹100 refundable if zero viable matches within 60 days; ₹1,599 non-refundable upon activation)."}
+                </span>
               </div>
             </div>
 
@@ -377,12 +396,12 @@ export default function Payment() {
                   Official PhonePe / UPI QR Code
                 </span>
                 <p className="text-xs text-zinc-300">
-                  Pay <strong className="text-amber-300 text-sm">₹{selectedPlan === "paid_100" ? 100 : 1599}</strong> to <strong className="text-white">Sri G.V. Subramanyam</strong> (UPI: <strong className="font-mono text-amber-300">9347359489@ybl</strong>)
+                  Pay <strong className="text-amber-300 text-sm">₹{getPaymentAmount(selectedPlan)}</strong> to <strong className="text-white">Sri G.V. Subramanyam</strong> (UPI: <strong className="font-mono text-amber-300">9347359489@ybl</strong>)
                 </p>
               </div>
 
               <div className="max-w-xs mx-auto">
-                <PhonePeQRCode amount={selectedPlan === "paid_100" ? 100 : 1599} className="w-full shadow-lg" />
+                <PhonePeQRCode amount={getPaymentAmount(selectedPlan)} className="w-full shadow-lg" />
               </div>
 
               {/* Automated Verification Input */}

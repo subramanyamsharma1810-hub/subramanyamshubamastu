@@ -1279,7 +1279,7 @@ export const databaseService = {
     const updateData: any = { subscription_status };
     if (subscription_status && subscription_status !== "free") {
       updateData.status = "Verified";
-      const days = subscription_status === "paid_1599" ? 31 : 28;
+      const days = 31;
       const expiryDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       updateData.subscription_expires_at = expiryDate;
     } else {
@@ -1305,7 +1305,7 @@ export const databaseService = {
         current[index].subscription_status = subscription_status;
         if (subscription_status && subscription_status !== "free") {
           current[index].status = "Verified";
-          const days = subscription_status === "paid_1599" ? 31 : 28;
+          const days = 31;
           const expiryDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
           current[index].subscription_expires_at = expiryDate;
         } else {

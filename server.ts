@@ -1261,8 +1261,15 @@ app.post("/api/profile/privacy", (req, res) => {
 // --- Cashfree Payment Gateway Integration Endpoints ---
 const handleCreateCashfreeOrder = async (req: express.Request, res: express.Response) => {
   try {
-    const { orderAmount, reqAmount, customerId, customerPhone, customerEmail, customerName } = req.body || {};
-    const effectiveAmount = orderAmount || reqAmount || req.body?.amount || 100;
+    const { orderAmount, reqAmount, customerId, customerPhone, customerEmail, customerName, plan, testMode } = req.body || {};
+    const sandboxTestMode =
+      testMode === true ||
+      process.env.PAYMENT_TEST_MODE === "true" ||
+      process.env.NODE_ENV !== "production";
+    const requestedAmount = orderAmount || reqAmount || req.body?.amount;
+    const effectiveAmount = sandboxTestMode
+      ? (plan === "paid_900" || plan === "premium" ? 2 : 1)
+      : (requestedAmount || 100);
     const appId = process.env.CASHFREE_APP_ID || "";
     const secretKey = process.env.CASHFREE_SECRET_KEY || "";
     const apiVersion = process.env.CASHFREE_API_VERSION || "2023-08-01";
@@ -1301,6 +1308,7 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
         return res.json({
           success: true,
           order_id: orderId,
+          order_amount: effectiveAmount,
           payment_session_id: cfData.payment_session_id,
           order_status: cfData.order_status,
           gateway: "cashfree_sandbox"
@@ -1314,6 +1322,7 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
     return res.json({
       success: true,
       order_id: orderId,
+      order_amount: effectiveAmount,
       payment_session_id: `session_cf_sandbox_${Math.random().toString(36).substring(2, 12)}`,
       order_status: "ACTIVE",
       gateway: "cashfree_sandbox_simulation"
