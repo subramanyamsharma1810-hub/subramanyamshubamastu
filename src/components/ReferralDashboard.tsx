@@ -127,33 +127,6 @@ export default function ReferralDashboard({ currentProfile, onNavigateToCheckout
     }
   };
 
-  // Simulate friend paying first-month subscription (Qualifying the referral)
-  const handleSimulatePayment = async (referral: Referral) => {
-    try {
-      const res = await fetch("/api/webhooks/payment-success", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_id: `CF_SIM_${Date.now()}`,
-          payment_id: `PAY_SIM_${Math.floor(100000 + Math.random() * 900000)}`,
-          user_id: referral.referee_id,
-          amount: 1500,
-          referee_name: referral.referee_name,
-          referee_phone: referral.referee_phone,
-          referee_email: referral.referee_email
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        await fetchReferralData();
-        alert(`Success! Payment recorded for ${referral.referee_name || "Friend"}. This referral is now QUALIFIED!`);
-      }
-    } catch (err) {
-      alert("Failed to simulate payment.");
-    }
-  };
-
   const qualifiedCount = stats?.qualifiedReferrals || 0;
   const milestoneTarget = 6;
   const remaining = Math.max(0, milestoneTarget - qualifiedCount);
@@ -485,15 +458,6 @@ export default function ReferralDashboard({ currentProfile, onNavigateToCheckout
                       {ref.created_at ? new Date(ref.created_at).toLocaleDateString() : "Recent"}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      {ref.status !== "QUALIFIED_PAID" && (
-                        <button
-                          onClick={() => handleSimulatePayment(ref)}
-                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                          title="Simulate referee paying first month subscription to test qualification"
-                        >
-                          ⚡ Mark as Paid
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))}
