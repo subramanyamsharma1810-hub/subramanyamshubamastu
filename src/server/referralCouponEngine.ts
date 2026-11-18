@@ -595,7 +595,7 @@ class ReferralCouponEngine {
     return verification;
   }
 
-  // Payment Webhook Handler (Cashfree / Razorpay)
+  // Payment confirmation handler
   public handlePaymentSuccessWebhook(payload: {
     order_id: string;
     payment_id: string;

@@ -209,7 +209,7 @@ export function LegalDocumentModal({ docType, onClose }: ModalProps) {
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-500 italic">
-                  Payments are processed via authorized payment aggregators (e.g., Cashfree Payments India Pvt. Ltd. / UPI).
+                  Payments are processed securely through PhonePe and supported UPI services.
                 </p>
               </div>
 
@@ -406,7 +406,7 @@ export function LegalDocumentModal({ docType, onClose }: ModalProps) {
                   Approved refunds for the ₹100 search fee are processed within <strong>5 to 7 business days</strong>.
                 </p>
                 <p className="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[11px]">
-                  Refunds are credited directly back to the original payment source (UPI account, debit card, or net banking) via our payment gateway partner (Cashfree Payments).
+                  Refunds are credited directly back to the original payment source (UPI account, debit card, or net banking) through PhonePe.
                 </p>
               </div>
             </>
