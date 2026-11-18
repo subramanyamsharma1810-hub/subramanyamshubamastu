@@ -200,7 +200,7 @@ async function main() {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       },
-      JSON.stringify({ amount: 100, customerPhone: "9347359489", customerName: "PlayStore Tester" })
+      JSON.stringify({ amount: 1, plan: "paid_100", testMode: true, customerPhone: "9347359489", customerName: "PlayStore Tester" })
     );
 
     if (res.status === 200 && res.body.includes("order_id")) {
@@ -300,20 +300,15 @@ async function main() {
       path: "/api/payment/create-order",
       method: "POST",
       name: "Payment Sandbox Order API",
-      body: JSON.stringify({ amount: 100, customerPhone: "9347359489", customerName: "Test Candidate" })
+      body: JSON.stringify({ amount: 1, plan: "paid_100", testMode: true, customerPhone: "9347359489", customerName: "Test Candidate" })
     },
     {
       path: "/api/cashfree/create-order",
       method: "POST",
       name: "Cashfree Direct Order Gateway",
-      body: JSON.stringify({ orderAmount: 100, customerPhone: "9347359489" })
+      body: JSON.stringify({ orderAmount: 1, plan: "paid_100", testMode: true, customerPhone: "9347359489" })
     },
-    { path: "/api/download-frontend", method: "GET", name: "All-in-One Frontend ZIP" },
-    { path: "/api/download/raw-zip", method: "GET", name: "Raw HTML/CSS/JS ZIP" },
     { path: "/api/download-android-bundle", method: "GET", name: "Android Play Store Package Bundle ZIP" },
-    { path: "/api/download/raw/index.html", method: "GET", name: "Raw index.html Source" },
-    { path: "/api/download/raw/style.css", method: "GET", name: "Raw style.css Stylesheet" },
-    { path: "/api/download/raw/script.js", method: "GET", name: "Raw script.js Bundle" },
     { path: "/manifest.json", method: "GET", name: "PWA Web App Manifest" },
     { path: "/sw.js", method: "GET", name: "Service Worker Script" },
     { path: "/.well-known/assetlinks.json", method: "GET", name: "Android Asset Links" }

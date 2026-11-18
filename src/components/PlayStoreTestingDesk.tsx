@@ -425,7 +425,7 @@ export default function PlayStoreTestingDesk({
           const testOrder = await fetch("/api/payment/create-order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ amount: 100, customerPhone: "9347359489", customerName: "PlayStore Test Candidate" })
+            body: JSON.stringify({ amount: 1, plan: "paid_100", testMode: true, customerPhone: "9347359489", customerName: "PlayStore Test Candidate" })
           }).catch(() => null);
 
           if (testOrder && testOrder.ok) {

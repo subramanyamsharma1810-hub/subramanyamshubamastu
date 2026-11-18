@@ -23,9 +23,11 @@ import {
   Download
 } from "lucide-react";
 import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
+import { getPaymentAmount, isPaymentTestMode } from "../lib/paymentTestMode";
 
 export default function Register() {
   const navigate = useNavigate();
+  const paymentTestMode = isPaymentTestMode();
   const [surname, setSurname] = useState("");
   const [name, setName] = useState("");
   const [gender, setGender] = useState<"Male" | "Female">("Male");
@@ -44,7 +46,7 @@ export default function Register() {
   const [motherName, setMotherName] = useState("");
 
   // Payment choice
-  const [planChoice] = useState<"free">("free");
+  const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("free");
   const [utrNumber, setUtrNumber] = useState("");
   const [referralCode, setReferralCode] = useState("");
 
@@ -345,11 +347,11 @@ export default function Register() {
                 <span>Subscription Tier:</span>
                 <span className="font-bold text-amber-300">
                   {registeredProfile.subscription_status === "paid_1599"
-                    ? "🌟 ₹1599 Premium Tier (31 Days Full Access)"
+                    ? `🌟 ₹${getPaymentAmount("paid_1599")} Premium Test Tier (31 Days Full Access)`
                     : registeredProfile.subscription_status === "paid_900" 
-                    ? "👑 ₹900 Premium Tier (Full Access)" 
+                    ? `👑 ₹${getPaymentAmount("paid_900")} Premium Test Tier (31 Days Full Access)`
                     : registeredProfile.subscription_status === "paid_100" 
-                    ? "💳 ₹100 Match Registered" 
+                    ? `💳 ₹${getPaymentAmount("paid_100")} Match Test Registered`
                     : "🆓 Free (Pay to View Matches)"}
                 </span>
               </div>
@@ -769,6 +771,11 @@ export default function Register() {
 
               {/* Automated Payment Selection */}
               <div className="border-t border-zinc-800 pt-6 space-y-4 text-left">
+                {paymentTestMode && (
+                  <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-3 text-xs font-bold text-emerald-300">
+                    Payment gateway test mode: 1-month Match Test costs ₹1 and 1-month Premium Test costs ₹2.
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-amber-400" />
@@ -790,7 +797,9 @@ export default function Register() {
                   >
                     <div className="flex justify-between items-start">
                       <span className="text-xs font-black text-amber-300">31-Day Premium</span>
-                      <span className="text-xs font-mono font-black text-amber-300">₹1599</span>
+                      <span className="text-xs font-mono font-black text-amber-300">
+                        ₹{getPaymentAmount("paid_1599")}
+                      </span>
                     </div>
                     <p className="text-[10px] text-gray-300 font-medium">
                       31 days unlimited access to matching Brahmin profiles & direct coordinates.
@@ -807,7 +816,9 @@ export default function Register() {
                   >
                     <div className="flex justify-between items-start">
                       <span className="text-xs font-extrabold text-white">Match Search</span>
-                      <span className="text-xs font-mono font-black text-amber-400">₹100</span>
+                      <span className="text-xs font-mono font-black text-amber-400">
+                        ₹{getPaymentAmount("paid_100")}
+                      </span>
                     </div>
                     <p className="text-[10px] text-gray-400">
                       Start searching verified Brahmin matches & astrological coordinates.
@@ -824,7 +835,9 @@ export default function Register() {
                   >
                     <div className="flex justify-between items-start">
                       <span className="text-xs font-extrabold text-white">Full Upgrade</span>
-                      <span className="text-xs font-mono font-black text-amber-400">₹900</span>
+                      <span className="text-xs font-mono font-black text-amber-400">
+                        ₹{getPaymentAmount("paid_900")}
+                      </span>
                     </div>
                     <p className="text-[10px] text-gray-400">
                       Unlocks direct phone contacts, Kundali docs, and instant WhatsApp chat.
@@ -857,12 +870,12 @@ export default function Register() {
                         Scan with PhonePe / GPay / Paytm / BHIM
                       </span>
                       <p className="text-xs text-zinc-300">
-                        Amount to Pay: <strong className="text-amber-300">{planChoice === "paid_1599" ? "₹1599" : (planChoice === "paid_100" ? "₹100" : "₹900")}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
+                        Amount to Pay: <strong className="text-amber-300">₹{getPaymentAmount(planChoice)}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
                       </p>
                     </div>
 
                     <div className="max-w-xs mx-auto">
-                      <PhonePeQRCode amount={planChoice === "paid_1599" ? 1599 : (planChoice === "paid_100" ? 100 : 900)} className="w-full shadow-md" />
+                      <PhonePeQRCode amount={getPaymentAmount(planChoice)} className="w-full shadow-md" />
                     </div>
 
                     <div className="space-y-1.5 max-w-sm mx-auto">

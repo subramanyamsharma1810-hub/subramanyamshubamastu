@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Phone, Video, PhoneIncoming, PhoneOutgoing, PhoneMissed, Clock, Trash2, X, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { Profile } from "../../types";
-import { ref, onValue, remove } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { rtdb } from "../../lib/firebase";
+import { clearCallHistoryRecordMirrors } from "../../lib/callHistory";
 
 export interface CallLogItem {
   id: string;
@@ -16,7 +17,7 @@ export interface CallLogItem {
   receiverRegNumber?: string;
   receiverPhoto?: string;
   callType: "audio" | "video";
-  status: "Accepted" | "Missed" | "Declined";
+  status: "Ringing" | "Accepted" | "Missed" | "Declined";
   timestamp: number;
   durationSeconds?: number;
 }
@@ -41,7 +42,34 @@ export default function CallHistory({
   useEffect(() => {
     if (!currentProfile?.id) return;
 
-    setLoading(true);
+    let localList: CallLogItem[] = [];
+    try {
+      const localData = JSON.parse(localStorage.getItem(`call_history_${currentProfile.id}`) || "[]");
+      localList = Array.isArray(localData)
+        ? localData.map((item: any) => ({
+            id: item.id || item.callSessionId,
+            callSessionId: item.callSessionId || item.id,
+            callerId: item.callerId || "",
+            callerName: item.callerName || "Member",
+            callerRegNumber: item.callerRegNumber || "SHUBH",
+            callerPhoto: item.callerPhoto,
+            receiverId: item.receiverId || "",
+            receiverName: item.receiverName || "Member",
+            receiverRegNumber: item.receiverRegNumber || "SHUBH",
+            receiverPhoto: item.receiverPhoto,
+            callType: item.callType || "video",
+            status: item.status || "Declined",
+            timestamp: item.timestamp || Date.now(),
+            durationSeconds: item.durationSeconds || 0,
+          }))
+        : [];
+      localList.sort((a, b) => b.timestamp - a.timestamp);
+      setLogs(localList);
+      setLoading(false);
+    } catch {
+      setLogs([]);
+      setLoading(false);
+    }
 
     // 1. Listen to RTDB logs under call_history/${currentProfile.id}
     const historyRef = ref(rtdb, `call_history/${currentProfile.id}`);
@@ -113,8 +141,7 @@ export default function CallHistory({
     if (!window.confirm("Are you sure you want to clear your call history log?")) return;
     try {
       localStorage.removeItem(`call_history_${currentProfile.id}`);
-      const historyRef = ref(rtdb, `call_history/${currentProfile.id}`);
-      await remove(historyRef).catch(() => {});
+      await clearCallHistoryRecordMirrors(currentProfile.id);
       setLogs([]);
     } catch (e) {
       console.error("Failed to clear call history:", e);
@@ -307,10 +334,15 @@ export default function CallHistory({
                         <XCircle className="w-3.5 h-3.5 text-stone-500" />
                         <span>Declined</span>
                       </span>
-                    ) : (
+                    ) : log.status === "Missed" ? (
                       <span className="inline-flex items-center gap-1 text-xs font-black text-rose-700 bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-200">
                         <PhoneMissed className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
                         <span>Missed</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Ringing</span>
                       </span>
                     )}
 

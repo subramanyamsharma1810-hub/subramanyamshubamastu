@@ -254,46 +254,31 @@ export default function CheckoutPricing({
 
     setIsProcessingPayment(true);
     try {
-      const orderId = `ORD_SHUBH_${Date.now()}`;
-      const paymentId = `PAY_CF_${Math.floor(100000 + Math.random() * 900000)}`;
-
-      // Trigger payment success webhook on backend
-      const res = await fetch("/api/webhooks/payment-success", {
+      const testMode = typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname.endsWith(".vercel.app") ||
+          new URLSearchParams(window.location.search).get("payment_test") === "1");
+      const response = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id: orderId,
-          payment_id: paymentId,
-          user_id: currentProfile.id,
-          amount: finalPayable,
-          coupon_applied: couponResult?.code || (couponResult?.is_milestone_applied ? "RULE_OF_6_MILESTONE" : undefined),
-          referee_name: currentProfile.name,
-          referee_phone: currentProfile.contact_number,
-          referee_email: currentProfile.email
-        })
+          plan: "paid_1599",
+          testMode,
+          orderAmount: testMode ? 2 : finalPayable,
+          customerId: currentProfile.id,
+          customerPhone: currentProfile.contact_number,
+          customerName: currentProfile.name,
+        }),
       });
-
-      const webhookData = await res.json();
-
-      const receipt = {
-        orderId,
-        paymentId,
-        amount: finalPayable,
-        originalAmount: BASE_PRICE,
-        savings: totalSavings,
-        couponApplied: couponResult?.code,
-        isMilestone: couponResult?.is_milestone_applied,
-        timestamp: new Date().toISOString(),
-        candidateName: currentProfile.name,
-        regNumber: currentProfile.reg_number || "BVM-Registered",
-        defensePending: couponResult?.requires_id_upload && !uploadSuccess ? true : false
-      };
-
-      setPaymentReceipt(receipt);
-      setPaymentDone(true);
-      if (onPaymentSuccess) {
-        onPaymentSuccess(receipt);
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Gateway order creation failed");
       }
+      alert(
+        testMode
+          ? `Test payment order created for ₹2. Order ID: ${data.order_id}`
+          : "Payment gateway order created. Complete checkout through the configured gateway."
+      );
     } catch (err) {
       console.error("Payment failure:", err);
       alert("Payment processing encountered an issue. Please try again.");

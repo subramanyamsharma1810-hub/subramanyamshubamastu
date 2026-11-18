@@ -12,6 +12,7 @@ import { contactRevealEngine } from "./src/server/contactRevealEngine.ts";
 import { callSessionEngine } from "./src/server/callSessionEngine.ts";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./src/lib/firebase.ts";
+import { createHmac, timingSafeEqual } from "crypto";
 
 dotenv.config();
 
@@ -19,7 +20,12 @@ const app = express();
 const PORT = 3000;
 
 // Configure body parsers for base64 ID uploads and webhook payloads
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({
+  limit: "10mb",
+  verify: (req: express.Request & { rawBody?: Buffer }, _res, buf) => {
+    req.rawBody = Buffer.from(buf);
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Custom Domain & Subdomain Mapping Middleware
@@ -48,37 +54,6 @@ const upload = multer({
 // Dedicated Health check route
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Direct download endpoint for complete frontend source code package
-app.get("/api/download-frontend", (req, res) => {
-  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-frontend-all-in-one.zip");
-  res.download(zipPath, "shubhamastu-all-frontend-files.zip", (err) => {
-    if (err && !res.headersSent) {
-      res.status(500).json({ error: "Failed to download frontend package" });
-    }
-  });
-});
-
-app.get("/api/download/raw-zip", (req, res) => {
-  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-raw-html-css-js.zip");
-  res.download(zipPath, "shubhamastu-raw-html-css-js.zip", (err) => {
-    if (err && !res.headersSent) {
-      res.status(500).json({ error: "Failed to download raw bundle package" });
-    }
-  });
-});
-
-app.get("/api/download/raw/index.html", (req, res) => {
-  res.download(path.resolve(process.cwd(), "public/raw/index.html"), "index.html");
-});
-
-app.get("/api/download/raw/style.css", (req, res) => {
-  res.download(path.resolve(process.cwd(), "public/raw/style.css"), "style.css");
-});
-
-app.get("/api/download/raw/script.js", (req, res) => {
-  res.download(path.resolve(process.cwd(), "public/raw/script.js"), "script.js");
 });
 
 // Download Android Google Play Store Deployment Bundle
@@ -779,45 +754,114 @@ app.post("/api/coupons/upload-id", upload.single("idCard"), (req, res) => {
   }
 });
 
-// 3. POST /api/webhooks/payment-success
-// Cashfree/Razorpay webhook handler.
-// When a referred user pays, automatically marks referrals.status = 'QUALIFIED_PAID',
-// increments referrer's qualified count, and unlocks the ₹800 pricing tier if count >= 6.
-app.post("/api/webhooks/payment-success", (req, res) => {
+// 3. POST /api/phonepe/webhook
+// Secure PhonePe success/failure callback. Browser traffic must never activate a
+// subscription or referral reward directly.
+const verifyPhonePeWebhookSignature = (req: express.Request & { rawBody?: Buffer }): boolean => {
+  const secret = process.env.PHONEPE_WEBHOOK_CHECKSUM_KEY || "";
+  if (!secret) return false;
+
+  const rawBody = req.rawBody?.toString("utf8") || JSON.stringify(req.body);
+  const expected = createHmac("sha256", secret).update(rawBody).digest("base64");
+  const expectedHex = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const candidates = [
+    req.headers["x-verify"],
+    req.headers["x-verify-signature"],
+    req.headers["authorization"]
+  ].flatMap(value => Array.isArray(value) ? value : (value ? [value] : []));
+
+  return candidates.some(candidate => {
+    const normalized = candidate.replace(/^sha256=/i, "").trim();
+    if (!normalized) return false;
+    const provided = /^[a-f0-9]+$/i.test(normalized)
+      ? Buffer.from(normalized, "hex")
+      : Buffer.from(normalized, "base64");
+    const validBuffer = /^[a-f0-9]+$/i.test(normalized)
+      ? Buffer.from(expectedHex, "hex")
+      : Buffer.from(expected, "base64");
+    return provided.length === validBuffer.length && timingSafeEqual(provided, validBuffer);
+  });
+};
+
+app.post("/api/phonepe/webhook", (req, res) => {
+  if (!verifyPhonePeWebhookSignature(req)) {
+    console.error("Rejected unsigned or invalid PhonePe webhook request");
+    return res.status(401).json({ success: false, message: "Invalid webhook signature." });
+  }
+
+  const body = req.body || {};
+  const eventName = String(
+    body.event ||
+    body.event_name ||
+    body.type ||
+    body.data?.event ||
+    ""
+  ).toLower();
+  const isSuccess = eventName.includes("success") ||
+    eventName.includes("paid") ||
+    eventName.includes("completed") ||
+    body.payment?.state === "COMPLETED" ||
+    body.data?.payment?.state === "COMPLETED";
+  const isFailure = eventName.includes("fail") ||
+    eventName.includes("error") ||
+    body.payment?.state === "FAILED" ||
+    body.data?.payment?.state === "FAILED";
+
+  const webhookId = String(
+    req.headers["x-phonepe-webhook-id"] ||
+    body.webhookId ||
+    body.webhook_id ||
+    body.data?.webhookId ||
+    ""
+  );
+  const configuredSuccessId = process.env.PHONEPE_PAYMENT_SUCCESS_WEBHOOK_ID || "";
+  const configuredFailureId = process.env.PHONEPE_PAYMENT_FAILURE_WEBHOOK_ID || "";
+  const configuredLegacyId = process.env.PHONEPE_WEBHOOK_ID || "";
+  if (webhookId && [configuredSuccessId, configuredFailureId, configuredLegacyId].filter(Boolean).length > 0 &&
+      ![configuredSuccessId, configuredFailureId, configuredLegacyId].filter(Boolean).includes(webhookId)) {
+    return res.status(401).json({ success: false, message: "Unknown PhonePe webhook ID." });
+  }
+
+  if (isFailure) {
+    return res.status(200).json({ success: true, status: "FAILED", processed: false });
+  }
+
+  if (!isSuccess) {
+    return res.status(200).json({ success: true, status: "IGNORED", processed: false });
+  }
+
   try {
-    const body = req.body;
-    console.log("Received payment success webhook payload:", body);
+    const orderId = body.orderId || body.order_id || body.data?.order?.orderId || body.data?.order?.order_id;
+    const paymentId = body.paymentId || body.payment_id || body.data?.payment?.paymentId || body.data?.payment?.payment_id;
+    const userId = body.userId || body.user_id || body.data?.customer?.customerId || body.data?.customer?.customerId;
+    const amount = Number(body.amount || body.orderAmount || body.data?.payment?.amount || body.data?.order?.amount || 0);
+    const couponApplied = body.couponCode || body.coupon_applied || body.data?.order?.couponCode;
 
-    // Extract fields compatible with Cashfree, Razorpay, or direct gateway payloads
-    let order_id = body.order_id || body.orderId || body.data?.order?.order_id || body.payload?.payment?.entity?.order_id || `CF_ORD_${Date.now()}`;
-    let payment_id = body.payment_id || body.paymentId || body.data?.payment?.payment_id || body.payload?.payment?.entity?.id || `PAY_${Date.now()}`;
-    let user_id = body.user_id || body.userId || body.customer_id || body.customer_details?.customer_id;
-    let amount = Number(body.amount || body.order_amount || body.data?.payment?.payment_amount || body.payload?.payment?.entity?.amount / 100 || 1500);
-    let coupon_applied = body.coupon_applied || body.couponCode || body.data?.order?.order_tags?.coupon;
-    let referee_name = body.customer_name || body.name || body.customer_details?.customer_name;
-    let referee_phone = body.customer_phone || body.phone || body.customer_details?.customer_phone;
-    let referee_email = body.customer_email || body.email || body.customer_details?.customer_email;
-
-    if (!user_id) {
-      return res.status(400).json({ success: false, message: "Missing user_id in payment payload." });
+    if (!orderId || !paymentId || !userId || amount <= 0) {
+      console.error("PhonePe success event missing order, payment, user, or amount data");
+      return res.status(400).json({ success: false, message: "Missing verified payment fields." });
     }
 
     const result = referralCouponEngine.handlePaymentSuccessWebhook({
-      order_id,
-      payment_id,
-      user_id,
+      order_id: String(orderId),
+      payment_id: String(paymentId),
+      user_id: String(userId),
       amount,
-      coupon_applied,
-      referee_name,
-      referee_phone,
-      referee_email
+      coupon_applied: couponApplied
     });
-
-    return res.json(result);
+    return res.status(200).json({ success: true, status: "COMPLETED", ...result });
   } catch (err: any) {
-    console.error("Error processing payment webhook:", err);
+    console.error("Error processing signed PhonePe webhook:", err);
     return res.status(500).json({ success: false, message: err.message || "Webhook processing error." });
   }
+});
+
+// Legacy browser/webhook endpoint is disabled: it cannot prove payment completion.
+app.post("/api/webhooks/payment-success", (_req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: "Use the signed /api/phonepe/webhook endpoint."
+  });
 });
 
 // 4. USER REFERRAL ENDPOINTS
@@ -1217,8 +1261,15 @@ app.post("/api/profile/privacy", (req, res) => {
 // --- Cashfree Payment Gateway Integration Endpoints ---
 const handleCreateCashfreeOrder = async (req: express.Request, res: express.Response) => {
   try {
-    const { orderAmount, reqAmount, customerId, customerPhone, customerEmail, customerName } = req.body || {};
-    const effectiveAmount = orderAmount || reqAmount || req.body?.amount || 100;
+    const { orderAmount, reqAmount, customerId, customerPhone, customerEmail, customerName, plan, testMode } = req.body || {};
+    const sandboxTestMode =
+      testMode === true ||
+      process.env.PAYMENT_TEST_MODE === "true" ||
+      process.env.NODE_ENV !== "production";
+    const requestedAmount = orderAmount || reqAmount || req.body?.amount;
+    const effectiveAmount = sandboxTestMode
+      ? (plan === "paid_900" || plan === "premium" ? 2 : 1)
+      : (requestedAmount || 100);
     const appId = process.env.CASHFREE_APP_ID || "";
     const secretKey = process.env.CASHFREE_SECRET_KEY || "";
     const apiVersion = process.env.CASHFREE_API_VERSION || "2023-08-01";
@@ -1257,6 +1308,7 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
         return res.json({
           success: true,
           order_id: orderId,
+          order_amount: effectiveAmount,
           payment_session_id: cfData.payment_session_id,
           order_status: cfData.order_status,
           gateway: "cashfree_sandbox"
@@ -1270,6 +1322,7 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
     return res.json({
       success: true,
       order_id: orderId,
+      order_amount: effectiveAmount,
       payment_session_id: `session_cf_sandbox_${Math.random().toString(36).substring(2, 12)}`,
       order_status: "ACTIVE",
       gateway: "cashfree_sandbox_simulation"
