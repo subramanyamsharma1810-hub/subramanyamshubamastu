@@ -1121,6 +1121,9 @@ export default function LandingPage({
       }}
     >
       <style>{`
+        .landing-light-theme {
+          background: #fffaf0 !important;
+        }
         .landing-light-theme [class*="bg-black"],
         .landing-light-theme [class*="bg-zinc-9"],
         .landing-light-theme [class*="bg-gray-9"] {
@@ -1137,18 +1140,31 @@ export default function LandingPage({
         .landing-light-theme [class*="placeholder-zinc-"]::placeholder {
           color: #9b8060 !important;
         }
+        .reference-hero {
+          background-image: linear-gradient(90deg, rgba(255, 250, 240, 0.94) 0%, rgba(255, 250, 240, 0.72) 28%, rgba(255, 250, 240, 0.12) 54%, rgba(255, 250, 240, 0.18) 100%), url('/images/original-wedding-slow.gif');
+          background-size: cover;
+          background-position: center 42%;
+        }
+        @media (max-width: 767px) {
+          .reference-hero {
+            background-image: linear-gradient(180deg, rgba(255, 250, 240, 0.82) 0%, rgba(255, 250, 240, 0.55) 60%, rgba(255, 250, 240, 0.92) 100%), url('/images/original-wedding-slow.gif');
+            background-size: auto 270px;
+            background-position: center top;
+            background-repeat: no-repeat;
+          }
+        }
       `}</style>
       
       {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="relative w-full h-20 sm:h-28 lg:h-32 bg-[#fffaf0]/95 border-b-2 border-amber-400 shadow-sm overflow-hidden">
+      <div className="relative w-full h-7 sm:h-9 lg:h-10 bg-[#fffaf0]/95 border-b border-amber-400 shadow-sm overflow-hidden">
         <img
           src="/images/mango-toranam.svg"
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover object-top"
         />
-        <div className="absolute inset-x-0 bottom-1 sm:bottom-2 flex justify-center px-4">
-          <span className="rounded-full bg-[#fffaf0]/90 px-3 py-1 text-[8px] sm:text-[10px] font-black text-[#99151B] tracking-[0.12em] shadow-sm">
+        <div className="absolute inset-x-0 bottom-0.5 sm:bottom-1 flex justify-center px-4">
+          <span className="rounded-full bg-[#fffaf0]/90 px-2.5 py-0.5 text-[7px] sm:text-[9px] font-black text-[#99151B] tracking-[0.08em]">
             {lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "HONOURING TRADITION • CREATING SACRED ALLIANCES"}
           </span>
         </div>
@@ -1156,14 +1172,14 @@ export default function LandingPage({
 
       {/* Top Header Bar */}
       <header className="relative z-30 w-full bg-white/95 backdrop-blur-md border-b border-amber-200/90 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-24 sm:min-h-28 lg:min-h-32 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 sm:h-[104px] lg:h-[124px] py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
           
           {/* Webpage Name & Slogan */}
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <div className="bg-white p-2 sm:p-3 rounded-full flex items-center justify-center shadow-lg border-2 border-[#C2242C] shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="bg-white p-1 sm:p-2 rounded-full flex items-center justify-center border-2 border-[#C2242C] shrink-0">
               <svg
                 viewBox="0 0 48 48"
-                className="w-14 h-14 sm:w-20 sm:h-20 lg:w-24 lg:h-24"
+                className="w-14 h-14 sm:w-20 sm:h-20 lg:w-[112px] lg:h-[112px]"
                 role="img"
                 aria-label="Kalasam logo"
               >
@@ -1177,14 +1193,14 @@ export default function LandingPage({
             </div>
             <div className="text-left min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-3xl sm:text-5xl lg:text-6xl leading-none font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
+                <span className="text-2xl sm:text-4xl lg:text-[48px] leading-none font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
                   {lang === "te" ? "శుభమస్తు" : "SHUBHAMASTU"}
                 </span>
                 <span className="text-[10px] lg:text-xs bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden md:inline-block">
                   {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "TELUGU BRAHMIN MATRIMONY"}
                 </span>
               </div>
-              <p className="text-[9px] sm:text-[11px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
+              <p className="text-[7px] sm:text-[10px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
                 {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "Trusted Telugu Brahmin Matrimony"}
               </p>
             </div>
@@ -1203,7 +1219,7 @@ export default function LandingPage({
             </div>
 
             {/* Language Toggle */}
-            <div className="flex items-center bg-amber-100 border border-amber-300 rounded-xl p-0.5 text-xs font-bold shadow-xs">
+            <div className="flex items-center bg-amber-100 border border-amber-300 rounded-lg p-0.5 text-[9px] sm:text-xs font-bold shadow-xs">
               <button
                 type="button"
                 onClick={() => setLang("te")}
@@ -1224,22 +1240,22 @@ export default function LandingPage({
             <button
               type="button"
               onClick={() => setShowUserLoginModal(true)}
-              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-[9px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shadow-xs"
             >
               <User className="w-3.5 h-3.5 text-amber-700" />
-              <span>{lang === "te" ? "లాగిన్" : "Login"}</span>
+              <span className="hidden xs:inline sm:inline">{lang === "te" ? "లాగిన్" : "Login"}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowAdminModal(true)}
-              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+              className="hidden md:flex px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer items-center gap-1.5 shadow-xs"
             >
               <Lock className="w-3.5 h-3.5 text-amber-700" />
               <span>{lang === "te" ? "అడ్మిన్ లాగిన్" : "Admin Login"}</span>
             </button>
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-xs font-extrabold rounded-xl transition-all border border-amber-400 uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-1.5"
+              className="hidden sm:flex px-3 lg:px-4 py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-[10px] lg:text-xs font-extrabold rounded-lg lg:rounded-xl transition-all border border-amber-400 uppercase tracking-wider shadow-md cursor-pointer items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>{lang === "te" ? "ఉచితంగా నమోదు" : "Register Free"}</span>
@@ -1249,25 +1265,25 @@ export default function LandingPage({
       </header>
 
       {/* Main Hero Section */}
-      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.15fr_1fr] items-center gap-6">
+      <section className="reference-hero relative z-20 w-full min-h-[420px] md:min-h-[470px]">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 md:py-10 grid grid-cols-1 lg:grid-cols-[0.92fr_1.08fr_0.82fr] items-center gap-4 md:gap-5 min-h-[420px] md:min-h-[470px]">
           
           {/* Left Column: Title & Feature Checklist */}
-          <div className="space-y-6 text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-100/90 border border-amber-300 rounded-full text-amber-900 text-xs font-mono font-black uppercase tracking-widest shadow-xs">
+          <div className="space-y-4 md:space-y-5 text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100/90 border border-amber-300 rounded-full text-amber-900 text-[10px] sm:text-xs font-mono font-black uppercase tracking-widest shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
               <span>{t.badge}</span>
             </div>
 
-            <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight text-amber-700">
-                <span className="block text-amber-800 font-extrabold text-xl sm:text-2xl mb-1">{t.title1}</span>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 uppercase">
+            <div className="space-y-2 md:space-y-3">
+              <h1 className="text-[26px] sm:text-3xl lg:text-[38px] font-black tracking-tight leading-[1.12] text-[#99151B]">
+                <span className="block text-[#99151B] font-extrabold text-lg sm:text-xl mb-1">{t.title1}</span>
+                <span className="text-[#F28C00]">
                   {t.title2}
                 </span>
               </h1>
 
-              <ul className="space-y-3 pt-2 text-sm font-bold text-zinc-900">
+              <ul className="space-y-2 pt-1 text-[12px] sm:text-sm font-bold text-zinc-900">
                 <li className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
                   <span>{t.bullet1}</span>
