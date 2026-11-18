@@ -1084,13 +1084,13 @@ export default function LandingPage({
 
   const t = {
     te: {
-      badge: "100% బ్రాహ్మణ మ్యాట్రిమోని",
-      title1: "తెలుగు బ్రాహ్మణ కుటుంబాల కోసం",
+      badge: "బ్రాహ్మణ వివాహ వేదిక",
+      title1: "తెలుగు బ్రాహ్మణుల కోసం",
       title2: "ప్రత్యేక వివాహ వేదిక",
-      bullet1: "బ్రాహ్మణ కుటుంబాల కోసం ప్రత్యేకంగా",
+      bullet1: "బ్రాహ్మణులకే ప్రత్యేకంగా",
       bullet2: "గోత్రం ఆధారిత శోధన",
-      bullet3: "సురక్షితమైన మరియు గోప్యమైన సేవ",
-      bullet4: "సంప్రదాయ విలువలకు ప్రాధాన్యం",
+      bullet3: "సురక్షితమైన & గోప్యమైన సేవ",
+      bullet4: "సంప్రదాయ వివాహ బంధాలకు ప్రాధాన్యం",
       districtSearchTitle: "ప్రాంతాల వారీగా వధూవరుల శోధన",
     },
     en: {
@@ -1195,7 +1195,11 @@ export default function LandingPage({
             {/* Nav Links */}
             <div className="hidden lg:flex items-center gap-3 text-xs font-extrabold text-zinc-800">
               <a href="#home" className="hover:text-amber-700 transition-colors">{lang === "te" ? "హోమ్" : "Home"}</a>
-              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "వధూవరుల శోధన" : "Search Matches"}</button>
+              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "వధువరుల శోధన" : "Search Matches"}</button>
+              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "గోత్రాలు" : "Gotram"}</button>
+              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "వివాహాలు" : "Marriages"}</button>
+              <button type="button" onClick={() => setShowContactModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "సంప్రదించండి" : "Contact"}</button>
+              <button type="button" onClick={() => setShowStatusAlert(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "మా గురించి" : "About"}</button>
             </div>
 
             {/* Language Toggle */}
@@ -1223,7 +1227,7 @@ export default function LandingPage({
               className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <User className="w-3.5 h-3.5 text-amber-700" />
-              <span>{lang === "te" ? "వినియోగదారు లాగిన్" : "User Login"}</span>
+              <span>{lang === "te" ? "లాగిన్" : "Login"}</span>
             </button>
             <button
               type="button"
@@ -1244,9 +1248,9 @@ export default function LandingPage({
         </div>
       </header>
 
-      {/* Main Hero Section: 3-Column Layout (Left: Title & Checklist, Center: Brahmin Wedding Couple Illustration, Right: Partner Search Card) */}
+      {/* Main Hero Section */}
       <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1.05fr] items-center gap-10">
+        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.15fr_1fr] items-center gap-6">
           
           {/* Left Column: Title & Feature Checklist */}
           <div className="space-y-6 text-left">
@@ -1283,11 +1287,15 @@ export default function LandingPage({
               </ul>
             </div>
 
-            <div className="bg-amber-50/90 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-xs">
-              <p className="text-xs sm:text-sm text-amber-950 leading-relaxed font-serif italic">
-                "Just as Sati Devi was united in eternal spiritual matrimony with Lord Shiva under the auspicious blessings of the cosmos, we invoke sacred planetary alignments to unite your soul with its divine reflection."
-              </p>
-            </div>
+          </div>
+
+          {/* Wedding Couple Visual */}
+          <div className="hidden xl:flex items-end justify-center min-h-[360px]">
+            <img
+              src="/images/original-wedding-slow.gif"
+              alt="Brahmin wedding couple"
+              className="w-full max-h-[390px] object-contain object-bottom drop-shadow-2xl"
+            />
           </div>
 
           {/* Right Column: Partner Search Card */}
@@ -1354,14 +1362,15 @@ export default function LandingPage({
 
 
 
-      {/* Trust strip inspired by the traditional reference layout */}
+      {/* Trust strip matching the traditional reference layout */}
       <section className="relative z-20 w-full border-y-2 border-amber-300 bg-[#FFF8E8]/95 shadow-sm">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-amber-300/80">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 divide-x divide-amber-300/80">
           {[
-            ["🪔", "తెలుగు బ్రాహ్మణులకు", "Dedicated to Telugu Brahmin Families"],
-            ["🛡️", "సురక్షితమైన వేదిక", "Safe & Confidential Platform"],
-            ["🔒", "నమ్మకమైన ప్రొఫైల్స్", "Verified Profile Experience"],
-            ["🤝", "వివాహ బంధాలకు సహాయం", "Support for Sacred Alliances"],
+            ["👥", "తెలుగు బ్రాహ్మణులకు ప్రత్యేక వేదిక", "Dedicated Brahmin Families"],
+            ["🪔", "సంప్రదాయం • శుభకరం • కుటుంబ విలువలు", "Tradition • Purity • Values"],
+            ["🛡️", "ధృవీకరించిన ప్రొఫైల్స్", "(గోప్య సమాచారం)"],
+            ["🔒", "సురక్షిత గోప్య & Data Protection", "Privacy Protected"],
+            ["🤝", "వివాహ వేదిక సహాయం", "Sacred Alliance Support"],
           ].map(([icon, teLabel, enLabel]) => (
             <div key={enLabel} className="px-3 py-4 text-center">
               <div className="text-xl mb-1" aria-hidden="true">{icon}</div>
