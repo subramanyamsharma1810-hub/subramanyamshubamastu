@@ -3,7 +3,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; else exit 1; fi",
-  "rewrites": [
-    { "source": "/((?!api/|assets/|images/|icons/|manifest.json|favicon.ico).*)", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(?!api/).*", "dest": "/index.html" }
   ]
 }
