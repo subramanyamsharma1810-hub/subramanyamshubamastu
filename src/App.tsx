@@ -30,8 +30,7 @@ import { registerCallPushNotifications } from "./lib/pushNotifications";
 import { ref, get } from "firebase/database";
 import { rtdb, ensureAuth, auth, googleProvider } from "./lib/firebase";
 import { signInWithPopup } from "firebase/auth";
-import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck, FolderArchive, Download, Share2 } from "lucide-react";
-import FrontendExportModal from "./components/FrontendExportModal";
+import { Heart, Compass, Sparkles, AlertCircle, RefreshCw, Zap, TrendingUp, Palette, Check, ExternalLink, HelpCircle, ShieldCheck, Download, Share2 } from "lucide-react";
 import BottomNav from "./components/BottomNav";
 
 export default function App() {
@@ -85,7 +84,6 @@ export default function App() {
     return saved;
   });
   const [isDevWidgetOpen, setIsDevWidgetOpen] = useState<boolean>(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [activeCallSession, setActiveCallSession] = useState<{
     callSessionId: string;
     receiver: Profile;
@@ -876,21 +874,8 @@ export default function App() {
         </div>
       )}
 
-      {/* FLOATING QUICK ACTIONS & DEVELOPER SOURCE EXPORT (Bottom-Left) */}
+      {/* FLOATING QUICK ACTIONS (Bottom-Left) */}
       <div className="fixed bottom-4 left-4 z-[99] font-sans flex flex-col sm:flex-row items-start sm:items-center gap-2">
-        {/* DOWNLOAD & SHARE FRONTEND SOURCE BUTTON */}
-        <button
-          onClick={() => setIsExportModalOpen(true)}
-          className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl border border-emerald-400/40 shadow-2xl hover:scale-105 active:scale-95 transition-all text-[11px] font-black select-none cursor-pointer group shadow-emerald-950/50"
-          title="Download all frontend files or forward via WhatsApp and Mail"
-        >
-          <div className="relative">
-            <FolderArchive className="w-4 h-4 text-emerald-200 group-hover:rotate-6 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-ping"></span>
-          </div>
-          <span className="tracking-wide">Download & Send Frontend (ZIP / WA / Mail)</span>
-        </button>
-
         {/* Pulsing Glark Solutions Badge */}
         <button
           onClick={() => setIsDevWidgetOpen(true)}
@@ -902,12 +887,6 @@ export default function App() {
           </div>
           <span className="tracking-wide">A Product of Glark Solutions</span>
         </button>
-
-        {/* Frontend Source Export & Share Modal */}
-        <FrontendExportModal
-          isOpen={isExportModalOpen}
-          onClose={() => setIsExportModalOpen(false)}
-        />
 
         {/* Branding Hub Modal / Bottom Drawer */}
         {isDevWidgetOpen && (

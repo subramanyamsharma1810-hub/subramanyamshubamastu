@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, Phone, Grid, Bell, FolderArchive } from "lucide-react";
+import { Heart, ShieldCheck, Sparkles, User, Settings, LogOut, AlertCircle, Calendar, MoreVertical, X, CheckCircle, TrendingUp, Tag, Gift, Phone, Grid, Bell } from "lucide-react";
 import { PandithConsultationModal } from "./PandithConsultationModal";
 import NotificationBell from "./NotificationBell";
 import AdminAuditModal from "./AdminAuditModal";
-import FrontendExportModal from "./FrontendExportModal";
 import { Profile } from "../types";
 import { adminNotificationService } from "../lib/databaseService";
 
@@ -22,7 +21,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showPandithModal, setShowPandithModal] = useState(false);
   const [showAdminAuditModal, setShowAdminAuditModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [adminAuditUnread, setAdminAuditUnread] = useState(0);
 
   // Check if current user has root admin clearance (Subbu, Subba Reddy, Tejaswar or admin session)
@@ -372,22 +370,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
               </div>
             </button>
 
-            {/* Quick Menu Frontend Export Option */}
-            <button
-              type="button"
-              onClick={() => {
-                setShowQuickMenu(false);
-                setShowExportModal(true);
-              }}
-              className="w-full flex items-center justify-between p-3 rounded-2xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white transition-all cursor-pointer shadow-md min-h-[44px]"
-            >
-              <div className="flex items-center gap-2.5">
-                <FolderArchive className="w-4 h-4 text-emerald-200" />
-                <span className="uppercase">📦 Download & Share Frontend (WA / Mail)</span>
-              </div>
-              <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-mono text-emerald-200">ZIP</span>
-            </button>
-
             <button
               onClick={() => setShowQuickMenu(false)}
               className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer min-h-[44px]"
@@ -404,8 +386,6 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
       {/* 3-Admin Cross-Audit Bell Modal */}
       <AdminAuditModal isOpen={showAdminAuditModal} onClose={() => setShowAdminAuditModal(false)} />
 
-      {/* Complete Frontend Export & Share Modal */}
-      <FrontendExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} />
     </>
   );
 }

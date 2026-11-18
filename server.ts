@@ -56,37 +56,6 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Direct download endpoint for complete frontend source code package
-app.get("/api/download-frontend", (req, res) => {
-  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-frontend-all-in-one.zip");
-  res.download(zipPath, "shubhamastu-all-frontend-files.zip", (err) => {
-    if (err && !res.headersSent) {
-      res.status(500).json({ error: "Failed to download frontend package" });
-    }
-  });
-});
-
-app.get("/api/download/raw-zip", (req, res) => {
-  const zipPath = path.resolve(process.cwd(), "public/shubhamastu-raw-html-css-js.zip");
-  res.download(zipPath, "shubhamastu-raw-html-css-js.zip", (err) => {
-    if (err && !res.headersSent) {
-      res.status(500).json({ error: "Failed to download raw bundle package" });
-    }
-  });
-});
-
-app.get("/api/download/raw/index.html", (req, res) => {
-  res.download(path.resolve(process.cwd(), "public/raw/index.html"), "index.html");
-});
-
-app.get("/api/download/raw/style.css", (req, res) => {
-  res.download(path.resolve(process.cwd(), "public/raw/style.css"), "style.css");
-});
-
-app.get("/api/download/raw/script.js", (req, res) => {
-  res.download(path.resolve(process.cwd(), "public/raw/script.js"), "script.js");
-});
-
 // Download Android Google Play Store Deployment Bundle
 app.get(["/api/download-android-bundle", "/api/download/android-zip"], (req, res) => {
   const zipPath = path.resolve(process.cwd(), "public/shubhamastu-android-playstore-bundle.zip");
