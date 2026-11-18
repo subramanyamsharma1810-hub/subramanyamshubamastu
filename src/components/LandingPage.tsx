@@ -50,6 +50,8 @@ import {
   Search
 } from "lucide-react";
 import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
+import weddingGifUrl from "../assets/original-wedding-slow.gif";
+import mangoToranamUrl from "../assets/mango-toranam.svg";
 
 interface LandingPageProps {
   onLoginSuccess: (profile: Profile) => void;
@@ -1141,13 +1143,13 @@ export default function LandingPage({
           color: #9b8060 !important;
         }
         .reference-hero {
-          background-image: linear-gradient(90deg, rgba(255, 250, 240, 0.94) 0%, rgba(255, 250, 240, 0.72) 28%, rgba(255, 250, 240, 0.12) 54%, rgba(255, 250, 240, 0.18) 100%), url('/images/original-wedding-slow.gif');
+          background-image: linear-gradient(90deg, rgba(255, 250, 240, 0.94) 0%, rgba(255, 250, 240, 0.72) 28%, rgba(255, 250, 240, 0.12) 54%, rgba(255, 250, 240, 0.18) 100%), url('${weddingGifUrl}');
           background-size: cover;
           background-position: center 42%;
         }
         @media (max-width: 767px) {
           .reference-hero {
-            background-image: linear-gradient(180deg, rgba(255, 250, 240, 0.82) 0%, rgba(255, 250, 240, 0.55) 60%, rgba(255, 250, 240, 0.92) 100%), url('/images/original-wedding-slow.gif');
+            background-image: linear-gradient(180deg, rgba(255, 250, 240, 0.82) 0%, rgba(255, 250, 240, 0.55) 60%, rgba(255, 250, 240, 0.92) 100%), url('${weddingGifUrl}');
             background-size: auto 270px;
             background-position: center top;
             background-repeat: no-repeat;
@@ -1158,7 +1160,7 @@ export default function LandingPage({
       {/* Mango Leaf Toran Decorative Top Bar */}
       <div className="relative w-full h-7 sm:h-9 lg:h-10 bg-[#fffaf0]/95 border-b border-amber-400 shadow-sm overflow-hidden">
         <img
-          src="/images/mango-toranam.svg"
+          src={mangoToranamUrl}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover object-top"
@@ -1308,7 +1310,7 @@ export default function LandingPage({
           {/* Wedding Couple Visual */}
           <div className="hidden xl:flex items-end justify-center min-h-[360px]">
             <img
-              src="/images/original-wedding-slow.gif"
+              src={weddingGifUrl}
               alt="Brahmin wedding couple"
               className="w-full max-h-[390px] object-contain object-bottom drop-shadow-2xl"
             />
