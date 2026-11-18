@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { databaseService, adminNotificationService } from "../lib/databaseService";
 import { Profile } from "../types";
 import { BRAHMIN_SUB_CASTES } from "../lib/brahminMetadata";
-import PhonePeQRCode from "./PhonePeQRCode";
 import { 
   Heart, 
   Sparkles, 
@@ -47,7 +46,6 @@ export default function Register() {
 
   // Payment choice
   const [planChoice, setPlanChoice] = useState<"free" | "paid_100" | "paid_900" | "paid_1599">("free");
-  const [utrNumber, setUtrNumber] = useState("");
   const [referralCode, setReferralCode] = useState("");
 
   React.useEffect(() => {
@@ -73,10 +71,6 @@ export default function Register() {
   const [otpSuccessMsg, setOtpSuccessMsg] = useState("");
   const [otpCooldown, setOtpCooldown] = useState(0);
   const otpInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Payment Verification Simulation
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const [paymentVerified, setPaymentVerified] = useState(false);
 
   React.useEffect(() => {
     if (otpCooldown > 0) {
@@ -190,25 +184,13 @@ export default function Register() {
       return;
     }
 
-    if (planChoice !== "free" && !paymentVerified) {
-      if (!utrNumber.trim()) {
-        alert("Please enter your 12-digit UPI UTR number.");
-        return;
-      }
-      setIsVerifyingPayment(true);
-      // Simulate automated payment verification
-      await new Promise(resolve => setTimeout(resolve, 2500));
-      setPaymentVerified(true);
-      setIsVerifyingPayment(false);
-    }
-
     setLoading(true);
     try {
       const regId = `BVM-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       const cleanPhone = phone.replace(/\D/g, "");
 
-      const isPaid = planChoice !== "free" && utrNumber.trim().length > 0;
-      const subStatus = isPaid ? planChoice : "free";
+      const isPaid = planChoice !== "free";
+      const subStatus = "free";
 
       const newCandidate: Profile = {
         id: `prof-${Date.now()}`,
@@ -231,10 +213,10 @@ export default function Register() {
         mother_name: motherName.trim(),
         status: "Active",
         subscription_status: subStatus,
-        payment_received: isPaid,
-        fee_transaction_id: isPaid ? utrNumber.trim() : undefined,
-        fee_received_by: isPaid ? "Automated Gateway" : undefined,
-        fee_received_at: isPaid ? new Date().toISOString() : undefined,
+        payment_received: false,
+        fee_transaction_id: undefined,
+        fee_received_by: undefined,
+        fee_received_at: undefined,
         created_at: new Date().toISOString(),
       };
 
@@ -242,6 +224,28 @@ export default function Register() {
       setRegisteredProfile(saved);
       // Automatically log them in
       localStorage.setItem("bramhana_logged_in_user_id", saved.id);
+
+      if (isPaid) {
+        const amount = getPaymentAmount(planChoice);
+        const response = await fetch("/api/payment/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            plan: planChoice,
+            orderAmount: amount,
+            customerId: saved.id,
+            customerPhone: cleanPhone,
+            customerEmail: saved.email,
+            customerName: saved.name,
+          }),
+        });
+        const paymentData = await response.json();
+        if (!response.ok || !paymentData.success || !paymentData.payment_link) {
+          throw new Error(paymentData.message || "Secure payment checkout could not be created.");
+        }
+        window.location.assign(paymentData.payment_link);
+        return;
+      }
 
       // Attribute referral if invite code was provided
       if (referralCode.trim()) {
@@ -862,56 +866,15 @@ export default function Register() {
                   </label>
                 </div>
 
-                {/* If paid plan chosen, show UPI QR and UTR input */}
+                {/* Paid registration opens the secure gateway after profile creation */}
                 {planChoice !== "free" && (
-                  <div className="p-4 bg-zinc-950 border border-amber-500/25 rounded-2xl space-y-4">
-                    <div className="text-center space-y-1">
-                      <span className="text-[10px] text-amber-400 font-mono tracking-widest uppercase block font-bold">
-                        Scan with PhonePe / GPay / Paytm / BHIM
-                      </span>
-                      <p className="text-xs text-zinc-300">
-                        Amount to Pay: <strong className="text-amber-300">₹{getPaymentAmount(planChoice)}</strong> to Sri G.V. Subramanyam (UPI: 9347359489@ybl)
-                      </p>
-                    </div>
-
-                    <div className="max-w-xs mx-auto">
-                      <PhonePeQRCode amount={getPaymentAmount(planChoice)} className="w-full shadow-md" />
-                    </div>
-
-                    <div className="space-y-1.5 max-w-sm mx-auto">
-                      <label className="text-[10px] font-bold text-gray-300 uppercase tracking-wider block">
-                        Enter 12-digit UPI UTR / Transaction ID (Automated Instant Verification)
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="e.g. 523489127890"
-                          value={utrNumber}
-                          onChange={(e) => {
-                            setUtrNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, ""));
-                            setPaymentVerified(false);
-                          }}
-                          className={`w-full bg-zinc-900 border ${paymentVerified ? 'border-emerald-500 text-emerald-400' : 'border-zinc-700'} rounded-xl py-2 px-3 text-xs text-center font-mono tracking-widest uppercase focus:outline-none focus:border-amber-400`}
-                        />
-                        {paymentVerified && (
-                          <CheckCircle2 className="absolute right-3 top-2.5 w-4 h-4 text-emerald-500" />
-                        )}
-                      </div>
-                      {isVerifyingPayment ? (
-                        <div className="flex items-center justify-center gap-2 text-[9px] text-amber-400 animate-pulse">
-                          <Zap className="w-3 h-3" />
-                          <span>Connecting to NPCI / Gateway for instant validation...</span>
-                        </div>
-                      ) : paymentVerified ? (
-                        <span className="text-[9px] text-emerald-400 block text-center font-bold">
-                          ✅ UTR Verified & Sacred Fee Acknowledged!
-                        </span>
-                      ) : (
-                        <span className="text-[9px] text-zinc-500 block text-center">
-                          ⚡ Payment will be validated upon "Complete Registration"
-                        </span>
-                      )}
-                    </div>
+                  <div className="p-4 bg-zinc-950 border border-amber-500/25 rounded-2xl space-y-2 text-center">
+                    <span className="text-[10px] text-amber-400 font-mono tracking-widest uppercase block font-bold">
+                      Secure Payment Gateway
+                    </span>
+                    <p className="text-xs text-zinc-300">
+                      Amount: <strong className="text-amber-300">₹{getPaymentAmount(planChoice)}</strong>. You will be redirected to the verified gateway; UTR entry is no longer used.
+                    </p>
                   </div>
                 )}
               </div>
@@ -936,14 +899,12 @@ export default function Register() {
                 type="submit"
                 disabled={
                   loading ||
-                  isVerifyingPayment ||
                   !isEmailVerified ||
                   !dob ||
                   (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21)
                 }
                 className={`w-full py-3.5 rounded-xl font-extrabold text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 ${
                   loading ||
-                  isVerifyingPayment ||
                   !isEmailVerified ||
                   !dob ||
                   (gender === "Male" ? calculateAge(dob) < 24 : calculateAge(dob) < 21)
@@ -960,11 +921,6 @@ export default function Register() {
                   <>
                     <Lock className="w-4 h-4 text-zinc-400" />
                     <span>🔒 Age Restricted: {gender === "Male" ? "Male Must Be 24+" : "Female Must Be 21+"}</span>
-                  </>
-                ) : isVerifyingPayment ? (
-                  <>
-                    <Zap className="w-4 h-4 animate-bounce" />
-                    <span>Verifying Automated Payment...</span>
                   </>
                 ) : loading ? (
                   "Registering Sacred Profile..."

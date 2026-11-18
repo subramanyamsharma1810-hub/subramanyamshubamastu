@@ -10,7 +10,7 @@ import multer from "multer";
 import { referralCouponEngine } from "./src/server/referralCouponEngine.ts";
 import { contactRevealEngine } from "./src/server/contactRevealEngine.ts";
 import { callSessionEngine } from "./src/server/callSessionEngine.ts";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./src/lib/firebase.ts";
 import { createHmac, timingSafeEqual } from "crypto";
 
@@ -1261,26 +1261,40 @@ app.post("/api/profile/privacy", (req, res) => {
 // --- Cashfree Payment Gateway Integration Endpoints ---
 const handleCreateCashfreeOrder = async (req: express.Request, res: express.Response) => {
   try {
-    const { orderAmount, reqAmount, customerId, customerPhone, customerEmail, customerName, plan, testMode } = req.body || {};
-    const sandboxTestMode =
-      testMode === true ||
-      process.env.PAYMENT_TEST_MODE === "true" ||
-      process.env.NODE_ENV !== "production";
-    const requestedAmount = orderAmount || reqAmount || req.body?.amount;
-    const effectiveAmount = sandboxTestMode
-      ? (plan === "paid_900" || plan === "premium" ? 2 : 1)
-      : (requestedAmount || 100);
+    const { customerId, customerPhone, customerEmail, customerName, plan } = req.body || {};
+    const planAmounts: Record<string, number> = {
+      paid_100: 100,
+      paid_900: 900,
+      paid_1599: 1599,
+      premium: 1599,
+    };
+    const effectiveAmount = planAmounts[String(plan)];
+    if (!effectiveAmount) {
+      return res.status(400).json({ success: false, message: "Invalid membership plan." });
+    }
+    if (!customerId || typeof customerId !== "string" || !customerId.trim()) {
+      return res.status(400).json({ success: false, message: "A registered customer profile is required." });
+    }
+    const cleanCustomerId = customerId.trim();
     const appId = process.env.CASHFREE_APP_ID || "";
     const secretKey = process.env.CASHFREE_SECRET_KEY || "";
     const apiVersion = process.env.CASHFREE_API_VERSION || "2023-08-01";
-    const baseUrl = process.env.CASHFREE_BASE_URL || "https://sandbox.cashfree.com/pg";
+    const baseUrl = process.env.CASHFREE_BASE_URL || "https://api.cashfree.com/pg";
 
+    if (!appId || !secretKey) {
+      return res.status(503).json({
+        success: false,
+        message: "Payment gateway is not configured. Contact administration.",
+      });
+    }
     const orderId = `ORD_SHUBH_${Date.now()}`;
+    const returnUrl = `${req.protocol}://${req.get("host")}/checkout?order_id=${encodeURIComponent(orderId)}&status=success`;
 
+    let cfResponse: Response;
     try {
-      const cfResponse = await fetch(`${baseUrl}/orders`, {
+      cfResponse = await fetch(`${baseUrl}/orders`, {
         method: "POST",
-        signal: AbortSignal.timeout(1500),
+        signal: AbortSignal.timeout(10000),
         headers: {
           "Content-Type": "application/json",
           "x-client-id": appId,
@@ -1292,40 +1306,50 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
           order_amount: effectiveAmount,
           order_currency: "INR",
           customer_details: {
-            customer_id: customerId || `cust_${Date.now()}`,
+            customer_id: cleanCustomerId,
             customer_phone: customerPhone || "9876543210",
             customer_email: customerEmail || "member@shubhamastu.in",
             customer_name: customerName || "Valued Member"
           },
           order_meta: {
-            return_url: `${req.protocol}://${req.get("host")}/checkout?order_id=${orderId}&status=success`
+            return_url: returnUrl,
+            plan: String(plan),
+            customer_id: cleanCustomerId
           }
         })
       });
-
-      const cfData = await cfResponse.json();
-      if (cfResponse.ok && cfData.payment_session_id) {
-        return res.json({
-          success: true,
-          order_id: orderId,
-          order_amount: effectiveAmount,
-          payment_session_id: cfData.payment_session_id,
-          order_status: cfData.order_status,
-          gateway: "cashfree_sandbox"
-        });
-      }
-    } catch (cfErr) {
-      console.log("Cashfree Sandbox direct API notice:", cfErr);
+    } catch (cfErr: any) {
+      console.error("Cashfree order network error:", cfErr);
+      return res.status(502).json({ success: false, message: "Could not reach the payment gateway." });
     }
 
-    // Fallback simulation session ID if sandbox network restrictions apply
+    const cfData = await cfResponse.json();
+    if (!cfResponse.ok || !cfData.payment_session_id) {
+      console.error("Cashfree order rejected:", cfData);
+      return res.status(502).json({
+        success: false,
+        message: cfData?.message || "Payment gateway rejected the order."
+      });
+    }
+
+    await setDoc(doc(db, "payment_orders", orderId), {
+      order_id: orderId,
+      customer_id: cleanCustomerId,
+      plan: String(plan),
+      amount: effectiveAmount,
+      gateway: "cashfree",
+      status: "CREATED",
+      created_at: new Date().toISOString()
+    });
+
     return res.json({
       success: true,
-      order_id: orderId,
-      order_amount: effectiveAmount,
-      payment_session_id: `session_cf_sandbox_${Math.random().toString(36).substring(2, 12)}`,
-      order_status: "ACTIVE",
-      gateway: "cashfree_sandbox_simulation"
+      order_id: cfData.order_id || orderId,
+      order_amount: cfData.order_amount || effectiveAmount,
+      payment_session_id: cfData.payment_session_id,
+      payment_link: `https://${baseUrl.includes("sandbox") ? "sandbox." : ""}payments.cashfree.com/pay/${cfData.payment_session_id}`,
+      order_status: cfData.order_status,
+      gateway: "cashfree"
     });
   } catch (err: any) {
     console.error("Cashfree order creation error:", err);
@@ -1335,6 +1359,105 @@ const handleCreateCashfreeOrder = async (req: express.Request, res: express.Resp
 
 app.post("/api/cashfree/create-order", handleCreateCashfreeOrder);
 app.post("/api/payment/create-order", handleCreateCashfreeOrder);
+
+const verifyCashfreeWebhookSignature = (req: express.Request & { rawBody?: Buffer }): boolean => {
+  const secret = process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || "";
+  if (!secret) return false;
+
+  const timestamp = String(req.headers["x-webhook-timestamp"] || "");
+  const signature = String(req.headers["x-webhook-signature"] || "");
+  if (!timestamp || !signature) return false;
+
+  const rawBody = req.rawBody?.toString("utf8") || JSON.stringify(req.body);
+  const expected = createHmac("sha256", secret).update(`${timestamp}${rawBody}`).digest("base64");
+  const provided = Buffer.from(signature.trim(), "base64");
+  const valid = Buffer.from(expected, "base64");
+  return provided.length === valid.length && timingSafeEqual(provided, valid);
+};
+
+app.post("/api/cashfree/webhook", async (req, res) => {
+  if (!verifyCashfreeWebhookSignature(req)) {
+    console.error("Rejected unsigned or invalid Cashfree webhook request");
+    return res.status(401).json({ success: false, message: "Invalid webhook signature." });
+  }
+
+  const body = req.body || {};
+  const eventType = String(body.type || body.event || "").toUpperCase();
+  const data = body.data || {};
+  const orderId = String(data.order?.order_id || data.order_id || body.order_id || "");
+  const paymentId = String(data.payment?.cf_payment_id || data.payment?.payment_id || data.cf_payment_id || body.payment_id || "");
+  const paymentStatus = String(data.payment?.payment_status || data.payment?.status || data.payment_status || body.payment_status || "").toUpper();
+
+  if (!orderId) {
+    return res.status(400).json({ success: false, message: "Missing Cashfree order ID." });
+  }
+  if (!eventType.includes("PAYMENT") && !eventType.includes("SUCCESS")) {
+    return res.status(200).json({ success: true, status: "IGNORED", processed: false });
+  }
+  if (paymentStatus && paymentStatus !== "SUCCESS") {
+    await setDoc(doc(db, "payment_orders", orderId), {
+      status: paymentStatus,
+      payment_id: paymentId || null,
+      updated_at: new Date().toISOString()
+    }, { merge: true });
+    return res.status(200).json({ success: true, status: paymentStatus, processed: false });
+  }
+
+  try {
+    const orderRef = doc(db, "payment_orders", orderId);
+    const orderSnapshot = await getDoc(orderRef);
+    if (!orderSnapshot.exists()) {
+      return res.status(404).json({ success: false, message: "Unknown payment order." });
+    }
+
+    const order = orderSnapshot.data();
+    if (order.status === "SUCCESS") {
+      return res.status(200).json({ success: true, status: "SUCCESS", processed: true, already_processed: true });
+    }
+
+    const amount = Number(data.order?.order_amount || data.order?.amount || data.order_amount || body.order_amount || 0);
+    const plan = String(order.plan);
+    if (amount !== Number(order.amount)) {
+      console.error("Cashfree amount mismatch:", { orderId, expected: order.amount, received: amount });
+      return res.status(400).json({ success: false, message: "Verified payment amount does not match the order." });
+    }
+    if (!paymentId) {
+      return res.status(400).json({ success: false, message: "Missing verified Cashfree payment ID." });
+    }
+
+    const expiryDate = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    await setDoc(doc(db, "profiles", String(order.customer_id)), {
+      subscription_status: plan,
+      subscription_expires_at: expiryDate,
+      status: "Verified",
+      fee_transaction_id: paymentId,
+      fee_received_at: new Date().toISOString(),
+      fee_receiver_upi: "cashfree",
+      upgrade_transaction_id: plan === "paid_900" || plan === "paid_1599" ? paymentId : undefined,
+      payment_received: true
+    }, { merge: true });
+
+    await setDoc(orderRef, {
+      status: "SUCCESS",
+      payment_id: paymentId,
+      paid_amount: amount,
+      processed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { merge: true });
+
+    referralCouponEngine.handlePaymentSuccessWebhook({
+      order_id: orderId,
+      payment_id: paymentId,
+      user_id: String(order.customer_id),
+      amount
+    });
+
+    return res.status(200).json({ success: true, status: "SUCCESS", processed: true });
+  } catch (err: any) {
+    console.error("Error processing signed Cashfree webhook:", err);
+    return res.status(500).json({ success: false, message: err.message || "Webhook processing error." });
+  }
+});
 
 // Setup Vite Dev Server / Static Production Serving
 async function startServer() {
