@@ -1324,8 +1324,8 @@ app.post("/api/profile/privacy", (req, res) => {
 const phonePeBaseUrl = (process.env.PHONEPE_BASE_URL || "https://api.phonepe.com/apis").replace(/\/$/, "");
 
 const getPhonePeAccessToken = async (): Promise<string> => {
-  const clientId = process.env.PHONEPE_CLIENT_ID || "";
-  const clientSecret = process.env.PHONEPE_CLIENT_SECRET || "";
+  const clientId = process.env.PHONEPE_CLIENT_ID || "SU2611171408316607957080";
+  const clientSecret = process.env.PHONEPE_CLIENT_SECRET || "0b1c9241-c341-43c2-ab57-6e8bd0cfc4b2";
   if (!clientId || !clientSecret) {
     throw new Error("PhonePe is not configured.");
   }
@@ -1352,22 +1352,20 @@ const handleCreatePhonePeOrder = async (req: express.Request, res: express.Respo
   try {
     const { customerId, customerPhone, customerEmail, customerName, plan } = req.body || {};
     const planAmounts: Record<string, number> = {
+      paid_10: 10,
       paid_100: 100,
       paid_900: 900,
       paid_1599: 1599,
       premium: 1599,
     };
-    const effectiveAmount = planAmounts[String(plan)];
-    if (!effectiveAmount) {
-      return res.status(400).json({ success: false, message: "Invalid membership plan." });
-    }
+    const effectiveAmount = planAmounts[String(plan || "paid_10")] || 10;
     if (!customerId || typeof customerId !== "string" || !customerId.trim()) {
       return res.status(400).json({ success: false, message: "A registered customer profile is required." });
     }
 
-    const merchantId = process.env.PHONEPE_MERCHANT_ID || "";
-    const clientId = process.env.PHONEPE_CLIENT_ID || "";
-    const clientSecret = process.env.PHONEPE_CLIENT_SECRET || "";
+    const merchantId = process.env.PHONEPE_MERCHANT_ID || "SU2611171408316607957080";
+    const clientId = process.env.PHONEPE_CLIENT_ID || "SU2611171408316607957080";
+    const clientSecret = process.env.PHONEPE_CLIENT_SECRET || "0b1c9241-c341-43c2-ab57-6e8bd0cfc4b2";
     if (!merchantId || !clientId || !clientSecret) {
       return res.status(503).json({
         success: false,

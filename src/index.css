@@ -24,3 +24,16 @@ html, body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.font-telugu-serif {
+  font-family: "Noto Serif Telugu", "Noto Sans Telugu", Georgia, serif;
+}
+
+.font-telugu-sans {
+  font-family: "Noto Sans Telugu", system-ui, -apple-system, sans-serif;
+}
+
+.font-brand-serif {
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+

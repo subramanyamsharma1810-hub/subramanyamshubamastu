@@ -240,7 +240,7 @@ export default function CheckoutPricing({
   };
 
   // Final Price Calculation
-  const BASE_PRICE = 1599; // ₹1,599 for 42 days subscription plan
+  const BASE_PRICE = 10; // ₹10 per month subscription (Registration is free)
   const finalPayable = couponResult ? couponResult.final_price : BASE_PRICE;
   const totalSavings = BASE_PRICE - finalPayable;
 
@@ -258,7 +258,7 @@ export default function CheckoutPricing({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan: "paid_1599",
+          plan: "paid_10",
           orderAmount: finalPayable,
           customerId: currentProfile.id,
           customerPhone: currentProfile.contact_number,
@@ -419,22 +419,22 @@ export default function CheckoutPricing({
                   <div className="flex justify-between items-center pt-1">
                     <div>
                       <span className="font-semibold text-zinc-800 block">Registration & Onboarding Fee</span>
-                      <span className="text-[11px] text-zinc-500">Vedic horoscope entry & administrative verification</span>
+                      <span className="text-[11px] text-zinc-500">100% Free Registration (ఉచిత నమోదు)</span>
                     </div>
-                    <span className="font-mono font-bold text-zinc-800">₹600.00</span>
+                    <span className="font-mono font-bold text-emerald-600">FREE</span>
                   </div>
 
                   <div className="flex justify-between items-center pt-3">
                     <div>
-                      <span className="font-semibold text-zinc-800 block">First Month Premium Matchmaking Access</span>
-                      <span className="text-[11px] text-zinc-500">Direct contact unlocks & anti-scroll kebab UI</span>
+                      <span className="font-semibold text-zinc-800 block">Monthly Subscription Access</span>
+                      <span className="text-[11px] text-zinc-500">Vedic horoscope matching & direct contact</span>
                     </div>
-                    <span className="font-mono font-bold text-zinc-800">₹900.00</span>
+                    <span className="font-mono font-bold text-zinc-800">₹10.00</span>
                   </div>
 
                   <div className="flex justify-between items-center pt-3 text-zinc-600">
-                    <span>Full First-Month Subscription Base Price</span>
-                    <span className="font-mono font-bold">₹1,500.00</span>
+                    <span>Monthly Subscription Total</span>
+                    <span className="font-mono font-bold">₹10.00</span>
                   </div>
 
                   {totalSavings > 0 && (

@@ -47,11 +47,14 @@ import {
   Mail,
   ShieldCheck,
   Download,
-  Search
+  Search,
+  Home,
+  UserPlus,
+  Users
 } from "lucide-react";
 import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
-import weddingGifUrl from "../assets/original-wedding-slow.gif";
-import mangoToranamUrl from "../assets/mango-toranam.svg";
+import heroMandapamUrl from "../assets/images/shubhamastu_hero_mandapam_1795064113183.jpg";
+import topToranamUrl from "../assets/images/shubhamastu_top_toranam_1795064111863.jpg";
 
 interface LandingPageProps {
   onLoginSuccess: (profile: Profile) => void;
@@ -115,6 +118,14 @@ export default function LandingPage({
   // Language selection state (Telugu / English)
   const [lang, setLang] = useState<"te" | "en">("te");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [activeNav, setActiveNav] = useState<"home" | "grooms" | "brides" | "plans" | "stories" | "about">("home");
+
+  // Hero Partner Search form state (exact poster fields)
+  const [searchLookingFor, setSearchLookingFor] = useState<string>("");
+  const [searchGotram, setSearchGotram] = useState<string>("");
+  const [searchSubCaste, setSearchSubCaste] = useState<string>("");
+  const [searchAgeFrom, setSearchAgeFrom] = useState<string>("");
+  const [searchAgeTo, setSearchAgeTo] = useState<string>("");
 
   // Register form state
   const [regName, setRegName] = useState("");
@@ -1116,553 +1127,858 @@ export default function LandingPage({
     setShowRegisterModal(true);
   };
 
-  return (
-    <div
-      className="landing-light-theme relative min-h-screen bg-[#FAF8F5] text-zinc-900 overflow-x-hidden flex flex-col font-sans select-none bg-cover bg-center bg-scroll md:bg-fixed"
-      style={{
-        backgroundImage:
-          "linear-gradient(rgba(250,248,245,0.64), rgba(250,248,245,0.88)), url('/images/telugu-wedding-hero.png')",
-        backgroundPosition: "center top",
-      }}
-    >
-      <style>{`
-        .landing-light-theme {
-          background: #fffaf0 !important;
-        }
-        .landing-light-theme [class*="bg-black"],
-        .landing-light-theme [class*="bg-zinc-9"],
-        .landing-light-theme [class*="bg-gray-9"] {
-          background-color: #fffaf0 !important;
-          color: #4a1f1f !important;
-        }
-        .landing-light-theme [class*="text-white"],
-        .landing-light-theme [class~="text-black"] {
-          color: #4a1f1f !important;
-        }
-        .landing-light-theme [class*="border-zinc-"] {
-          border-color: #e8c982 !important;
-        }
-        .landing-light-theme [class*="placeholder-zinc-"]::placeholder {
-          color: #9b8060 !important;
-        }
-        .reference-hero {
-          background-image: linear-gradient(90deg, rgba(255, 250, 240, 0.94) 0%, rgba(255, 250, 240, 0.72) 28%, rgba(255, 250, 240, 0.12) 54%, rgba(255, 250, 240, 0.18) 100%), url('${weddingGifUrl}');
-          background-size: cover;
-          background-position: center 42%;
-        }
-        @media (max-width: 767px) {
-          .reference-hero {
-            background-image: linear-gradient(180deg, rgba(255, 250, 240, 0.82) 0%, rgba(255, 250, 240, 0.55) 60%, rgba(255, 250, 240, 0.92) 100%), url('${weddingGifUrl}');
-            background-size: auto 270px;
-            background-position: center top;
-            background-repeat: no-repeat;
-          }
-        }
-      `}</style>
-      
-      {/* Mango Leaf Toran Decorative Top Bar */}
-      <div className="relative w-full h-7 sm:h-9 lg:h-12 bg-[#fffaf0]/95 border-b border-amber-400 shadow-sm overflow-hidden">
-        <img
-          src={mangoToranamUrl}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover object-top"
-        />
-        <div className="absolute inset-x-0 bottom-0.5 sm:bottom-1 flex justify-center px-4">
-          <span className="rounded-full bg-[#fffaf0]/90 px-2.5 py-0.5 text-[7px] sm:text-[9px] font-black text-[#99151B] tracking-[0.08em]">
-            {lang === "te" ? "బ్రాహ్మణ సంప్రదాయాలకు గౌరవం • పవిత్రమైన వివాహ బంధాలు" : "HONOURING TRADITION • CREATING SACRED ALLIANCES"}
-          </span>
-        </div>
-      </div>
+  const handleHeroSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchLookingFor === "Groom") {
+      setRegGender("Female");
+    } else if (searchLookingFor === "Bride") {
+      setRegGender("Male");
+    }
+    if (searchGotram) {
+      setRegGothram(searchGotram);
+    }
+    if (searchSubCaste) {
+      setRegCaste(searchSubCaste);
+    }
+    setShowRegisterModal(true);
+  };
 
-      {/* Top Header Bar */}
-      <header className="relative z-30 w-full bg-white/95 backdrop-blur-md border-b border-amber-200/90 shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 sm:h-24 lg:h-[96px] py-2 sm:py-2 flex items-center justify-between gap-2 sm:gap-3">
-          
-          {/* Webpage Name & Slogan */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="bg-white p-1 sm:p-2 rounded-full flex items-center justify-center border-2 border-[#C2242C] shrink-0">
+  const scrollToSection = (
+    sectionId: string,
+    navKey: "home" | "grooms" | "brides" | "plans" | "stories" | "about"
+  ) => {
+    setActiveNav(navKey);
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const AGE_OPTIONS = Array.from({ length: 30 }, (_, i) => 21 + i);
+
+  return (
+    <div id="home" className="relative min-h-screen bg-[#FAF0DC] text-[#3B1510] overflow-x-hidden flex flex-col font-telugu-sans">
+      {/* =====================================================================
+          1. EXACT POSTER TOP HEADER WITH MANGO LEAF & MARIGOLD TORANAM
+      ===================================================================== */}
+      <header
+        className="relative z-30 w-full bg-[#FDF5E4] border-b-2 border-[#D49B3E] overflow-hidden"
+        style={{
+          backgroundImage: `url(${topToranamUrl})`,
+          backgroundSize: "100% auto",
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Subtle warm ivory readability veil beneath the toranam leaves */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(253,245,228,0) 0%, rgba(253,245,228,0) 24%, rgba(253,245,228,0.88) 44%, rgba(253,245,228,0.96) 100%)",
+          }}
+        />
+
+        <div className="relative z-10 max-w-[1320px] mx-auto px-4 sm:px-8 lg:px-14 pt-12 sm:pt-16 lg:pt-[76px] pb-3.5 lg:pb-4">
+          <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-between gap-4 lg:gap-0">
+            {/* LEFT BRAND LOCKUP — Exact Poster Match */}
+            <div className="flex flex-col items-center justify-center lg:pr-8 lg:border-r lg:border-[#D49B3E]/70 shrink-0">
+              {/* Golden Lotus / Kalasam Crest */}
               <svg
-                viewBox="0 0 48 48"
-                className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
-                role="img"
-                aria-label="Kalasam logo"
+                viewBox="0 0 64 36"
+                className="w-11 h-7 sm:w-12 sm:h-7 mb-0.5 drop-shadow-xs"
+                aria-hidden="true"
               >
-                <path d="M24 5c-2 4-5 6-9 7 3 2 6 3 9 2 3 1 6 0 9-2-4-1-7-3-9-7Z" fill="#2f7d32" />
-                <path d="M24 5c1 4 3 7 6 9M24 5c-1 4-3 7-6 9" stroke="#1b5e20" strokeWidth="1.5" fill="none" />
-                <path d="M16 17h16l-2 5H18l-2-5Z" fill="#d79b18" stroke="#99151b" strokeWidth="1.5" />
-                <path d="M18 22h12l3 14c-3 4-15 4-18 0l3-14Z" fill="#f3bd35" stroke="#99151b" strokeWidth="1.5" />
-                <path d="M20 27h8M19 31h10" stroke="#99151b" strokeWidth="1.5" strokeLinecap="round" />
-                <circle cx="24" cy="24" r="1.5" fill="#99151b" />
+                <path
+                  d="M32 3c-4 8-7 14-7 20 0 5 3 8 7 8s7-3 7-8c0-6-3-12-7-20Z"
+                  fill="#E8A528"
+                  stroke="#9C4D10"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M25 26c-7-1-12-5-15-11 6 1 11 4 14 8"
+                  fill="#F3C14B"
+                  stroke="#9C4D10"
+                  strokeWidth="1.6"
+                />
+                <path
+                  d="M39 26c7-1 12-5 15-11-6 1-11 4-14 8"
+                  fill="#F3C14B"
+                  stroke="#9C4D10"
+                  strokeWidth="1.6"
+                />
+                <path
+                  d="M20 29c4 3 8 4 12 4s8-1 12-4"
+                  fill="none"
+                  stroke="#9C4D10"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
-            </div>
-            <div className="text-left min-w-0">
+
+              {/* శుభమస్తు flanked by golden scrollwork */}
               <div className="flex items-center gap-2">
-                <span className="text-2xl sm:text-3xl lg:text-[44px] leading-none font-black tracking-wide text-[#C2242C] uppercase font-sans truncate block">
-                  {lang === "te" ? "శుభమస్తు" : "SHUBHAMASTU"}
+                <svg viewBox="0 0 44 16" className="w-8 sm:w-10 h-4 text-[#D4942A] shrink-0" aria-hidden="true">
+                  <path
+                    d="M42 8H18m0 0c-3-5-9-5-11-1s2 6 6 2m5-1c-3 5-9 5-11 1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="4" cy="8" r="2" fill="currentColor" />
+                </svg>
+
+                <span className="font-telugu-serif text-[34px] sm:text-[42px] lg:text-[46px] font-black leading-[1.05] text-[#7E1216] tracking-tight">
+                  శుభమస్తు
                 </span>
-                <span className="text-[10px] lg:text-xs bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold hidden md:inline-block">
-                  {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "TELUGU BRAHMIN MATRIMONY"}
+
+                <svg viewBox="0 0 44 16" className="w-8 sm:w-10 h-4 text-[#D4942A] shrink-0 scale-x-[-1]" aria-hidden="true">
+                  <path
+                    d="M42 8H18m0 0c-3-5-9-5-11-1s2 6 6 2m5-1c-3 5-9 5-11 1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="4" cy="8" r="2" fill="currentColor" />
+                </svg>
+              </div>
+
+              {/* Shubhamastu Serif Subtitle */}
+              <span className="font-brand-serif text-lg sm:text-xl font-bold text-[#7E1216] leading-none -mt-0.5 mb-1.5 tracking-wide">
+                Shubhamastu
+              </span>
+
+              {/* Maroon Ribbon Banner */}
+              <div className="relative inline-flex items-center justify-center px-5 sm:px-6 py-1 bg-gradient-to-b from-[#8B151B] to-[#650A0E] text-white rounded-full border border-[#DFA43B]/80 shadow-xs">
+                <span className="font-telugu-serif text-xs sm:text-[14px] font-bold tracking-wide whitespace-nowrap">
+                  తెలుగు బ్రాహ్మణ మ్యాట్రిమోనీ
                 </span>
               </div>
-              <p className="text-[7px] sm:text-[10px] text-amber-900 font-mono tracking-widest uppercase truncate font-bold">
-                {lang === "te" ? "తెలుగు బ్రాహ్మణ వివాహ వేదిక" : "Trusted Telugu Brahmin Matrimony"}
-              </p>
-            </div>
-          </div>
-
-          {/* Navigation & Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Nav Links */}
-            <div className="hidden lg:flex items-center gap-3 text-xs font-extrabold text-zinc-800">
-              <a href="#home" className="hover:text-amber-700 transition-colors">{lang === "te" ? "హోమ్" : "Home"}</a>
-              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "వధువరుల శోధన" : "Search Matches"}</button>
-              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "గోత్రాలు" : "Gotram"}</button>
-              <button type="button" onClick={() => setShowRegisterModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "వివాహాలు" : "Marriages"}</button>
-              <button type="button" onClick={() => setShowContactModal(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "సంప్రదించండి" : "Contact"}</button>
-              <button type="button" onClick={() => setShowStatusAlert(true)} className="hover:text-amber-700 transition-colors cursor-pointer">{lang === "te" ? "మా గురించి" : "About"}</button>
             </div>
 
-            {/* Language Toggle */}
-            <div className="flex items-center bg-amber-100 border border-amber-300 rounded-lg p-0.5 text-[9px] sm:text-xs font-bold shadow-xs">
-              <button
-                type="button"
-                onClick={() => setLang("te")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "te" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-[#99151B]"}`}
-              >
-                తెలుగు
-              </button>
-              <button
-                type="button"
-                onClick={() => setLang("en")}
-                className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${lang === "en" ? "bg-amber-600 text-white shadow-xs" : "text-amber-900 hover:text-[#99151B]"}`}
-              >
-                English
-              </button>
-            </div>
+            {/* RIGHT SIDE: 2-ROW TAGLINE + NAVIGATION & ACTIONS */}
+            <div className="flex-1 flex flex-col justify-between gap-3 lg:pl-8 w-full">
+              {/* Row 1: Sacred Telugu Tagline */}
+              <div className="text-center space-y-1">
+                <p className="font-telugu-serif text-base sm:text-lg lg:text-[21px] font-bold text-[#6E1115] leading-snug">
+                  బ్రాహ్మణ సంప్రదాయాలకు గౌరవం...
+                </p>
+                <p className="font-telugu-serif text-sm sm:text-base lg:text-[19px] font-bold text-[#6E1115] leading-snug flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  <span>శుభ వివాహ బంధాలకు విశ్వసనీయ</span>
+                  <span className="inline-flex items-center px-3.5 py-0.5 rounded-full bg-gradient-to-b from-[#8C151B] to-[#680A0F] text-white text-sm sm:text-base lg:text-[17px] font-bold shadow-xs">
+                    మ్యాట్రిమోనీ వెబ్‌సైట్
+                  </span>
+                </p>
+              </div>
 
-            {/* Login & Register Buttons */}
-            <button
-              type="button"
-              onClick={() => setShowUserLoginModal(true)}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-[9px] sm:text-xs font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shadow-xs"
-            >
-              <User className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden xs:inline sm:inline">{lang === "te" ? "లాగిన్" : "Login"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAdminModal(true)}
-              className="hidden md:flex px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer items-center gap-1.5 shadow-xs"
-            >
-              <Lock className="w-3.5 h-3.5 text-amber-700" />
-              <span>{lang === "te" ? "అడ్మిన్ లాగిన్" : "Admin Login"}</span>
-            </button>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="hidden sm:flex px-3 lg:px-4 py-2 bg-gradient-to-r from-[#C2242C] to-[#99151B] text-white hover:brightness-110 active:scale-95 text-[10px] lg:text-xs font-extrabold rounded-lg lg:rounded-xl transition-all border border-amber-400 uppercase tracking-wider shadow-md cursor-pointer items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>{lang === "te" ? "ఉచితంగా నమోదు" : "Register Free"}</span>
-            </button>
+              {/* Row 2: Navigation Links + Login & Register Free Buttons */}
+              <div className="flex flex-wrap items-center justify-center lg:justify-between gap-x-4 gap-y-2.5 pt-1">
+                <nav
+                  aria-label="Primary Navigation"
+                  className="flex flex-wrap items-center justify-center gap-x-4 xl:gap-x-6 gap-y-1.5 text-[13px] sm:text-[14px] font-bold text-[#3B1710]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("home", "home")}
+                    className={`inline-flex items-center gap-1.5 pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      activeNav === "home"
+                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
+                        : "text-[#3B1710] hover:text-[#7E1216]"
+                    }`}
+                  >
+                    <Home className="w-3.5 h-3.5 fill-current" />
+                    <span>హోమ్</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchLookingFor("Groom");
+                      scrollToSection("partner-search-card", "grooms");
+                    }}
+                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      activeNav === "grooms"
+                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
+                        : "text-[#3B1710] hover:text-[#7E1216]"
+                    }`}
+                  >
+                    వరులు వెతకండి
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchLookingFor("Bride");
+                      scrollToSection("partner-search-card", "brides");
+                    }}
+                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      activeNav === "brides"
+                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
+                        : "text-[#3B1710] hover:text-[#7E1216]"
+                    }`}
+                  >
+                    వధువులు వెతకండి
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("membership-plans", "plans")}
+                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      activeNav === "plans"
+                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
+                        : "text-[#3B1710] hover:text-[#7E1216]"
+                    }`}
+                  >
+                    సభ్యత్వ పథకాలు
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("vedic-pandits", "stories")}
+                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      activeNav === "stories"
+                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
+                        : "text-[#3B1710] hover:text-[#7E1216]"
+                    }`}
+                  >
+                    విజయ కథలు
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("about-shubhamastu", "about")}
+                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      activeNav === "about"
+                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
+                        : "text-[#3B1710] hover:text-[#7E1216]"
+                    }`}
+                  >
+                    మా గురించి
+                  </button>
+                </nav>
+
+                {/* Header Right Action Buttons: లాగిన్ & ఉచితంగా నమోదు */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowUserLoginModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FFFDF8] hover:bg-[#FAF0DC] text-[#7E1216] border border-[#8B1A1F] rounded-md text-[13px] sm:text-[14px] font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+                  >
+                    <User className="w-4 h-4 text-[#7E1216]" />
+                    <span>లాగిన్</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRegisterModal(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-b from-[#8F151B] to-[#680B10] hover:brightness-110 active:scale-[0.98] text-white border border-[#DFA43B]/60 rounded-md text-[13px] sm:text-[14px] font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-sm"
+                  >
+                    <UserPlus className="w-4 h-4 text-white" />
+                    <span>ఉచితంగా నమోదు</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Hero Section */}
-      <section className="reference-hero relative z-20 w-full min-h-[420px] md:min-h-[470px]">
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 md:py-10 grid grid-cols-1 lg:grid-cols-[0.92fr_1.08fr_0.82fr] items-center gap-4 md:gap-5 min-h-[420px] md:min-h-[470px]">
-          
-          {/* Left Column: Title & Feature Checklist */}
-          <div className="space-y-4 md:space-y-5 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100/90 border border-amber-300 rounded-full text-amber-900 text-[10px] sm:text-xs font-mono font-black uppercase tracking-widest shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-              <span>{t.badge}</span>
+      {/* =====================================================================
+          2. EXACT POSTER HERO MANDAPAM BANNER WITH COUPLE & PARTNER SEARCH
+      ===================================================================== */}
+      <section
+        className="relative z-20 w-full border-b-2 border-[#D49B3E] bg-[#FDF4E1] overflow-hidden"
+        style={{
+          backgroundImage: `url(${heroMandapamUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Subtle left-side warm ivory veil on smaller viewports for guaranteed text legibility */}
+        <div
+          className="absolute inset-0 pointer-events-none lg:hidden"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(253,245,228,0.88) 0%, rgba(253,245,228,0.68) 45%, rgba(253,245,228,0.88) 100%)",
+          }}
+        />
+        <div
+          className="hidden lg:block absolute inset-y-0 left-0 w-[40%] pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(253,244,225,0.45) 0%, rgba(253,244,225,0.22) 70%, rgba(253,244,225,0) 100%)",
+          }}
+        />
+
+        <div className="relative z-10 max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-14 py-9 lg:py-12 min-h-[450px] lg:min-h-[505px] grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr_0.94fr] items-center gap-6 lg:gap-4">
+          {/* LEFT COLUMN: Telugu Headline + Ornate Divider + 4 Golden-Checkmark Bullets */}
+          <div className="text-center lg:pl-4 space-y-4">
+            <h1 className="font-telugu-serif text-[26px] sm:text-[32px] lg:text-[35px] xl:text-[38px] font-black text-[#6E0E13] leading-[1.28] tracking-tight drop-shadow-[0_1px_8px_rgba(255,250,240,0.95)]">
+              <span className="block">తెలుగు బ్రాహ్మణుల కొరకు</span>
+              <span className="block">ప్రత్యేక వివాహ మ్యాట్రిమోనీ వెబ్‌సైట్</span>
+            </h1>
+
+            {/* Ornate Thin Maroon-Gold Horizontal Divider with Diamond */}
+            <div className="flex items-center justify-center gap-2 max-w-[260px] mx-auto py-0.5" aria-hidden="true">
+              <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent via-[#A44835] to-[#7E1216]" />
+              <div className="w-2 h-2 rotate-45 bg-[#7E1216] border border-[#DFA43B]" />
+              <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-[#A44835] to-[#7E1216]" />
             </div>
 
-            <div className="space-y-2 md:space-y-3">
-              <h1 className="text-[26px] sm:text-3xl lg:text-[38px] font-black tracking-tight leading-[1.12] text-[#99151B]">
-                <span className="block text-[#99151B] font-extrabold text-lg sm:text-xl mb-1">{t.title1}</span>
-                <span className="text-[#F28C00]">
-                  {t.title2}
-                </span>
-              </h1>
-
-              <ul className="space-y-2 pt-1 text-[12px] sm:text-sm font-bold text-zinc-900">
-                <li className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
-                  <span>{t.bullet1}</span>
+            {/* 4 Checkmark Bullet Points — Exact Poster Copy */}
+            <ul className="space-y-2.5 max-w-[330px] mx-auto text-left pt-1">
+              {[
+                "బ్రాహ్మణులకే ప్రత్యేకంగా",
+                "గోత్రం ఆధారిత శోధన",
+                "సురక్షితమైన & గోప్యతగల సేవ",
+                "సంప్రదాయ వివాహ విలువలకు ప్రాధాన్యం",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-3 text-[15px] sm:text-[16px] lg:text-[17px] font-bold text-[#491410] drop-shadow-[0_1px_4px_rgba(255,250,240,0.95)]"
+                >
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#DFA02C] to-[#AD6D12] text-white flex items-center justify-center shrink-0 shadow-xs ring-1 ring-[#F5CE6E]/70">
+                    <Check className="w-3.5 h-3.5 stroke-[3.2]" />
+                  </span>
+                  <span>{item}</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
-                  <span>{t.bullet2}</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
-                  <span>{t.bullet3}</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 text-black text-xs font-black flex items-center justify-center shadow-xs shrink-0">✓</span>
-                  <span>{t.bullet4}</span>
-                </li>
-              </ul>
-            </div>
-
+              ))}
+            </ul>
           </div>
 
-          {/* Wedding Couple Visual */}
-          <div className="hidden xl:flex items-end justify-center min-h-[360px]">
-            <img
-              src={weddingGifUrl}
-              alt="Brahmin wedding couple"
-              className="w-full max-h-[390px] object-contain object-bottom drop-shadow-2xl"
-            />
+          {/* CENTER COLUMN: Clear Showcase Window for the Photorealistic Brahmin Couple & Coconut Kalasam */}
+          <div className="flex items-center justify-center">
+            {/* On desktop, leave completely open so the background couple + kalasam shine unobstructed */}
+            <div className="hidden lg:block w-full min-h-[380px]" aria-hidden="true" />
+            {/* On mobile/tablet, show a crisp framed view of the mandapam couple */}
+            <div className="lg:hidden w-full max-w-md rounded-xl overflow-hidden border-2 border-[#D49B3E] shadow-md">
+              <img
+                src={heroMandapamUrl}
+                alt="తెలుగు బ్రాహ్మణ వివాహ వేదిక"
+                referrerPolicy="no-referrer"
+                className="w-full h-52 sm:h-64 object-cover object-center"
+              />
+            </div>
           </div>
 
-          {/* Right Column: Partner Search Card */}
-          <div className="bg-white/95 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl space-y-4 text-left">
-            <div className="flex items-center gap-3 pb-3 border-b border-amber-200">
-              <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
-                <Heart className="w-5 h-5 fill-amber-600 text-amber-700" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-amber-900 text-base">మీ జీవిత భాగస్వామిని కనుగొనండి</h3>
-                <p className="text-[10px] text-zinc-600">Find your life partner • Gotram & Sub-caste verified matching</p>
+          {/* RIGHT COLUMN: Ornate Cream-Gold Partner Search Card — Exact Poster Match */}
+          <div id="partner-search-card" className="w-full max-w-[385px] mx-auto lg:ml-auto lg:mr-3">
+            <div className="relative bg-[#FDF5E6]/96 border-2 border-[#D49B3E] rounded-xl p-1.5 shadow-[0_14px_34px_rgba(68,26,8,0.28)]">
+              {/* Decorative Corner Accents */}
+              <span className="pointer-events-none absolute -top-0.5 -left-0.5 w-3.5 h-3.5 border-t-2 border-l-2 border-[#9B5E12] rounded-tl-md" />
+              <span className="pointer-events-none absolute -top-0.5 -right-0.5 w-3.5 h-3.5 border-t-2 border-r-2 border-[#9B5E12] rounded-tr-md" />
+              <span className="pointer-events-none absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 border-b-2 border-l-2 border-[#9B5E12] rounded-bl-md" />
+              <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-b-2 border-r-2 border-[#9B5E12] rounded-br-md" />
+
+              <div className="border border-[#E1BC74] rounded-lg px-4 sm:px-5 py-4 space-y-3.5 bg-[#FDF6E8]/90">
+                {/* Card Header */}
+                <div className="flex items-center justify-center gap-2.5 pb-2 border-b border-[#E5C98E]">
+                  {/* Groom & Bride Line Icon */}
+                  <svg viewBox="0 0 40 32" className="w-8 h-7 shrink-0" aria-hidden="true">
+                    <circle cx="13" cy="9" r="4.5" fill="none" stroke="#C97B16" strokeWidth="2" />
+                    <path d="M5 27c0-5 3.5-8.5 8-8.5s8 3.5 8 8.5" fill="none" stroke="#C97B16" strokeWidth="2" strokeLinecap="round" />
+                    <circle cx="26.5" cy="8.5" r="4.5" fill="#7E1216" />
+                    <path d="M19.5 27c.5-4.8 3.2-8.2 7-8.2s6.5 3.4 7 8.2" fill="none" stroke="#7E1216" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                  <h2 className="font-telugu-serif text-[16px] sm:text-[18px] font-extrabold text-[#7E1216] leading-tight">
+                    మీ జీవిత భాగస్వామిని కనుగొనండి
+                  </h2>
+                </div>
+
+                {/* Partner Search Form — Exact 4 Horizontal Rows from Poster */}
+                <form onSubmit={handleHeroSearchSubmit} className="space-y-2.5 text-left">
+                  {/* Row 1: నేను */}
+                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
+                    <label htmlFor="hero-looking-for" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
+                      <span className="text-[#7E1216]">•</span>
+                      <span>నేను</span>
+                    </label>
+                    <select
+                      id="hero-looking-for"
+                      value={searchLookingFor}
+                      onChange={(e) => setSearchLookingFor(e.target.value)}
+                      className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2.5 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
+                    >
+                      <option value="">వరుడు / వధువు</option>
+                      <option value="Groom">వరుడు (Groom)</option>
+                      <option value="Bride">వధువు (Bride)</option>
+                    </select>
+                  </div>
+
+                  {/* Row 2: గోత్రం */}
+                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
+                    <label htmlFor="hero-gotram" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
+                      <span className="text-[#7E1216]">•</span>
+                      <span>గోత్రం</span>
+                    </label>
+                    <select
+                      id="hero-gotram"
+                      value={searchGotram}
+                      onChange={(e) => setSearchGotram(e.target.value)}
+                      className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2.5 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
+                    >
+                      <option value="">ఎంచుకోండి</option>
+                      {BRAHMIN_GOTRAMS.map((g) => (
+                        <option key={g.id} value={g.labelEn}>
+                          {g.labelTe}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Row 3: ఉపవర్గం */}
+                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
+                    <label htmlFor="hero-subcaste" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
+                      <span className="text-[#7E1216]">•</span>
+                      <span>ఉపవర్గం</span>
+                    </label>
+                    <select
+                      id="hero-subcaste"
+                      value={searchSubCaste}
+                      onChange={(e) => setSearchSubCaste(e.target.value)}
+                      className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2.5 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
+                    >
+                      <option value="">ఎంచుకోండి</option>
+                      {BRAHMIN_SUB_CASTES.map((s) => (
+                        <option key={s.id} value={s.labelEn}>
+                          {s.labelTe}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Row 4: వయసు */}
+                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
+                    <label htmlFor="hero-age-from" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
+                      <span className="text-[#7E1216]">•</span>
+                      <span>వయసు</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        id="hero-age-from"
+                        value={searchAgeFrom}
+                        onChange={(e) => setSearchAgeFrom(e.target.value)}
+                        className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
+                      >
+                        <option value="">నుంచి</option>
+                        {AGE_OPTIONS.map((age) => (
+                          <option key={`from-${age}`} value={age}>
+                            {age} సం.
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="వయసు వరకు"
+                        value={searchAgeTo}
+                        onChange={(e) => setSearchAgeTo(e.target.value)}
+                        className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
+                      >
+                        <option value="">వరకు</option>
+                        {AGE_OPTIONS.map((age) => (
+                          <option key={`to-${age}`} value={age}>
+                            {age} సం.
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Maroon Search Submit Button */}
+                  <button
+                    type="submit"
+                    className="w-full mt-2 py-2.5 px-4 bg-gradient-to-b from-[#8F151B] via-[#7A1015] to-[#61090D] hover:brightness-110 active:scale-[0.99] text-white font-bold text-[14px] sm:text-[15px] rounded-md shadow-md border border-[#DFA43B]/40 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  >
+                    <Search className="w-4 h-4 text-white shrink-0" />
+                    <span>సరిపడే జీవిత భాగస్వాములను వెతకండి</span>
+                  </button>
+                </form>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <form onSubmit={(e) => { e.preventDefault(); setShowRegisterModal(true); }} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                  <span className="text-amber-700">•</span> నేను (Looking for)
-                </label>
-                <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
-                  <option value="Bride">వధువు (Bride)</option>
-                  <option value="Groom">వరుడు (Groom)</option>
-                </select>
-              </div>
+      {/* =====================================================================
+          3. EXACT POSTER BOTTOM 5-COLUMN TRUST STRIP + ORNATE FREE CTA BUTTON
+      ===================================================================== */}
+      <section className="relative z-20 w-full bg-[#FAF0DC] pt-6 pb-8 px-4 sm:px-8 border-b border-[#DFC086]">
+        <div className="max-w-[1300px] mx-auto">
+          {/* 5-Column Trust Feature Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-y-6 lg:gap-y-0 lg:divide-x lg:divide-[#D7B26A]">
+            {/* Item 1 */}
+            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
+              <Users className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
+              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
+                తెలుగు బ్రాహ్మణులకు
+                <br />
+                ప్రత్యేక మ్యాట్రిమోనీ
+              </p>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                  <span className="text-amber-700">•</span> గోత్రం (Gotram)
-                </label>
-                <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
-                  <option value="">అన్ని గోత్రాలు (All Gotrams)</option>
-                  {BRAHMIN_GOTRAMS.map(g => (
-                    <option key={g.id} value={g.id}>{g.labelEn}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Item 2 */}
+            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
+              {/* Traditional Sacred Kalasam / Diya Icon */}
+              <svg viewBox="0 0 40 40" className="w-9 h-9 mb-2 text-[#821318]" aria-hidden="true">
+                <path
+                  d="M20 5c-2.5 4.2-4 7-4 9.5 0 2.4 1.8 4 4 4s4-1.6 4-4c0-2.5-1.5-5.3-4-9.5Z"
+                  fill="#E89B22"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M11 21h18c0 6.5-3.8 11-9 11s-9-4.5-9-11Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <path d="M13 18c-2-1-4-3-4.5-5M27 18c2-1 4-3 4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M14 35h12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <p className="font-telugu-serif text-[13px] sm:text-[14px] font-bold text-[#6E1115] leading-snug">
+                సంప్రదాయం • సంస్కారం • కుటుంబ విలువలు
+              </p>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                  <span className="text-amber-700">•</span> ఉపగోత్రం (Sub-caste)
-                </label>
-                <select className="w-full bg-white border border-amber-300 focus:border-amber-600 rounded-xl py-2.5 px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer">
-                  <option value="">అన్ని ఉపగోత్రాలు (All Sub-castes)</option>
-                  {BRAHMIN_SUB_CASTES.map(s => (
-                    <option key={s.id} value={s.id}>{s.labelEn}</option>
-                  ))}
-                </select>
+            {/* Item 3 */}
+            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
+              <ShieldCheck className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
+              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
+                ధృవీకరించిన ప్రొఫైల్స్
+                <br />
+                (గోత్రం సహితంగా)
+              </p>
+            </div>
+
+            {/* Item 4 */}
+            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
+              <Lock className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
+              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
+                పూర్తి గోప్యత &amp;
+                <br />
+                డేటా భద్రత
+              </p>
+            </div>
+
+            {/* Item 5 */}
+            <div className="px-3 sm:px-4 col-span-2 sm:col-span-1 flex flex-col items-center text-center">
+              <HeartHandshake className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
+              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
+                వివాహం వరకు
+                <br />
+                విశ్వసనీయ సహాయం
+              </p>
+            </div>
+          </div>
+
+          {/* Centered Ornate Primary CTA Button flanked by golden filigree */}
+          <div className="mt-6 flex items-center justify-center gap-3 sm:gap-5">
+            <div className="hidden sm:flex items-center gap-2 w-28 md:w-44" aria-hidden="true">
+              <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent to-[#D4942A]" />
+              <svg viewBox="0 0 44 16" className="w-10 h-4 text-[#D4942A] shrink-0">
+                <path
+                  d="M2 8h24m0 0c3-5 9-5 11-1s-2 6-6 2m-5-1c3 5 9 5 11 1"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowRegisterModal(true)}
+              className="inline-flex items-center justify-center gap-2.5 px-7 sm:px-12 py-3 bg-gradient-to-b from-[#91151C] via-[#7A1015] to-[#58080C] hover:brightness-110 active:scale-[0.99] text-white font-telugu-serif font-bold text-base sm:text-lg lg:text-[20px] rounded-xl border-2 border-[#DFA43B] ring-1 ring-[#F4CE78]/70 shadow-[0_6px_18px_rgba(88,8,12,0.32)] transition-all cursor-pointer whitespace-nowrap"
+            >
+              <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-white shrink-0" />
+              <span>ఇప్పుడే ఉచితంగా నమోదు చేసుకోండి</span>
+            </button>
+
+            <div className="hidden sm:flex items-center gap-2 w-28 md:w-44" aria-hidden="true">
+              <svg viewBox="0 0 44 16" className="w-10 h-4 text-[#D4942A] shrink-0 scale-x-[-1]">
+                <path
+                  d="M2 8h24m0 0c3-5 9-5 11-1s-2 6-6 2m-5-1c3 5 9 5 11 1"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent to-[#D4942A]" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================================
+          4. MEMBERSHIP PLANS (సభ్యత్వ పథకాలు) — FREE REGISTRATION + ₹10/MONTH PHONEPE
+      ===================================================================== */}
+      <section id="membership-plans" className="relative z-20 w-full bg-[#FDF6E8] py-12 px-4 sm:px-8 border-b border-[#DFC086]">
+        <div className="max-w-5xl mx-auto space-y-8">
+          <div className="text-center space-y-2">
+            <h2 className="font-telugu-serif text-2xl sm:text-3xl font-black text-[#7E1216]">
+              సభ్యత్వ పథకాలు • Membership Plans
+            </h2>
+            <p className="text-sm text-[#5C3426] max-w-2xl mx-auto font-medium">
+              ప్రొఫైల్ నమోదు పూర్తిగా ఉచితం. ధృవీకరించిన ప్రొఫైల్స్ మరియు ప్రత్యక్ష సంప్రదింపుల కోసం నెలకు కేవలం ₹10 సభ్యత్వం — PhonePe ద్వారా సురక్షిత చెల్లింపు.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            {/* Free Registration Card */}
+            <div className="bg-[#FFFDF8] border border-[#D8B572] rounded-2xl p-6 sm:p-7 flex flex-col justify-between space-y-5 shadow-xs">
+              <div className="space-y-3 text-left">
+                <div className="flex items-baseline justify-between gap-4 border-b border-[#EFE0C0] pb-3">
+                  <div>
+                    <h3 className="font-telugu-serif text-xl font-extrabold text-[#7E1216]">ఉచిత నమోదు</h3>
+                    <p className="text-xs text-[#6B4533]">Free Candidate Registration</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono text-2xl font-black text-[#1E6B2B]">₹0</span>
+                    <span className="block text-[11px] text-[#6B4533] font-semibold">శాశ్వతంగా ఉచితం</span>
+                  </div>
+                </div>
+
+                <ul className="space-y-2 text-sm text-[#4A1C15] font-medium">
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
+                    <span>వధూవరుల ప్రొఫైల్ మరియు గోత్రం నమోదు</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
+                    <span>ఉపవర్గం &amp; జన్మ నక్షత్రం / పంచాంగం వివరాలు</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
+                    <span>పూర్తి గోప్యత మరియు డేటా భద్రత</span>
+                  </li>
+                </ul>
               </div>
 
               <button
-                type="submit"
-                className="w-full py-3 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:brightness-105 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-yellow-300 mt-2"
+                type="button"
+                onClick={() => setShowRegisterModal(true)}
+                className="w-full py-2.5 px-4 bg-[#FFFDF8] hover:bg-[#FAF0DC] text-[#7E1216] border-2 border-[#8B1A1F] rounded-lg text-sm font-bold transition-all cursor-pointer"
               >
-                <Search className="w-4 h-4 text-black" />
-                <span>సభ్యులను శోధించండి (Search Matches)</span>
+                ఉచితంగా నమోదు చేసుకోండి
               </button>
-            </form>
-          </div>
+            </div>
 
+            {/* ₹10/Month Subscription Card */}
+            <div className="bg-[#FFFDF8] border-2 border-[#D49B3E] rounded-2xl p-6 sm:p-7 flex flex-col justify-between space-y-5 shadow-md">
+              <div className="space-y-3 text-left">
+                <div className="flex items-baseline justify-between gap-4 border-b border-[#EFE0C0] pb-3">
+                  <div>
+                    <h3 className="font-telugu-serif text-xl font-extrabold text-[#7E1216]">నెలవారీ సభ్యత్వం</h3>
+                    <p className="text-xs text-[#6B4533]">Monthly Subscription • PhonePe Gateway</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono text-2xl font-black text-[#7E1216] tabular-nums">₹10</span>
+                    <span className="block text-[11px] text-[#6B4533] font-semibold">ప్రతి నెలకు / month</span>
+                  </div>
+                </div>
+
+                <ul className="space-y-2 text-sm text-[#4A1C15] font-medium">
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
+                    <span>గోత్రం &amp; ఉపవర్గం ఆధారిత పూర్తి మ్యాచ్ శోధన</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
+                    <span>ధృవీకరించిన కుటుంబాల ప్రత్యక్ష సంప్రదింపు యాక్సెస్</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
+                    <span>సురక్షిత PhonePe గేట్‌వే ద్వారా తక్షణ యాక్టివేషన్</span>
+                  </li>
+                </ul>
+              </div>
+
+              <a
+                href="/payment"
+                className="w-full py-2.5 px-4 bg-gradient-to-b from-[#8F151B] to-[#650A0E] hover:brightness-110 text-white rounded-lg text-sm font-bold text-center transition-all border border-[#DFA43B]/60 shadow-sm flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>PhonePe ద్వారా ₹10 సభ్యత్వం పొందండి</span>
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
-
-
-
-
-      {/* Trust strip matching the traditional reference layout */}
-      <section className="relative z-20 w-full border-y-2 border-amber-300 bg-[#FFF8E8]/95 shadow-sm">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 divide-x divide-amber-300/80">
-          {[
-            ["👥", "తెలుగు బ్రాహ్మణులకు ప్రత్యేక వేదిక", "Dedicated Brahmin Families"],
-            ["🪔", "సంప్రదాయం • శుభకరం • కుటుంబ విలువలు", "Tradition • Purity • Values"],
-            ["🛡️", "ధృవీకరించిన ప్రొఫైల్స్", "(గోప్య సమాచారం)"],
-            ["🔒", "సురక్షిత గోప్య & Data Protection", "Privacy Protected"],
-            ["🤝", "వివాహ వేదిక సహాయం", "Sacred Alliance Support"],
-          ].map(([icon, teLabel, enLabel]) => (
-            <div key={enLabel} className="px-3 py-4 text-center">
-              <div className="text-xl mb-1" aria-hidden="true">{icon}</div>
-              <p className="text-xs sm:text-sm font-black text-[#99151B]">{teLabel}</p>
-              <p className="text-[10px] sm:text-xs font-semibold text-amber-900">{enLabel}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* SECTION: DISTRICT-WISE BRIDE / GROOM SEARCH (AP & TELANGANA) */}
-      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="bg-gradient-to-br from-[#0B3B17] via-[#0E4720] to-[#06240E] rounded-3xl border-4 border-amber-400 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-left">
-          
-          {/* Mango Leaf Toran Decorative Top Bar */}
-          <div className="absolute top-0 left-0 right-0 h-7 bg-[radial-gradient(#1e7e34_25%,transparent_25%)] bg-[size:16px_16px] opacity-90 border-b border-amber-400/60 flex items-center justify-around px-2 text-[10px] font-bold text-amber-300 bg-[#0B3B17]">
-            <span>🌿 మామిడి తోరణం • Mangalekarana 🌿</span>
-          </div>
-
-          <div className="text-center space-y-2 pt-4 pb-6 border-b border-amber-500/40">
-            <div className="inline-flex items-center gap-2 px-4 py-1 bg-amber-400 text-black rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-md">
-              <Sparkles className="w-3.5 h-3.5 fill-black" />
-              <span>ఉచితంగా నమోదు • 100% Free Registration Across All Districts</span>
-            </div>
-            <h3 className="text-xl sm:text-3xl font-black text-amber-300 uppercase tracking-tight">
-              🌿 {t.districtSearchTitle} 🌿
-            </h3>
-            <p className="text-xs sm:text-sm text-emerald-100 max-w-2xl mx-auto font-medium">
-              Explore verified Brahmin alliances across every district of Andhra Pradesh & Telangana. Select your preferred region below.
+      {/* =====================================================================
+          5. DISTRICT-WISE SEARCH (AP & TELANGANA) — COHESIVE CREAM & MAROON THEME
+      ===================================================================== */}
+      <section className="relative z-20 w-full bg-[#FAF0DC] py-12 px-4 sm:px-8 border-b border-[#DFC086]">
+        <div className="max-w-[1240px] mx-auto space-y-7">
+          <div className="text-center space-y-2">
+            <h2 className="font-telugu-serif text-2xl sm:text-3xl font-black text-[#7E1216]">
+              ప్రాంతాల వారీగా వధూవరుల శోధన
+            </h2>
+            <p className="text-sm text-[#5C3426] max-w-2xl mx-auto">
+              ఆంధ్రప్రదేశ్ మరియు తెలంగాణ జిల్లాల వారీగా ధృవీకరించిన తెలుగు బ్రాహ్మణ వివాహ సంబంధాలను అన్వేషించండి.
             </p>
             {selectedDistrict && (
-              <p className="inline-flex items-center gap-2 mx-auto px-3 py-1 rounded-full bg-amber-300 text-emerald-950 text-xs font-black">
-                Selected district: {selectedDistrict}
+              <p className="text-xs font-bold text-[#7E1216]">
+                ఎంచుకున్న జిల్లా: {selectedDistrict}
               </p>
             )}
           </div>
 
-          {/* 3 Regional Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-            
-            {/* Card 1: Rayalaseema */}
-            <div className="bg-white/95 rounded-2xl p-5 border-2 border-amber-400/80 shadow-lg space-y-3 text-zinc-900 flex flex-col justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Rayalaseema */}
+            <div className="bg-[#FFFDF8] rounded-2xl p-5 border border-[#D8B572] shadow-xs flex flex-col justify-between space-y-4 text-left">
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
-                  <h4 className="font-black text-amber-900 text-base flex items-center gap-2">
-                    <span>🏛️ రాయలసీమ</span>
-                  </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">8 Districts</span>
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#EFE0C0]">
+                  <h3 className="font-telugu-serif font-extrabold text-[#7E1216] text-base">రాయలసీమ</h3>
+                  <span className="text-xs font-semibold text-[#7A5438]">8 జిల్లాలు</span>
                 </div>
-                <p className="text-[11px] font-bold text-amber-800 mt-2">జిల్లాలు:</p>
-                <div className="flex flex-wrap gap-1.5 pt-2 text-xs font-medium text-zinc-700">
+                <div className="flex flex-wrap gap-1.5 pt-3">
                   {["కర్నూలు", "నంద్యాల", "అనంతపురము", "శ్రీ సత్యసాయి", "వై.ఎస్.ఆర్. కడప", "అన్నమయ్య", "చిత్తూరు", "తిరుపతి"].map((dist) => (
                     <button
                       key={dist}
                       type="button"
                       onClick={() => handleDistrictSelect(dist)}
-                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1 bg-[#FAF0DC] hover:bg-[#F3DFB8] border border-[#DFC086] rounded-md text-[#5B1A14] text-xs font-semibold transition-colors cursor-pointer"
                     >
                       {dist}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
-                <span className="text-emerald-700 font-bold">✓ Free Registration</span>
+              <div className="pt-3 border-t border-[#EFE0C0] flex items-center justify-between text-xs">
+                <span className="text-[#1E6B2B] font-bold">ఉచిత నమోదు</span>
                 <button
                   type="button"
                   onClick={() => handleDistrictSelect("Rayalaseema")}
-                  className="text-amber-700 hover:underline font-extrabold cursor-pointer"
+                  className="text-[#7E1216] hover:underline font-bold cursor-pointer"
                 >
-                  Search Profiles →
+                  ప్రొఫైల్స్ చూడండి →
                 </button>
               </div>
             </div>
 
-            {/* Card 2: Godavari (East & West) */}
-            <div className="bg-white/95 rounded-2xl p-5 border-2 border-amber-400/80 shadow-lg space-y-3 text-zinc-900 flex flex-col justify-between">
+            {/* Godavari */}
+            <div className="bg-[#FFFDF8] rounded-2xl p-5 border border-[#D8B572] shadow-xs flex flex-col justify-between space-y-4 text-left">
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
-                  <h4 className="font-black text-amber-900 text-base flex items-center gap-2">
-                    <span>🌴 గోదావరి (తూర్పు / పశ్చిమ)</span>
-                  </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">Godavari Delta</span>
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#EFE0C0]">
+                  <h3 className="font-telugu-serif font-extrabold text-[#7E1216] text-base">గోదావరి &amp; కోస్తా ఆంధ్ర</h3>
+                  <span className="text-xs font-semibold text-[#7A5438]">9 జిల్లాలు</span>
                 </div>
-                <p className="text-[11px] font-bold text-amber-800 mt-2">ఉభయ గోదావరి జిల్లాల వారీగా:</p>
-                <div className="flex flex-wrap gap-1.5 pt-2 text-xs font-medium text-zinc-700">
+                <div className="flex flex-wrap gap-1.5 pt-3">
                   {["తూర్పు గోదావరి", "కాకినాడ", "డా. బి.ఆర్. అంబేద్కర్ కోనసీమ", "అల్లూరి సీతారామరాజు", "పశ్చిమ గోదావరి", "ఏలూరు", "నర్సాపురం", "ఎన్టీఆర్", "పోలవరం"].map((dist) => (
                     <button
                       key={dist}
                       type="button"
                       onClick={() => handleDistrictSelect(dist)}
-                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1 bg-[#FAF0DC] hover:bg-[#F3DFB8] border border-[#DFC086] rounded-md text-[#5B1A14] text-xs font-semibold transition-colors cursor-pointer"
                     >
                       {dist}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
-                <span className="text-emerald-700 font-bold">✓ Free Registration</span>
+              <div className="pt-3 border-t border-[#EFE0C0] flex items-center justify-between text-xs">
+                <span className="text-[#1E6B2B] font-bold">ఉచిత నమోదు</span>
                 <button
                   type="button"
                   onClick={() => handleDistrictSelect("Godavari")}
-                  className="text-amber-700 hover:underline font-extrabold cursor-pointer"
+                  className="text-[#7E1216] hover:underline font-bold cursor-pointer"
                 >
-                  Search Profiles →
+                  ప్రొఫైల్స్ చూడండి →
                 </button>
               </div>
             </div>
 
-            {/* Card 3: Telangana */}
-            <div className="bg-white/95 rounded-2xl p-5 border-2 border-amber-400/80 shadow-lg space-y-3 text-zinc-900 flex flex-col justify-between">
+            {/* Telangana */}
+            <div className="bg-[#FFFDF8] rounded-2xl p-5 border border-[#D8B572] shadow-xs flex flex-col justify-between space-y-4 text-left">
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
-                  <h4 className="font-black text-amber-900 text-base flex items-center gap-2">
-                    <span>🏛️ తెలంగాణ</span>
-                  </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full font-bold">10+ Districts</span>
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#EFE0C0]">
+                  <h3 className="font-telugu-serif font-extrabold text-[#7E1216] text-base">తెలంగాణ</h3>
+                  <span className="text-xs font-semibold text-[#7A5438]">10+ జిల్లాలు</span>
                 </div>
-                <p className="text-[11px] font-bold text-amber-800 mt-2">జిల్లాలు:</p>
-                <div className="flex flex-wrap gap-1.5 pt-2 text-xs font-medium text-zinc-700">
+                <div className="flex flex-wrap gap-1.5 pt-3">
                   {["హైదరాబాద్", "రంగారెడ్డి", "మేడ్చల్-మల్కాజ్‌గిరి", "సంగారెడ్డి", "సిద్దిపేట", "మెదక్", "మహబూబ్‌నగర్", "నాగర్‌కర్నూల్", "వనపర్తి", "ఇతర జిల్లాలు..."].map((dist) => (
                     <button
                       key={dist}
                       type="button"
                       onClick={() => handleDistrictSelect(dist)}
-                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-amber-900 text-[11px] font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1 bg-[#FAF0DC] hover:bg-[#F3DFB8] border border-[#DFC086] rounded-md text-[#5B1A14] text-xs font-semibold transition-colors cursor-pointer"
                     >
                       {dist}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
-                <span className="text-emerald-700 font-bold">✓ Free Registration</span>
+              <div className="pt-3 border-t border-[#EFE0C0] flex items-center justify-between text-xs">
+                <span className="text-[#1E6B2B] font-bold">ఉచిత నమోదు</span>
                 <button
                   type="button"
                   onClick={() => handleDistrictSelect("Telangana")}
-                  className="text-amber-700 hover:underline font-extrabold cursor-pointer"
+                  className="text-[#7E1216] hover:underline font-bold cursor-pointer"
                 >
-                  Search Profiles →
+                  ప్రొఫైల్స్ చూడండి →
                 </button>
               </div>
             </div>
-
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-            <p className="text-xs text-emerald-100 font-medium">
-              ✨ Register your candidate profile completely free of cost and list your alliance preferences across AP & Telangana districts.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowRegisterModal(true)}
-              className="px-6 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer shrink-0 border border-yellow-300"
-            >
-              ఇప్పుడే ఉచితంగా నమోదు చేసుకోండి (Free Registration) →
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      {/* SECTION: NOTICE & DIRECT NAVIGATION */}
-      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 border-t border-amber-200">
-        <div className="bg-white rounded-3xl border border-amber-300/80 p-6 sm:p-8 space-y-6 shadow-md">
-          {/* Important Legal Disclaimer Banner */}
-          <div className="bg-amber-50/80 border border-amber-300 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-4 text-xs text-amber-900">
-            <ShieldAlert className="w-6 h-6 text-amber-700 shrink-0 mt-0.5" />
-            <div className="space-y-1.5 leading-relaxed text-left">
-              <h4 className="font-extrabold text-amber-900 text-sm">
-                స్వయం ప్రకటిత సమాచార నిబంధన • Self-Submitted Information Disclaimer
-              </h4>
-              <p className="text-zinc-700">
-                All profile, astrological, family, and educational details on <strong>www.shubhamastu.in</strong> are self-declared by registered candidates and families. We operate purely as an introductory intermediary. We do not independently verify or authenticate any candidate details and bear <strong>no responsibility or liability</strong> for the accuracy or integrity of any information provided.
-              </p>
-              <p className="text-amber-800 font-bold">
-                Families are solely responsible for conducting independent background verification, horoscope matching, and character inquiries prior to any matrimonial commitment.
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Action Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <a
-              href="/register"
-              className="bg-amber-50/50 hover:bg-amber-50 border border-amber-200 hover:border-amber-400 rounded-2xl p-5 transition-all group flex items-center justify-between shadow-xs"
-            >
-              <div className="space-y-1 text-left">
-                <span className="text-[10px] font-mono uppercase text-amber-700 font-bold tracking-widest block">
-                  Direct Registration • /register
-                </span>
-                <h5 className="text-base font-extrabold text-zinc-900 group-hover:text-amber-800 transition-colors">
-                  Register Candidate Profile
-                </h5>
-                <p className="text-xs text-zinc-600">
-                  Register Brahmin Grooms & Brides with Gotram, Sub-caste, & DOB.
-                </p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform shrink-0" />
-            </a>
-
-            <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between shadow-xs">
-              <div className="space-y-1 text-left">
-                <span className="text-[10px] font-mono uppercase text-emerald-700 font-bold tracking-widest block">
-                  100% Free • ఉచిత సేవ
-                </span>
-                <h5 className="text-base font-extrabold text-zinc-900">
-                  Free Registration for Every Family
-                </h5>
-                <p className="text-xs text-zinc-600">
-                  Create and submit your candidate profile without membership fees or payment.
-                </p>
-              </div>
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Our Sacred Vedic Pandits & Astrologers Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#F7F4EE] border-t border-amber-200/80">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div className="text-center space-y-3">
-            <span className="px-3.5 py-1 bg-amber-100 border border-amber-300 rounded-full text-amber-900 text-xs font-mono font-bold uppercase tracking-widest">
-              Consultation & Divine Blessings • మన పండితులు
-            </span>
-            <h3 className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight">
-              Our Sacred Vedic Pandits & Astrologers
-            </h3>
-            <p className="text-sm text-zinc-600 max-w-2xl mx-auto">
-              Connect with our esteemed Vedic priests and astrologers for expert horoscope matching, Gotram verification, muhurtam fixation, and sacred marriage ceremonies.
+      {/* =====================================================================
+          6. VEDIC PANDITS & BLESSINGS (విజయ కథలు & మన వేద పండితులు)
+      ===================================================================== */}
+      <section id="vedic-pandits" className="relative z-20 py-12 px-4 sm:px-8 bg-[#FDF6E8] border-b border-[#DFC086]">
+        <div className="max-w-[1240px] mx-auto space-y-8">
+          <div className="text-center space-y-2">
+            <h2 className="font-telugu-serif text-2xl sm:text-3xl font-black text-[#7E1216]">
+              మన వేద పండితులు &amp; జ్యోతిష్య సలహాదారులు
+            </h2>
+            <p className="text-sm text-[#5C3426] max-w-2xl mx-auto">
+              గోత్ర పరిశీలన, జాతక పొంతన, శుభ ముహూర్త నిర్ణయం మరియు వివాహ వేడుకల కోసం మా వేద పండితులను సంప్రదించండి.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {panditsList.map((p) => (
-              <div key={p.id} className="bg-white border border-amber-200 hover:border-amber-400 rounded-3xl p-6 shadow-md hover:shadow-lg transition-all space-y-4 text-left flex flex-col justify-between">
-                <div className="space-y-4">
+              <div key={p.id} className="bg-[#FFFDF8] border border-[#D8B572] hover:border-[#B67822] rounded-2xl p-6 shadow-xs transition-all space-y-4 text-left flex flex-col justify-between">
+                <div className="space-y-3">
                   <div className="flex items-center gap-4">
                     <img
                       src={p.photoUrl}
                       alt={p.name}
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-sm shrink-0"
+                      referrerPolicy="no-referrer"
+                      className="w-16 h-16 rounded-xl object-cover border-2 border-[#D49B3E] shrink-0"
                     />
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-semibold text-[#9C5C14]">
                         {p.specialization || "Vedic Astrologer"}
-                      </span>
-                      <h4 className="text-base font-extrabold text-zinc-900">{p.name}</h4>
+                      </p>
+                      <h3 className="text-base font-extrabold text-[#4A1410]">{p.name}</h3>
                     </div>
                   </div>
-
-                  <p className="text-xs text-zinc-600 italic leading-relaxed">
+                  <p className="text-xs text-[#5C3426] italic leading-relaxed">
                     "{p.message}"
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-amber-100 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-mono text-amber-800 font-bold">
-                    <span>📞 {p.phone || "+91 9347359489"}</span>
-                    <span className="text-[10px] text-zinc-500 font-normal">{p.availableDays || "Mon - Sat"}</span>
+                <div className="pt-3 border-t border-[#EFE0C0] space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono text-[#7E1216] font-bold">
+                    <span>{p.phone || "+91 9347359489"}</span>
+                    <span className="text-[11px] text-[#7A5438] font-sans font-normal">{p.availableDays || "Mon - Sat"}</span>
                   </div>
 
                   <a
-                    href={`https://wa.me/${(p.phone || "+919347359489").replace(/\D/g, "")}?text=${encodeURIComponent(`Namaste Guruji, I am reaching out from Subhamastu Matrimony (Glark Solutions) for astrological consultation and match guidance.`)}`}
+                    href={`https://wa.me/${(p.phone || "+919347359489").replace(/\D/g, "")}?text=${encodeURIComponent(`Namaste Guruji, I am reaching out from Shubhamastu Matrimony (www.shubhamastu.in) for astrological consultation and match guidance.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-105 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+                    className="w-full py-2.5 bg-gradient-to-b from-[#8F151B] to-[#680A0F] hover:brightness-110 text-white font-bold text-xs rounded-lg transition-all shadow-xs flex items-center justify-center gap-2"
                   >
-                    <span>💬 Consult via WhatsApp</span>
+                    <span>WhatsApp ద్వారా సంప్రదించండి</span>
                   </a>
                 </div>
               </div>
@@ -1671,20 +1987,51 @@ export default function LandingPage({
         </div>
       </section>
 
+      {/* =====================================================================
+          7. ABOUT & DISCLAIMER + QUIET FOOTER (మా గురించి)
+      ===================================================================== */}
+      <section id="about-shubhamastu" className="relative z-20 w-full bg-[#FAF0DC] py-10 px-4 sm:px-8 border-b border-[#DFC086]">
+        <div className="max-w-5xl mx-auto space-y-5">
+          <div className="bg-[#FFFDF8] border border-[#D8B572] rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start gap-4 text-xs text-[#4A1C15]">
+            <ShieldAlert className="w-6 h-6 text-[#7E1216] shrink-0 mt-0.5" />
+            <div className="space-y-1.5 leading-relaxed text-left">
+              <h3 className="font-telugu-serif font-extrabold text-[#7E1216] text-sm">
+                స్వయం ప్రకటిత సమాచార నిబంధన • Self-Submitted Information Disclaimer
+              </h3>
+              <p className="text-[#5C3426]">
+                All profile, astrological, family, and educational details on <strong>www.shubhamastu.in</strong> are self-declared by registered candidates and families. We operate purely as an introductory intermediary. Families are requested to independently verify background details and horoscope compatibility before finalizing any matrimonial alliance.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-[#7E1216] pt-2">
+            <a href="/register" className="hover:underline">ప్రత్యక్ష నమోదు (/register)</a>
+            <span aria-hidden="true">·</span>
+            <a href="/payment" className="hover:underline">PhonePe ₹10 సభ్యత్వం (/payment)</a>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => setShowContactModal(true)} className="hover:underline cursor-pointer">
+              సంప్రదించండి (Contact)
+            </button>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => setShowAdminModal(true)} className="inline-flex items-center gap-1 hover:underline cursor-pointer">
+              <Lock className="w-3 h-3" />
+              <span>Admin Login</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Official Copyright & Proprietorship Notice */}
-      <div className="py-8 px-4 text-center border-t border-amber-200 bg-[#F3EFE6] text-xs text-zinc-600 space-y-2 relative z-20">
-        <p className="font-extrabold text-sm sm:text-base tracking-wide text-amber-900 uppercase">
-          All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam)
+      <div className="py-6 px-4 text-center bg-[#F6E8CC] text-xs text-[#5C3426] space-y-1.5 relative z-20">
+        <p className="font-extrabold text-sm tracking-wide text-[#7E1216]">
+          © {new Date().getFullYear()} Shubhamastu Telugu Brahmin Matrimony (www.shubhamastu.in) • Galark Solutions (Ghadiyaram Venkata Subramanyam)
         </p>
-        <p className="text-[11px] sm:text-xs text-zinc-600 font-mono">
-          © {new Date().getFullYear()} www.shubhamastu.in • All rights reserved by Galark Solutions (Ghadiyaram Venkata Subramanyam)
-        </p>
-        <p className="text-[10px] text-zinc-500 max-w-2xl mx-auto leading-relaxed">
-          Registered Intermediary under Section 2(1)(w) and Section 79 of the Information Technology Act, 2000. All profile data is self-reported by candidates or families.
+        <p className="text-[11px] text-[#6B4533] max-w-2xl mx-auto leading-relaxed">
+          Registered Intermediary under Section 2(1)(w) and Section 79 of the Information Technology Act, 2000.
         </p>
       </div>
 
-      {/* Footer copyright */}
+      {/* Footer Legal Links */}
       <LegalFooter darkTheme={false} />
 
       {/* Render Legal Document Modal if triggered */}

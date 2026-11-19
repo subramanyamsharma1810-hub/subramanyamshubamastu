@@ -25,7 +25,7 @@ export default function Payment() {
   const [candidateProfile, setCandidateProfile] = useState<Profile | null>(null);
   const [searchError, setSearchError] = useState("");
 
-  const [selectedPlan, setSelectedPlan] = useState<"paid_100" | "paid_900">("paid_100");
+  const [selectedPlan, setSelectedPlan] = useState<"paid_10" | "paid_100" | "paid_900">("paid_10");
   const paymentTestMode = isPaymentTestMode();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -46,9 +46,7 @@ export default function Payment() {
           const active = profiles.find((p) => p.id === loggedInId);
           if (active) {
             setCandidateProfile(active);
-            if (active.subscription_status === "paid_100") {
-              setSelectedPlan("paid_900"); // Suggest upgrade
-            }
+            setSelectedPlan("paid_10");
           }
         } catch (e) {
           console.error("Error fetching logged in profile:", e);
@@ -85,11 +83,7 @@ export default function Payment() {
 
       if (found) {
         setCandidateProfile(found);
-        if (found.subscription_status === "paid_100") {
-          setSelectedPlan("paid_900");
-        } else {
-          setSelectedPlan("paid_100");
-        }
+        setSelectedPlan("paid_10");
       } else {
         setSearchError("No candidate profile found with that mobile number or registration ID. Please check or register first.");
       }
@@ -315,45 +309,38 @@ export default function Payment() {
               </label>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div
-                  onClick={() => setSelectedPlan("paid_100")}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-2 text-left ${
-                    selectedPlan === "paid_100"
-                      ? "bg-amber-500/10 border-amber-400 shadow-md"
-                      : "bg-zinc-950 border-zinc-800 text-gray-400 hover:border-zinc-700"
-                  }`}
-                >
+                <div className="p-4 rounded-2xl border bg-emerald-950/30 border-emerald-500/40 space-y-2 text-left">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-extrabold text-white">
-                        {paymentTestMode ? "1-Month Match Test" : "Match Registration Fee"}
+                        Candidate Registration (ఉచిత నమోదు)
                       </h4>
-                      <p className="text-[11px] text-zinc-400">
-                        {paymentTestMode ? "Unlocks matches for a 31-day test membership" : "Unlocks opposite-gender matches & Jataka"}
+                      <p className="text-[11px] text-zinc-300">
+                        Profile creation, Gotram & Sub-caste listing, and basic search
                       </p>
-                      <span className="text-[10px] text-emerald-400 font-semibold block mt-1">100% Conditional Refund</span>
+                      <span className="text-[10px] text-emerald-400 font-semibold block mt-1">100% Free Forever</span>
                     </div>
-                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_100")}</span>
+                    <span className="text-base font-mono font-black text-emerald-400">FREE</span>
                   </div>
                 </div>
 
                 <div
-                  onClick={() => setSelectedPlan("paid_900")}
+                  onClick={() => setSelectedPlan("paid_10")}
                   className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-2 text-left ${
-                    selectedPlan === "paid_900"
-                      ? "bg-amber-500/10 border-amber-400 shadow-md"
+                    selectedPlan === "paid_10"
+                      ? "bg-amber-500/15 border-amber-400 shadow-md"
                       : "bg-zinc-950 border-zinc-800 text-gray-400 hover:border-zinc-700"
                   }`}
                 >
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-extrabold text-white">
-                        {paymentTestMode ? "1-Month Premium Test" : "Full 31 Days Premium Membership"}
+                        Monthly Subscription (నెలవారీ సభ్యత్వం)
                       </h4>
-                      <p className="text-[11px] text-zinc-400">Unlocks direct phone numbers, WhatsApp & 31 days unlimited access</p>
-                      <span className="text-[10px] text-amber-400 font-semibold block mt-1">31 Days Complete Access</span>
+                      <p className="text-[11px] text-zinc-300">Full verified matches, Gotram matching, direct contact & PhonePe activation</p>
+                      <span className="text-[10px] text-amber-400 font-semibold block mt-1">30 Days Full Access via PhonePe</span>
                     </div>
-                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_900")}</span>
+                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_10")}/mo</span>
                   </div>
                 </div>
               </div>
@@ -364,9 +351,7 @@ export default function Payment() {
                   Cancellation and Refund Policy
                 </Link>
                 <span>
-                  {paymentTestMode
-                    ? " (Test payments activate 31-day memberships only; no real subscription charges are applied)."
-                    : " (₹100 refundable if zero viable matches within 60 days; ₹1,599 non-refundable upon activation)."}
+                  {" "}(Registration is 100% Free; Monthly Subscription is ₹10/month processed securely through PhonePe Payment Gateway).
                 </span>
               </div>
             </div>

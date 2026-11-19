@@ -571,7 +571,7 @@ export default function App() {
                 ) : (
                   <>
                     {/* Post-Payment Active Member Notification Banner */}
-                    {(!isAdmin && (currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.status === "Verified" || currentProfile.status === "Active")) && (
+                    {(!isAdmin && (currentProfile.subscription_status === "paid_10" || currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599" || currentProfile.status === "Verified" || currentProfile.status === "Active")) && (
                       <div className="bg-gradient-to-r from-emerald-50 via-teal-50/20 to-blue-50/40 border-2 border-emerald-200 rounded-3xl p-6 shadow-xs mb-6 relative overflow-hidden text-left animate-in fade-in slide-in-from-top-4 duration-300">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl translate-x-4 -translate-y-4 pointer-events-none" />
                         
