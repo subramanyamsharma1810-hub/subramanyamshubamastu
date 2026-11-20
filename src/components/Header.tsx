@@ -5,6 +5,7 @@ import NotificationBell from "./NotificationBell";
 import AdminAuditModal from "./AdminAuditModal";
 import { Profile } from "../types";
 import { adminNotificationService } from "../lib/databaseService";
+import kalashImg from "../assets/kalash.png";
 
 interface HeaderProps {
   currentTab: string;
@@ -77,20 +78,25 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
       <header className="bg-[#362B5A] text-white shadow-lg border-b border-orange-500/25 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-20">
-            {/* Logo / Spiritual Theme */}
+            {/* Sacred Kalasam Brand Logo (Prominent YouTube-style logo) */}
             <div 
               onClick={() => setCurrentTab("matches")}
-              className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none group"
+              title="Shubhamastu Home"
             >
-              <div className="bg-[#C2242C] p-1.5 sm:p-2.5 rounded-full flex items-center justify-center shadow-md animate-pulse">
-                <Heart className="w-4 h-4 sm:w-6 sm:h-6 text-white fill-white" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-amber-400/90 shadow-md flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100 shrink-0 p-0.5 group-hover:scale-105 transition-transform">
+                <img 
+                  src={kalashImg} 
+                  alt="Shubhamastu Kalasam Logo" 
+                  className="w-full h-full object-cover object-center rounded-lg sm:rounded-xl"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm sm:text-lg font-extrabold tracking-wider font-sans uppercase">Shubhamastu</span>
-                  <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-400" />
+                  <span className="text-sm sm:text-lg font-black tracking-wider font-sans uppercase text-amber-300">Shubhamastu</span>
+                  <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
                 </div>
-                <p className="text-[8px] sm:text-[10px] text-blue-200/80 font-mono tracking-widest uppercase">శుభమస్తు వివాహ వేదిక</p>
+                <p className="text-[8px] sm:text-[10px] text-amber-100/90 font-medium tracking-wide">శుభమస్తు వివాహ వేదిక</p>
               </div>
             </div>
 
@@ -192,10 +198,14 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="space-y-1 pb-3 border-b border-white/10">
-              <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest block">⚡ Portal Navigator</span>
-              <h3 className="text-base sm:text-lg font-black text-white uppercase">Shubhamastu Sections</h3>
-              <p className="text-xs text-blue-200/70">Select any section to jump instantly.</p>
+            <div className="space-y-1 pb-3 border-b border-white/10 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl overflow-hidden border border-amber-400/80 shadow-md shrink-0 bg-gradient-to-br from-amber-50 to-amber-100 p-0.5">
+                <img src={kalashImg} alt="Shubhamastu Kalasam Logo" className="w-full h-full object-cover rounded-lg" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest block font-bold">⚡ Portal Navigator</span>
+                <h3 className="text-base sm:text-lg font-black text-white uppercase truncate">Shubhamastu Sections</h3>
+              </div>
             </div>
             <div className="space-y-2 py-2">
               {/* Dedicated 3 Root Admins & Cross-Audit Section for Admins */}

@@ -1,14 +1,14 @@
 {
-  "name": "Shubhamastu Brahmin Vivaha Vedika",
-  "short_name": "Shubhamastu",
+  "name": "శుభమస్తు - Shubhamastu Brahmin Matrimony",
+  "short_name": "శుభమస్తు",
   "description": "Sacred Brahmin matrimonial matchmaking with Gothra separation and traditional age alignment.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#362B5A",
-  "theme_color": "#362B5A",
-  "lang": "en-IN",
+  "background_color": "#fff8ed",
+  "theme_color": "#88051c",
+  "lang": "te-IN",
   "dir": "ltr",
   "categories": ["lifestyle", "social"],
   "icons": [
@@ -35,6 +35,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/assets/kalash.png",
+      "sizes": "470x250",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [
