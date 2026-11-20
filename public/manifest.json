@@ -37,8 +37,8 @@
       "purpose": "maskable"
     },
     {
-      "src": "/assets/kalash.png",
-      "sizes": "470x250",
+      "src": "/assets/emblem.png",
+      "sizes": "100x93",
       "type": "image/png",
       "purpose": "any"
     }

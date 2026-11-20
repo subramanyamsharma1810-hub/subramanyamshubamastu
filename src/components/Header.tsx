@@ -5,7 +5,7 @@ import NotificationBell from "./NotificationBell";
 import AdminAuditModal from "./AdminAuditModal";
 import { Profile } from "../types";
 import { adminNotificationService } from "../lib/databaseService";
-import kalashImg from "../assets/kalash.png";
+import emblemImg from "../assets/emblem.png";
 
 interface HeaderProps {
   currentTab: string;
@@ -78,18 +78,21 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
       <header className="bg-[#362B5A] text-white shadow-lg border-b border-orange-500/25 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-20">
-            {/* Sacred Kalasam Brand Logo (Prominent YouTube-style logo) */}
+            {/* Sacred Om Brand Emblem Logo (BA Specified) */}
             <div 
               onClick={() => setCurrentTab("matches")}
               className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none group"
               title="Shubhamastu Home"
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-amber-400/90 shadow-md flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100 shrink-0 p-0.5 group-hover:scale-105 transition-transform">
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-amber-400 shadow-md flex items-center justify-center bg-[#fbd868] shrink-0 group-hover:scale-105 transition-transform">
                 <img 
-                  src={kalashImg} 
-                  alt="Shubhamastu Kalasam Logo" 
-                  className="w-full h-full object-cover object-center rounded-lg sm:rounded-xl"
+                  src={emblemImg} 
+                  alt="Shubhamastu Om Logo" 
+                  className="w-full h-full object-contain mix-blend-multiply"
                 />
+                <span className="absolute inset-0 flex items-center justify-center font-bold text-base sm:text-lg text-[#9b061d] font-serif leading-none select-none">
+                  ఓం
+                </span>
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -199,8 +202,11 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
               <X className="w-4 h-4" />
             </button>
             <div className="space-y-1 pb-3 border-b border-white/10 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl overflow-hidden border border-amber-400/80 shadow-md shrink-0 bg-gradient-to-br from-amber-50 to-amber-100 p-0.5">
-                <img src={kalashImg} alt="Shubhamastu Kalasam Logo" className="w-full h-full object-cover rounded-lg" />
+              <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-amber-400 shadow-md flex items-center justify-center bg-[#fbd868] shrink-0">
+                <img src={emblemImg} alt="Shubhamastu Om Logo" className="w-full h-full object-contain mix-blend-multiply" />
+                <span className="absolute inset-0 flex items-center justify-center font-bold text-base text-[#9b061d] font-serif leading-none">
+                  ఓం
+                </span>
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest block font-bold">⚡ Portal Navigator</span>

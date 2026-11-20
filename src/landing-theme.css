@@ -68,30 +68,40 @@
 }
 
 .shubha-emblem {
-  width: 76px;
-  height: 72px;
+  width: 83px;
+  height: 80px;
   position: relative;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  border-radius: 18px;
-  overflow: hidden;
-  background: radial-gradient(circle, #fffaf1 0%, #fee4b8 100%);
-  border: 2px solid #e5a12b;
-  box-shadow: 0 4px 10px rgba(138, 6, 30, 0.22);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .shubha-emblem:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 14px rgba(138, 6, 30, 0.32);
 }
 
 .shubha-emblem img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.shubha-emblem-om {
+  position: absolute;
+  left: 30%;
+  top: 29%;
+  font-family: 'Noto Sans Telugu', serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #9b061d;
+  background: #fbd868;
+  border-radius: 50%;
+  padding: 0 2px;
+  line-height: 1.45;
+  box-shadow: 0 1px 3px rgba(155, 6, 29, 0.25);
+  pointer-events: none;
 }
 
 .shubha-brand-copy {
@@ -878,10 +888,13 @@
     gap: 8px;
   }
   .shubha-emblem {
-    width: 56px;
-    height: 52px;
-    border-radius: 14px;
-    border-width: 1.5px;
+    width: 62px;
+    height: 60px;
+  }
+  .shubha-emblem-om {
+    font-size: 16px;
+    left: 28%;
+    top: 27%;
   }
   .shubha-brand-tel {
     font-size: 30px;

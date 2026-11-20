@@ -1384,9 +1384,10 @@ export default function LandingPage({
             tabIndex={0}
             aria-label="Shubhamastu Home"
           >
-            {/* Sacred Kalasam Brand Logo */}
-            <div className="shubha-emblem" aria-label="Shubhamastu Sacred Kalasam Logo">
-              <img src={kalashImg} alt="Shubhamastu Sacred Kalasam Logo" />
+            {/* Sacred Om Brand Emblem Logo (BA Specified) */}
+            <div className="shubha-emblem" aria-label="Shubhamastu Om Logo">
+              <img src={emblemImg} alt="Shubhamastu Om Emblem Logo" />
+              <span className="shubha-emblem-om">ఓం</span>
             </div>
             <div className="shubha-brand-copy">
               <strong className="shubha-brand-tel shubha-telugu">శుభమస్తు</strong>
