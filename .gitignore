@@ -18,5 +18,13 @@ mediaStorage/
 *.jpg
 *.jpeg
 
+# Whitelist official UI/UX brand assets
+!src/assets/*.png
+!src/assets/*.jpg
+!src/assets/*.jpeg
+!public/assets/*.png
+!public/assets/*.jpg
+!public/assets/*.jpeg
+
 # Exclude generated archives
 *.zip

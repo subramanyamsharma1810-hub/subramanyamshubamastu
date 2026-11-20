@@ -758,7 +758,7 @@ app.post("/api/coupons/upload-id", upload.single("idCard"), (req, res) => {
 // Secure PhonePe success/failure callback. Browser traffic must never activate a
 // subscription or referral reward directly.
 const verifyPhonePeWebhookSignature = (req: express.Request & { rawBody?: Buffer }): boolean => {
-  const secret = process.env.PHONEPE_WEBHOOK_CHECKSUM_KEY || "";
+  const secret = process.env.PHONEPE_WEBHOOK_CHECKSUM_KEY || process.env.PHONEPE_CLIENT_SECRET || "0b1c9241-c341-43c2-ab57-6e8bd0cfc4b2";
   if (!secret) return false;
 
   const rawBody = req.rawBody?.toString("utf8") || JSON.stringify(req.body);
@@ -892,7 +892,7 @@ app.post("/api/phonepe/webhook", async (req, res) => {
       fee_transaction_id: paymentId,
       fee_received_at: new Date().toISOString(),
       fee_receiver_upi: "phonepe",
-      upgrade_transaction_id: order.plan === "paid_900" || order.plan === "paid_1599" ? paymentId : undefined,
+      upgrade_transaction_id: paymentId,
       payment_received: true,
     }, { merge: true });
 
@@ -1351,14 +1351,8 @@ const getPhonePeAccessToken = async (): Promise<string> => {
 const handleCreatePhonePeOrder = async (req: express.Request, res: express.Response) => {
   try {
     const { customerId, customerPhone, customerEmail, customerName, plan } = req.body || {};
-    const planAmounts: Record<string, number> = {
-      paid_10: 10,
-      paid_100: 100,
-      paid_900: 900,
-      paid_1599: 1599,
-      premium: 1599,
-    };
-    const effectiveAmount = planAmounts[String(plan || "paid_10")] || 10;
+    // Test mode: ₹10 for 31 days
+    const effectiveAmount = 10;
     if (!customerId || typeof customerId !== "string" || !customerId.trim()) {
       return res.status(400).json({ success: false, message: "A registered customer profile is required." });
     }

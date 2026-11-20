@@ -1,0 +1,1049 @@
+/* Shubhamastu UI/UX v1.0 — BA Approved Visual Baseline Styles
+   Responsive across All Desktops (1920px, 1670px, 1440px, 1280px),
+   Tablets (768px - 1024px), and Mobiles (320px - 767px).
+*/
+
+:root {
+  --shubha-wine: #8a061e;
+  --shubha-wine-dark: #6e0016;
+  --shubha-gold: #d99719;
+  --shubha-amber: #f6b32b;
+  --shubha-cream: #fff0d9;
+  --shubha-ink: #2e1713;
+}
+
+.shubha-landing-root {
+  background: radial-gradient(ellipse at 48% 28%, #fff8ed 0%, #fff0da 63%, #f9dfb9 100%);
+  color: var(--shubha-ink);
+  font-family: 'Century Gothic', 'Trebuchet MS', 'Noto Sans Telugu', Arial, sans-serif;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.shubha-telugu {
+  font-family: 'Tiro Telugu', 'Noto Serif Telugu', 'Noto Sans Telugu', serif;
+}
+
+.shubha-baskerville {
+  font-family: 'Libre Baskerville', Georgia, serif;
+}
+
+/* 1. Festive Mango-leaf & Marigold Toranam */
+.shubha-toranam {
+  height: 65px;
+  background-image: url('/assets/toranam.png');
+  background-repeat: repeat-x;
+  background-position: center top;
+  background-size: auto 65px;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Page Container Frame */
+.shubha-page-shell {
+  width: min(1540px, calc(100% - 80px));
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* 2. Site Header */
+.shubha-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 8px 0 16px;
+  border-bottom: 1px solid #e4b877;
+}
+
+.shubha-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.shubha-emblem {
+  width: 83px;
+  height: 80px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.shubha-emblem img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.shubha-emblem-om {
+  position: absolute;
+  left: 30%;
+  top: 29%;
+  font-family: 'Noto Sans Telugu', serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #9b061d;
+  background: #fbd868;
+  border-radius: 50%;
+  padding: 0 2px;
+  line-height: 1.45;
+  box-shadow: 0 1px 3px rgba(155, 6, 29, 0.25);
+}
+
+.shubha-brand-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.shubha-brand-tel {
+  font-size: 38px;
+  line-height: 1.15;
+  color: var(--shubha-wine);
+  font-weight: 800;
+  text-shadow: 0 1px #d59a68;
+  letter-spacing: -0.5px;
+}
+
+.shubha-brand-en {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--shubha-wine);
+  letter-spacing: 0.3px;
+  border-top: 2px solid #9a1430;
+  padding-top: 3px;
+  white-space: nowrap;
+}
+
+.shubha-descriptor {
+  padding-left: 17px;
+  border-left: 2px solid #a42b35;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shubha-descriptor strong {
+  color: var(--shubha-wine);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.shubha-descriptor small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--shubha-ink);
+  line-height: 1;
+}
+
+/* Header Navigation Links */
+.shubha-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.shubha-nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--shubha-ink);
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-decoration: none;
+}
+
+.shubha-nav-link:hover,
+.shubha-nav-link.active {
+  color: var(--shubha-wine);
+}
+
+.shubha-nav-link .nav-icon {
+  color: var(--shubha-wine);
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Header Action Buttons */
+.shubha-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.shubha-nav-btn {
+  white-space: nowrap;
+  border-radius: 28px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 7px rgba(141, 66, 40, 0.28);
+}
+
+.shubha-nav-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(141, 66, 40, 0.35);
+}
+
+.shubha-nav-btn:active {
+  transform: translateY(1px);
+}
+
+.shubha-nav-btn.outline {
+  color: var(--shubha-wine);
+  background: #fff7e8;
+  border: 2px solid var(--shubha-wine);
+}
+
+.shubha-nav-btn.solid {
+  color: #fff;
+  background: linear-gradient(180deg, #bc1a3c 0%, #760019 100%);
+  border: 2px solid #a50e2c;
+}
+
+/* 3. Hero Section (Approved 3-Column Mandapam Banner) */
+.shubha-hero {
+  position: relative;
+  margin-top: 10px;
+  height: 255px;
+  display: grid;
+  grid-template-columns: 40% 29% 31%;
+  align-items: stretch;
+  overflow: hidden;
+  border-top: 1px solid #e5b76d;
+  border-bottom: 1px solid #e5b76d;
+  background: linear-gradient(90deg, #ffe7c4 0%, #fff3df 45%, #ffe5bd 100%);
+  box-shadow: 0 4px 14px rgba(180, 109, 40, 0.12);
+}
+
+.shubha-hero-art {
+  overflow: hidden;
+  min-width: 0;
+  height: 100%;
+}
+
+.shubha-hero-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.shubha-hero-center {
+  z-index: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+}
+
+.shubha-lotus-mark {
+  font-size: 52px;
+  line-height: 1;
+  color: #d89318;
+  text-shadow: 0 2px #fff0c6;
+  margin-bottom: -4px;
+}
+
+.shubha-hero-center h1 {
+  font-size: 52px;
+  color: var(--shubha-wine);
+  margin: 0;
+  line-height: 1.25;
+  text-shadow: 1px 2px #d4a276;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.shubha-flourish {
+  font-size: 16px;
+  color: #c77812;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+
+.shubha-flourish.small {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.shubha-hero-center h2 {
+  font-size: 19px;
+  color: var(--shubha-wine);
+  margin: 10px 0 2px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.shubha-hero-center p {
+  color: var(--shubha-wine);
+  font-weight: 800;
+  font-size: 18px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Golden Corner Flourishes */
+.shubha-corner {
+  position: absolute;
+  z-index: 2;
+  color: #c67910;
+  font-size: 44px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.shubha-top-left {
+  top: 2px;
+  left: 3px;
+}
+
+.shubha-top-right {
+  top: 2px;
+  right: 3px;
+  transform: scaleX(-1);
+}
+
+.shubha-bottom-left {
+  bottom: 2px;
+  left: 3px;
+  transform: scaleY(-1);
+}
+
+.shubha-bottom-right {
+  bottom: 2px;
+  right: 3px;
+  transform: scale(-1);
+}
+
+/* Carousel Slide Dots */
+.shubha-slide-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 0 22px;
+}
+
+.shubha-slide-dots i {
+  height: 11px;
+  width: 11px;
+  border-radius: 50%;
+  background: #e5a12b;
+  border: 1px solid #fff;
+  display: inline-block;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shubha-slide-dots i.active,
+.shubha-slide-dots i:first-child {
+  background: var(--shubha-wine);
+  transform: scale(1.15);
+}
+
+/* 4. Two Symmetric Search Panels */
+.shubha-search-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.shubha-panel {
+  position: relative;
+  border: 3px double #f0a222;
+  border-radius: 28px;
+  padding: 34px 18px 16px;
+  background: linear-gradient(180deg, #fff2df 0%, #ffecd0 100%);
+  box-shadow: 0 5px 13px rgba(180, 109, 40, 0.27);
+  min-width: 0;
+}
+
+.shubha-panel-title {
+  position: absolute;
+  top: -20px;
+  left: 15%;
+  right: 15%;
+  margin: 0;
+  background: linear-gradient(180deg, #b51b38 0%, #790018 100%);
+  border: 2px solid #f4b62e;
+  border-radius: 26px;
+  box-shadow: 0 3px 7px rgba(122, 38, 24, 0.35);
+  color: white;
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.shubha-panel-title span {
+  color: #f5c34c;
+  font-size: 20px;
+}
+
+/* Quick Search Form */
+.shubha-quick-search-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.shubha-looking-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shubha-looking-group legend {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--shubha-ink);
+  padding: 0 0 4px;
+}
+
+.shubha-radios {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.shubha-radios label {
+  font-size: 13.5px;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--shubha-ink);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.shubha-radios input[type="radio"] {
+  accent-color: #a10d25;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.shubha-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  border-left: 1px solid #dc9d4a;
+  padding-left: 12px;
+}
+
+.shubha-search-field label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--shubha-ink);
+}
+
+.shubha-search-field select {
+  background: #fffaf3;
+  border: 1px solid #d2a36b;
+  border-radius: 6px;
+  padding: 8px 6px;
+  width: 100%;
+  max-width: 100%;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--shubha-ink);
+  outline: none;
+  cursor: pointer;
+}
+
+.shubha-search-field select:focus {
+  border-color: var(--shubha-wine);
+  box-shadow: 0 0 0 2px rgba(138, 6, 30, 0.15);
+}
+
+.shubha-search-submit-btn {
+  color: #fff;
+  background: linear-gradient(180deg, #bc1a3c 0%, #760019 100%);
+  border: 1px solid var(--shubha-wine);
+  border-radius: 25px;
+  padding: 11px 16px;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 800;
+  box-shadow: 0 4px 7px rgba(138, 67, 45, 0.27);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.shubha-search-submit-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* Regional Wise Search Grid */
+.shubha-regions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shubha-region-card {
+  min-width: 0;
+  min-height: 91px;
+  border: 1px solid #f4c78a;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fffaf1 0%, #ffddb1 100%);
+  box-shadow: 0 3px 5px rgba(173, 112, 75, 0.33);
+  color: var(--shubha-wine);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.shubha-region-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 10px rgba(173, 112, 75, 0.45);
+  border-color: #e59f3c;
+}
+
+.shubha-region-icon {
+  font-size: 28px;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.shubha-region-card strong {
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.shubha-region-card small {
+  font-size: 10.5px;
+  color: #201917;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Status / Feedback text */
+.shubha-interaction-status {
+  min-height: 20px;
+  font-size: 12.5px;
+  text-align: center;
+  color: var(--shubha-wine);
+  font-weight: 700;
+  margin: 6px 0 2px;
+}
+
+/* 5. The Shubhamastu Advantage Section */
+.shubha-advantage-section,
+.shubha-services-section {
+  position: relative;
+  margin: 10px auto 18px;
+  padding-top: 22px;
+}
+
+.shubha-section-ribbon {
+  position: relative;
+  z-index: 2;
+  width: max-content;
+  max-width: 90%;
+  padding: 7px 35px;
+  margin: 0 auto -2px;
+  background: linear-gradient(180deg, #b71939 0%, #770019 100%);
+  border: 2px solid #e8a82d;
+  border-radius: 25px;
+  box-shadow: 0 3px 7px rgba(139, 53, 41, 0.27);
+  color: white;
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.shubha-advantage-items {
+  border: 1px solid #efc68d;
+  border-radius: 28px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  align-items: center;
+  padding: 11px 4px;
+  background: linear-gradient(180deg, #fff4e5 0%, #ffe5c3 100%);
+  box-shadow: 0 3px 5px rgba(139, 74, 40, 0.2);
+}
+
+.shubha-advantage-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-right: 1px solid #dfb07c;
+  color: var(--shubha-wine);
+  font-size: 12px;
+  text-align: center;
+  min-height: 57px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shubha-advantage-card:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.shubha-advantage-card:last-child {
+  border-right: none;
+}
+
+.shubha-advantage-card .adv-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.shubha-advantage-card strong {
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+/* Highlighted Item: Upcoming Matrimony Meets */
+.shubha-advantage-card.highlight {
+  background: linear-gradient(180deg, #b51b3b 0%, #7b001c 100%);
+  border-radius: 14px;
+  color: #fff;
+  border-right: none;
+  box-shadow: 0 3px 7px rgba(138, 58, 38, 0.27);
+}
+
+.shubha-advantage-card.highlight strong {
+  color: #fff;
+}
+
+/* 6. Wedding Services Section */
+.shubha-service-items {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin: 11px 0 24px;
+}
+
+.shubha-service-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 74px;
+  padding: 10px 14px;
+  border: 1px solid #eac18b;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fff8ec 0%, #ffe6c4 100%);
+  box-shadow: 0 4px 7px rgba(169, 104, 62, 0.25);
+  color: var(--shubha-wine);
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shubha-service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(169, 104, 62, 0.35);
+  border-color: #df9e38;
+}
+
+.shubha-service-card .srv-icon {
+  font-size: 30px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.shubha-service-card strong {
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.shubha-service-card small {
+  display: block;
+  font-size: 10.5px;
+  color: #261d18;
+  font-weight: 600;
+  margin-top: 3px;
+  line-height: 1.15;
+}
+
+/* 7. Ornate Repeating Bottom Footer */
+.shubha-ornate-footer {
+  height: 34px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: 11px;
+  color: #f4c02d;
+  background: linear-gradient(180deg, #b5132f 0%, #7e001a 100%);
+  border-top: 3px solid #f5b82c;
+  border-bottom: 3px solid #f5b82c;
+  font-size: 20px;
+  line-height: 28px;
+  user-select: none;
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS (ALL DESKTOPS, TABLETS, AND MOBILES)
+   ========================================================================== */
+
+/* Laptops and Small Desktops (<= 1390px) */
+@media (max-width: 1390px) {
+  .shubha-page-shell {
+    width: calc(100% - 50px);
+  }
+  .shubha-header {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .shubha-nav {
+    gap: 12px;
+  }
+  .shubha-hero {
+    height: 240px;
+  }
+  .shubha-hero-center h1 {
+    font-size: 46px;
+  }
+  .shubha-hero-center h2 {
+    font-size: 17px;
+  }
+  .shubha-hero-center p {
+    font-size: 16px;
+  }
+  .shubha-lotus-mark {
+    font-size: 44px;
+  }
+}
+
+/* Medium Tablets & Large Phones in Landscape (<= 1024px) */
+@media (max-width: 1024px) {
+  .shubha-page-shell {
+    width: calc(100% - 36px);
+  }
+  .shubha-toranam {
+    height: 52px;
+    background-size: auto 52px;
+  }
+  .shubha-header {
+    padding: 6px 0 12px;
+  }
+  .shubha-descriptor {
+    display: none; /* Keep header concise on tablets and mobiles */
+  }
+  .shubha-hero {
+    height: 230px;
+    grid-template-columns: 38% 30% 32%;
+  }
+  .shubha-hero-center h1 {
+    font-size: 40px;
+  }
+  .shubha-hero-center h2 {
+    font-size: 16px;
+  }
+  .shubha-hero-center p {
+    font-size: 15px;
+  }
+  .shubha-panel-title {
+    font-size: 21px;
+    left: 10%;
+    right: 10%;
+  }
+  .shubha-quick-search-form {
+    flex-wrap: wrap;
+  }
+  .shubha-search-submit-btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .shubha-advantage-items {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .shubha-advantage-card:nth-child(3) {
+    border-right: none;
+  }
+  .shubha-advantage-card:nth-child(4) {
+    border-top: 1px solid #dfb07c;
+  }
+  .shubha-advantage-card:nth-child(5) {
+    border-top: 1px solid #dfb07c;
+  }
+  .shubha-advantage-card:nth-child(6) {
+    border-top: 1px solid #dfb07c;
+  }
+  .shubha-service-items {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Standard Tablets (<= 900px) */
+@media (max-width: 900px) {
+  .shubha-page-shell {
+    width: calc(100% - 24px);
+  }
+  .shubha-toranam {
+    height: 48px;
+    background-size: auto 48px;
+  }
+  .shubha-search-panels {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .shubha-hero {
+    height: auto;
+    grid-template-columns: 1fr 1fr;
+    border-radius: 20px;
+    margin-top: 8px;
+  }
+  .shubha-hero-center {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 180px;
+    padding: 16px 8px 10px;
+  }
+  .shubha-hero-art {
+    height: 170px;
+  }
+  .shubha-corner {
+    font-size: 36px;
+  }
+}
+
+/* Mobile Screens (<= 640px) */
+@media (max-width: 640px) {
+  .shubha-page-shell {
+    width: calc(100% - 16px);
+  }
+  .shubha-toranam {
+    height: 38px;
+    background-size: auto 38px;
+  }
+  .shubha-header {
+    gap: 12px;
+    padding: 6px 0 10px;
+  }
+  .shubha-brand {
+    gap: 8px;
+  }
+  .shubha-emblem {
+    width: 62px;
+    height: 60px;
+  }
+  .shubha-emblem-om {
+    font-size: 16px;
+    left: 28%;
+    top: 27%;
+  }
+  .shubha-brand-tel {
+    font-size: 30px;
+  }
+  .shubha-brand-en {
+    font-size: 9.5px;
+    letter-spacing: 0.1px;
+  }
+  .shubha-nav {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding: 6px 2px;
+    gap: 16px;
+  }
+  .shubha-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .shubha-nav-link {
+    font-size: 10.5px;
+    flex-shrink: 0;
+  }
+  .shubha-nav-link .nav-icon {
+    font-size: 20px;
+  }
+  .shubha-nav-actions {
+    width: 100%;
+    justify-content: stretch;
+    gap: 8px;
+  }
+  .shubha-nav-btn {
+    flex: 1;
+    font-size: 13.5px;
+    padding: 9px 12px;
+  }
+  .shubha-hero-center {
+    min-height: 165px;
+    padding: 14px 4px 6px;
+  }
+  .shubha-lotus-mark {
+    font-size: 36px;
+  }
+  .shubha-hero-center h1 {
+    font-size: 38px;
+  }
+  .shubha-flourish {
+    font-size: 13px;
+  }
+  .shubha-hero-center h2 {
+    font-size: 15px;
+    white-space: normal;
+  }
+  .shubha-hero-center p {
+    font-size: 14px;
+    white-space: normal;
+  }
+  .shubha-hero-art {
+    height: 130px;
+  }
+  .shubha-panel {
+    padding: 34px 12px 14px;
+    border-radius: 22px;
+  }
+  .shubha-panel-title {
+    font-size: 18px;
+    left: 5%;
+    right: 5%;
+    padding: 5px 8px;
+  }
+  .shubha-panel-title span {
+    font-size: 16px;
+  }
+  .shubha-quick-search-form {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .shubha-search-field {
+    border-left: none;
+    padding-left: 0;
+  }
+  .shubha-regions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .shubha-region-card {
+    min-height: 80px;
+    border-radius: 16px;
+  }
+  .shubha-region-icon {
+    font-size: 24px;
+  }
+  .shubha-region-card strong {
+    font-size: 12px;
+  }
+  .shubha-section-ribbon {
+    font-size: 17px;
+    padding: 6px 18px;
+  }
+  .shubha-advantage-items {
+    grid-template-columns: repeat(2, 1fr);
+    border-radius: 20px;
+  }
+  .shubha-advantage-card {
+    font-size: 11px;
+    gap: 6px;
+    min-height: 64px;
+    padding: 8px 4px;
+  }
+  .shubha-advantage-card:nth-child(odd) {
+    border-right: 1px solid #dfb07c;
+  }
+  .shubha-advantage-card:nth-child(even) {
+    border-right: none;
+  }
+  .shubha-advantage-card:nth-child(n+3) {
+    border-top: 1px solid #dfb07c;
+  }
+  .shubha-advantage-card .adv-icon {
+    font-size: 22px;
+  }
+  .shubha-service-items {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .shubha-service-card {
+    min-height: 64px;
+    border-radius: 18px;
+    padding: 8px 12px;
+  }
+  .shubha-service-card .srv-icon {
+    font-size: 26px;
+  }
+  .shubha-ornate-footer {
+    font-size: 16px;
+    letter-spacing: 8px;
+    height: 30px;
+    line-height: 24px;
+  }
+}
+
+/* Very Small Mobile Screens (<= 360px) */
+@media (max-width: 360px) {
+  .shubha-brand-tel {
+    font-size: 26px;
+  }
+  .shubha-hero-center h1 {
+    font-size: 32px;
+  }
+  .shubha-panel-title {
+    font-size: 16px;
+  }
+  .shubha-section-ribbon {
+    font-size: 15px;
+    padding: 5px 14px;
+  }
+}

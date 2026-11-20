@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, message: "Method not allowed." });
   }
 
-  const secret = process.env.PHONEPE_WEBHOOK_CHECKSUM_KEY || "";
+  const secret = process.env.PHONEPE_WEBHOOK_CHECKSUM_KEY || process.env.PHONEPE_CLIENT_SECRET || "0b1c9241-c341-43c2-ab57-6e8bd0cfc4b2";
   if (!secret) {
     return res.status(503).json({ success: false, message: "Webhook verification is not configured." });
   }

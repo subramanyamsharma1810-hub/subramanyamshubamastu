@@ -37,3 +37,21 @@ html, body {
   font-family: "Cormorant Garamond", Georgia, serif;
 }
 
+.font-tiro-telugu {
+  font-family: "Tiro Telugu", "Noto Serif Telugu", "Noto Sans Telugu", serif;
+}
+
+.font-libre-baskerville {
+  font-family: "Libre Baskerville", Georgia, serif;
+}
+
+:root {
+  --shubha-wine: #8a061e;
+  --shubha-wine-dark: #6e0016;
+  --shubha-gold: #d99719;
+  --shubha-amber: #f6b32b;
+  --shubha-cream: #fff0d9;
+  --shubha-ink: #2e1713;
+}
+
+

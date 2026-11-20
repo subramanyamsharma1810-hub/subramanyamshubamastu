@@ -350,7 +350,9 @@ export default function Register() {
               <div className="flex items-center justify-between text-zinc-300">
                 <span>Subscription Tier:</span>
                 <span className="font-bold text-amber-300">
-                  {registeredProfile.subscription_status === "paid_1599"
+                  {registeredProfile.subscription_status === "paid_10"
+                    ? `🌟 ₹${getPaymentAmount("paid_10")} Testing Access (31 Days Full Access)`
+                    : registeredProfile.subscription_status === "paid_1599"
                     ? `🌟 ₹${getPaymentAmount("paid_1599")} Premium Test Tier (31 Days Full Access)`
                     : registeredProfile.subscription_status === "paid_900" 
                     ? `👑 ₹${getPaymentAmount("paid_900")} Premium Test Tier (31 Days Full Access)`
@@ -777,7 +779,7 @@ export default function Register() {
               <div className="border-t border-zinc-800 pt-6 space-y-4 text-left">
                 {paymentTestMode && (
                   <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-3 text-xs font-bold text-emerald-300">
-                    Payment gateway test mode: 1-month Match Test costs ₹1 and 1-month Premium Test costs ₹2.
+                    Payment gateway test mode: 31-day testing access is ₹10.
                   </div>
                 )}
                 <div className="flex items-center justify-between">

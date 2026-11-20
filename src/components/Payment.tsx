@@ -231,7 +231,7 @@ export default function Payment() {
             <div className="text-center space-y-3">
               {paymentTestMode && (
                 <div className="mx-auto max-w-lg rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-2 text-xs font-bold text-emerald-300">
-                  Gateway test mode: ₹1 for Match Test and ₹2 for Premium Test (31 days).
+                  Gateway test mode: ₹10 for 31 days testing access.
                 </div>
               )}
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-widest">
@@ -338,9 +338,9 @@ export default function Payment() {
                         Monthly Subscription (నెలవారీ సభ్యత్వం)
                       </h4>
                       <p className="text-[11px] text-zinc-300">Full verified matches, Gotram matching, direct contact & PhonePe activation</p>
-                      <span className="text-[10px] text-amber-400 font-semibold block mt-1">30 Days Full Access via PhonePe</span>
+                      <span className="text-[10px] text-amber-400 font-semibold block mt-1">31 Days Full Access via PhonePe (Testing Period)</span>
                     </div>
-                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_10")}/mo</span>
+                    <span className="text-base font-mono font-black text-amber-400">₹{getPaymentAmount("paid_10")} (31 Days)</span>
                   </div>
                 </div>
               </div>
@@ -351,7 +351,7 @@ export default function Payment() {
                   Cancellation and Refund Policy
                 </Link>
                 <span>
-                  {" "}(Registration is 100% Free; Monthly Subscription is ₹10/month processed securely through PhonePe Payment Gateway).
+                  {" "}(Registration is 100% Free; Testing Access is ₹10 for 31 days processed securely through PhonePe Payment Gateway).
                 </span>
               </div>
             </div>

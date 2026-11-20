@@ -53,8 +53,11 @@ import {
   Users
 } from "lucide-react";
 import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
-import heroMandapamUrl from "../assets/images/shubhamastu_hero_mandapam_1795064113183.jpg";
-import topToranamUrl from "../assets/images/shubhamastu_top_toranam_1795064111863.jpg";
+import toranamImg from "../assets/toranam.png";
+import weddingImg from "../assets/wedding.png";
+import kalashImg from "../assets/kalash.png";
+import emblemImg from "../assets/emblem.png";
+import "../landing-theme.css";
 
 interface LandingPageProps {
   onLoginSuccess: (profile: Profile) => void;
@@ -118,7 +121,7 @@ export default function LandingPage({
   // Language selection state (Telugu / English)
   const [lang, setLang] = useState<"te" | "en">("te");
   const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [activeNav, setActiveNav] = useState<"home" | "grooms" | "brides" | "plans" | "stories" | "about">("home");
+  const [activeNav, setActiveNav] = useState<string>("home");
 
   // Hero Partner Search form state (exact poster fields)
   const [searchLookingFor, setSearchLookingFor] = useState<string>("");
@@ -1145,7 +1148,7 @@ export default function LandingPage({
 
   const scrollToSection = (
     sectionId: string,
-    navKey: "home" | "grooms" | "brides" | "plans" | "stories" | "about"
+    navKey: string
   ) => {
     setActiveNav(navKey);
     const el = document.getElementById(sectionId);
@@ -1154,565 +1157,429 @@ export default function LandingPage({
     }
   };
 
+  const handleRegionClick = (regionName: string) => {
+    setSelectedDistrict(regionName);
+    const el = document.getElementById("regional-districts");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      handleDistrictSelect(regionName);
+    }
+  };
+
   const AGE_OPTIONS = Array.from({ length: 30 }, (_, i) => 21 + i);
 
   return (
-    <div id="home" className="relative min-h-screen bg-[#FAF0DC] text-[#3B1510] overflow-x-hidden flex flex-col font-telugu-sans">
-      {/* =====================================================================
-          1. EXACT POSTER TOP HEADER WITH MANGO LEAF & MARIGOLD TORANAM
-      ===================================================================== */}
-      <header
-        className="relative z-30 w-full bg-[#FDF5E4] border-b-2 border-[#D49B3E] overflow-hidden"
-        style={{
-          backgroundImage: `url(${topToranamUrl})`,
-          backgroundSize: "100% auto",
-          backgroundPosition: "center top",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        {/* Subtle warm ivory readability veil beneath the toranam leaves */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(253,245,228,0) 0%, rgba(253,245,228,0) 24%, rgba(253,245,228,0.88) 44%, rgba(253,245,228,0.96) 100%)",
-          }}
-        />
+    <div id="home" className="shubha-landing-root flex flex-col">
+      {/* Sacred Akshintalu Falling Rice Simulation Canvas */}
+      <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 w-full h-full opacity-35" />
 
-        <div className="relative z-10 max-w-[1320px] mx-auto px-4 sm:px-8 lg:px-14 pt-12 sm:pt-16 lg:pt-[76px] pb-3.5 lg:pb-4">
-          <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-between gap-4 lg:gap-0">
-            {/* LEFT BRAND LOCKUP — Exact Poster Match */}
-            <div className="flex flex-col items-center justify-center lg:pr-8 lg:border-r lg:border-[#D49B3E]/70 shrink-0">
-              {/* Golden Lotus / Kalasam Crest */}
-              <svg
-                viewBox="0 0 64 36"
-                className="w-11 h-7 sm:w-12 sm:h-7 mb-0.5 drop-shadow-xs"
-                aria-hidden="true"
-              >
-                <path
-                  d="M32 3c-4 8-7 14-7 20 0 5 3 8 7 8s7-3 7-8c0-6-3-12-7-20Z"
-                  fill="#E8A528"
-                  stroke="#9C4D10"
-                  strokeWidth="1.8"
-                />
-                <path
-                  d="M25 26c-7-1-12-5-15-11 6 1 11 4 14 8"
-                  fill="#F3C14B"
-                  stroke="#9C4D10"
-                  strokeWidth="1.6"
-                />
-                <path
-                  d="M39 26c7-1 12-5 15-11-6 1-11 4-14 8"
-                  fill="#F3C14B"
-                  stroke="#9C4D10"
-                  strokeWidth="1.6"
-                />
-                <path
-                  d="M20 29c4 3 8 4 12 4s8-1 12-4"
-                  fill="none"
-                  stroke="#9C4D10"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+      {/* 1. FESTIVE MANGO-LEAF & MARIGOLD TORANAM */}
+      <div className="shubha-toranam" aria-hidden="true" style={{ backgroundImage: `url(${toranamImg})` }} />
 
-              {/* శుభమస్తు flanked by golden scrollwork */}
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 44 16" className="w-8 sm:w-10 h-4 text-[#D4942A] shrink-0" aria-hidden="true">
-                  <path
-                    d="M42 8H18m0 0c-3-5-9-5-11-1s2 6 6 2m5-1c-3 5-9 5-11 1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="4" cy="8" r="2" fill="currentColor" />
-                </svg>
-
-                <span className="font-telugu-serif text-[34px] sm:text-[42px] lg:text-[46px] font-black leading-[1.05] text-[#7E1216] tracking-tight">
-                  శుభమస్తు
-                </span>
-
-                <svg viewBox="0 0 44 16" className="w-8 sm:w-10 h-4 text-[#D4942A] shrink-0 scale-x-[-1]" aria-hidden="true">
-                  <path
-                    d="M42 8H18m0 0c-3-5-9-5-11-1s2 6 6 2m5-1c-3 5-9 5-11 1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="4" cy="8" r="2" fill="currentColor" />
-                </svg>
-              </div>
-
-              {/* Shubhamastu Serif Subtitle */}
-              <span className="font-brand-serif text-lg sm:text-xl font-bold text-[#7E1216] leading-none -mt-0.5 mb-1.5 tracking-wide">
-                Shubhamastu
-              </span>
-
-              {/* Maroon Ribbon Banner */}
-              <div className="relative inline-flex items-center justify-center px-5 sm:px-6 py-1 bg-gradient-to-b from-[#8B151B] to-[#650A0E] text-white rounded-full border border-[#DFA43B]/80 shadow-xs">
-                <span className="font-telugu-serif text-xs sm:text-[14px] font-bold tracking-wide whitespace-nowrap">
-                  తెలుగు బ్రాహ్మణ మ్యాట్రిమోనీ
-                </span>
-              </div>
+      <div className="shubha-page-shell">
+        {/* 2. SITE HEADER */}
+        <header className="shubha-header">
+          {/* Brand Lockup */}
+          <div
+            className="shubha-brand"
+            onClick={() => scrollToSection("home", "home")}
+            role="button"
+            tabIndex={0}
+            aria-label="Shubhamastu Home"
+          >
+            <div className="shubha-emblem" aria-hidden="true">
+              <img src={emblemImg} alt="Shubhamastu Emblem" />
+              <span className="shubha-emblem-om">ఓం</span>
             </div>
-
-            {/* RIGHT SIDE: 2-ROW TAGLINE + NAVIGATION & ACTIONS */}
-            <div className="flex-1 flex flex-col justify-between gap-3 lg:pl-8 w-full">
-              {/* Row 1: Sacred Telugu Tagline */}
-              <div className="text-center space-y-1">
-                <p className="font-telugu-serif text-base sm:text-lg lg:text-[21px] font-bold text-[#6E1115] leading-snug">
-                  బ్రాహ్మణ సంప్రదాయాలకు గౌరవం...
-                </p>
-                <p className="font-telugu-serif text-sm sm:text-base lg:text-[19px] font-bold text-[#6E1115] leading-snug flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                  <span>శుభ వివాహ బంధాలకు విశ్వసనీయ</span>
-                  <span className="inline-flex items-center px-3.5 py-0.5 rounded-full bg-gradient-to-b from-[#8C151B] to-[#680A0F] text-white text-sm sm:text-base lg:text-[17px] font-bold shadow-xs">
-                    మ్యాట్రిమోనీ వెబ్‌సైట్
-                  </span>
-                </p>
-              </div>
-
-              {/* Row 2: Navigation Links + Login & Register Free Buttons */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-between gap-x-4 gap-y-2.5 pt-1">
-                <nav
-                  aria-label="Primary Navigation"
-                  className="flex flex-wrap items-center justify-center gap-x-4 xl:gap-x-6 gap-y-1.5 text-[13px] sm:text-[14px] font-bold text-[#3B1710]"
-                >
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection("home", "home")}
-                    className={`inline-flex items-center gap-1.5 pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      activeNav === "home"
-                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
-                        : "text-[#3B1710] hover:text-[#7E1216]"
-                    }`}
-                  >
-                    <Home className="w-3.5 h-3.5 fill-current" />
-                    <span>హోమ్</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchLookingFor("Groom");
-                      scrollToSection("partner-search-card", "grooms");
-                    }}
-                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      activeNav === "grooms"
-                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
-                        : "text-[#3B1710] hover:text-[#7E1216]"
-                    }`}
-                  >
-                    వరులు వెతకండి
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchLookingFor("Bride");
-                      scrollToSection("partner-search-card", "brides");
-                    }}
-                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      activeNav === "brides"
-                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
-                        : "text-[#3B1710] hover:text-[#7E1216]"
-                    }`}
-                  >
-                    వధువులు వెతకండి
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection("membership-plans", "plans")}
-                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      activeNav === "plans"
-                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
-                        : "text-[#3B1710] hover:text-[#7E1216]"
-                    }`}
-                  >
-                    సభ్యత్వ పథకాలు
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection("vedic-pandits", "stories")}
-                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      activeNav === "stories"
-                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
-                        : "text-[#3B1710] hover:text-[#7E1216]"
-                    }`}
-                  >
-                    విజయ కథలు
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection("about-shubhamastu", "about")}
-                    className={`pb-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      activeNav === "about"
-                        ? "text-[#7E1216] border-b-2 border-[#7E1216]"
-                        : "text-[#3B1710] hover:text-[#7E1216]"
-                    }`}
-                  >
-                    మా గురించి
-                  </button>
-                </nav>
-
-                {/* Header Right Action Buttons: లాగిన్ & ఉచితంగా నమోదు */}
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowUserLoginModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FFFDF8] hover:bg-[#FAF0DC] text-[#7E1216] border border-[#8B1A1F] rounded-md text-[13px] sm:text-[14px] font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
-                  >
-                    <User className="w-4 h-4 text-[#7E1216]" />
-                    <span>లాగిన్</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowRegisterModal(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-b from-[#8F151B] to-[#680B10] hover:brightness-110 active:scale-[0.98] text-white border border-[#DFA43B]/60 rounded-md text-[13px] sm:text-[14px] font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-sm"
-                  >
-                    <UserPlus className="w-4 h-4 text-white" />
-                    <span>ఉచితంగా నమోదు</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* =====================================================================
-          2. EXACT POSTER HERO MANDAPAM BANNER WITH COUPLE & PARTNER SEARCH
-      ===================================================================== */}
-      <section
-        className="relative z-20 w-full border-b-2 border-[#D49B3E] bg-[#FDF4E1] overflow-hidden"
-        style={{
-          backgroundImage: `url(${heroMandapamUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        {/* Subtle left-side warm ivory veil on smaller viewports for guaranteed text legibility */}
-        <div
-          className="absolute inset-0 pointer-events-none lg:hidden"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(253,245,228,0.88) 0%, rgba(253,245,228,0.68) 45%, rgba(253,245,228,0.88) 100%)",
-          }}
-        />
-        <div
-          className="hidden lg:block absolute inset-y-0 left-0 w-[40%] pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(253,244,225,0.45) 0%, rgba(253,244,225,0.22) 70%, rgba(253,244,225,0) 100%)",
-          }}
-        />
-
-        <div className="relative z-10 max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-14 py-9 lg:py-12 min-h-[450px] lg:min-h-[505px] grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr_0.94fr] items-center gap-6 lg:gap-4">
-          {/* LEFT COLUMN: Telugu Headline + Ornate Divider + 4 Golden-Checkmark Bullets */}
-          <div className="text-center lg:pl-4 space-y-4">
-            <h1 className="font-telugu-serif text-[26px] sm:text-[32px] lg:text-[35px] xl:text-[38px] font-black text-[#6E0E13] leading-[1.28] tracking-tight drop-shadow-[0_1px_8px_rgba(255,250,240,0.95)]">
-              <span className="block">తెలుగు బ్రాహ్మణుల కొరకు</span>
-              <span className="block">ప్రత్యేక వివాహ మ్యాట్రిమోనీ వెబ్‌సైట్</span>
-            </h1>
-
-            {/* Ornate Thin Maroon-Gold Horizontal Divider with Diamond */}
-            <div className="flex items-center justify-center gap-2 max-w-[260px] mx-auto py-0.5" aria-hidden="true">
-              <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent via-[#A44835] to-[#7E1216]" />
-              <div className="w-2 h-2 rotate-45 bg-[#7E1216] border border-[#DFA43B]" />
-              <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-[#A44835] to-[#7E1216]" />
-            </div>
-
-            {/* 4 Checkmark Bullet Points — Exact Poster Copy */}
-            <ul className="space-y-2.5 max-w-[330px] mx-auto text-left pt-1">
-              {[
-                "బ్రాహ్మణులకే ప్రత్యేకంగా",
-                "గోత్రం ఆధారిత శోధన",
-                "సురక్షితమైన & గోప్యతగల సేవ",
-                "సంప్రదాయ వివాహ విలువలకు ప్రాధాన్యం",
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-3 text-[15px] sm:text-[16px] lg:text-[17px] font-bold text-[#491410] drop-shadow-[0_1px_4px_rgba(255,250,240,0.95)]"
-                >
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#DFA02C] to-[#AD6D12] text-white flex items-center justify-center shrink-0 shadow-xs ring-1 ring-[#F5CE6E]/70">
-                    <Check className="w-3.5 h-3.5 stroke-[3.2]" />
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* CENTER COLUMN: Clear Showcase Window for the Photorealistic Brahmin Couple & Coconut Kalasam */}
-          <div className="flex items-center justify-center">
-            {/* On desktop, leave completely open so the background couple + kalasam shine unobstructed */}
-            <div className="hidden lg:block w-full min-h-[380px]" aria-hidden="true" />
-            {/* On mobile/tablet, show a crisp framed view of the mandapam couple */}
-            <div className="lg:hidden w-full max-w-md rounded-xl overflow-hidden border-2 border-[#D49B3E] shadow-md">
-              <img
-                src={heroMandapamUrl}
-                alt="తెలుగు బ్రాహ్మణ వివాహ వేదిక"
-                referrerPolicy="no-referrer"
-                className="w-full h-52 sm:h-64 object-cover object-center"
-              />
+            <div className="shubha-brand-copy">
+              <strong className="shubha-brand-tel shubha-telugu">శుభమస్తు</strong>
+              <span className="shubha-brand-en">SHUBHAMASTU MATRIMONY</span>
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Ornate Cream-Gold Partner Search Card — Exact Poster Match */}
-          <div id="partner-search-card" className="w-full max-w-[385px] mx-auto lg:ml-auto lg:mr-3">
-            <div className="relative bg-[#FDF5E6]/96 border-2 border-[#D49B3E] rounded-xl p-1.5 shadow-[0_14px_34px_rgba(68,26,8,0.28)]">
-              {/* Decorative Corner Accents */}
-              <span className="pointer-events-none absolute -top-0.5 -left-0.5 w-3.5 h-3.5 border-t-2 border-l-2 border-[#9B5E12] rounded-tl-md" />
-              <span className="pointer-events-none absolute -top-0.5 -right-0.5 w-3.5 h-3.5 border-t-2 border-r-2 border-[#9B5E12] rounded-tr-md" />
-              <span className="pointer-events-none absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 border-b-2 border-l-2 border-[#9B5E12] rounded-bl-md" />
-              <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-b-2 border-r-2 border-[#9B5E12] rounded-br-md" />
-
-              <div className="border border-[#E1BC74] rounded-lg px-4 sm:px-5 py-4 space-y-3.5 bg-[#FDF6E8]/90">
-                {/* Card Header */}
-                <div className="flex items-center justify-center gap-2.5 pb-2 border-b border-[#E5C98E]">
-                  {/* Groom & Bride Line Icon */}
-                  <svg viewBox="0 0 40 32" className="w-8 h-7 shrink-0" aria-hidden="true">
-                    <circle cx="13" cy="9" r="4.5" fill="none" stroke="#C97B16" strokeWidth="2" />
-                    <path d="M5 27c0-5 3.5-8.5 8-8.5s8 3.5 8 8.5" fill="none" stroke="#C97B16" strokeWidth="2" strokeLinecap="round" />
-                    <circle cx="26.5" cy="8.5" r="4.5" fill="#7E1216" />
-                    <path d="M19.5 27c.5-4.8 3.2-8.2 7-8.2s6.5 3.4 7 8.2" fill="none" stroke="#7E1216" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  <h2 className="font-telugu-serif text-[16px] sm:text-[18px] font-extrabold text-[#7E1216] leading-tight">
-                    మీ జీవిత భాగస్వామిని కనుగొనండి
-                  </h2>
-                </div>
-
-                {/* Partner Search Form — Exact 4 Horizontal Rows from Poster */}
-                <form onSubmit={handleHeroSearchSubmit} className="space-y-2.5 text-left">
-                  {/* Row 1: నేను */}
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
-                    <label htmlFor="hero-looking-for" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
-                      <span className="text-[#7E1216]">•</span>
-                      <span>నేను</span>
-                    </label>
-                    <select
-                      id="hero-looking-for"
-                      value={searchLookingFor}
-                      onChange={(e) => setSearchLookingFor(e.target.value)}
-                      className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2.5 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
-                    >
-                      <option value="">వరుడు / వధువు</option>
-                      <option value="Groom">వరుడు (Groom)</option>
-                      <option value="Bride">వధువు (Bride)</option>
-                    </select>
-                  </div>
-
-                  {/* Row 2: గోత్రం */}
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
-                    <label htmlFor="hero-gotram" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
-                      <span className="text-[#7E1216]">•</span>
-                      <span>గోత్రం</span>
-                    </label>
-                    <select
-                      id="hero-gotram"
-                      value={searchGotram}
-                      onChange={(e) => setSearchGotram(e.target.value)}
-                      className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2.5 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
-                    >
-                      <option value="">ఎంచుకోండి</option>
-                      {BRAHMIN_GOTRAMS.map((g) => (
-                        <option key={g.id} value={g.labelEn}>
-                          {g.labelTe}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Row 3: ఉపవర్గం */}
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
-                    <label htmlFor="hero-subcaste" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
-                      <span className="text-[#7E1216]">•</span>
-                      <span>ఉపవర్గం</span>
-                    </label>
-                    <select
-                      id="hero-subcaste"
-                      value={searchSubCaste}
-                      onChange={(e) => setSearchSubCaste(e.target.value)}
-                      className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2.5 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
-                    >
-                      <option value="">ఎంచుకోండి</option>
-                      {BRAHMIN_SUB_CASTES.map((s) => (
-                        <option key={s.id} value={s.labelEn}>
-                          {s.labelTe}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Row 4: వయసు */}
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-2">
-                    <label htmlFor="hero-age-from" className="text-[13px] sm:text-[14px] font-bold text-[#3B1510] flex items-center gap-1.5">
-                      <span className="text-[#7E1216]">•</span>
-                      <span>వయసు</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        id="hero-age-from"
-                        value={searchAgeFrom}
-                        onChange={(e) => setSearchAgeFrom(e.target.value)}
-                        className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
-                      >
-                        <option value="">నుంచి</option>
-                        {AGE_OPTIONS.map((age) => (
-                          <option key={`from-${age}`} value={age}>
-                            {age} సం.
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label="వయసు వరకు"
-                        value={searchAgeTo}
-                        onChange={(e) => setSearchAgeTo(e.target.value)}
-                        className="w-full bg-white border border-[#D4BC94] focus:border-[#7E1216] rounded-md py-1.5 px-2 text-[13px] font-semibold text-[#3B1510] focus:outline-none cursor-pointer shadow-2xs"
-                      >
-                        <option value="">వరకు</option>
-                        {AGE_OPTIONS.map((age) => (
-                          <option key={`to-${age}`} value={age}>
-                            {age} సం.
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Maroon Search Submit Button */}
-                  <button
-                    type="submit"
-                    className="w-full mt-2 py-2.5 px-4 bg-gradient-to-b from-[#8F151B] via-[#7A1015] to-[#61090D] hover:brightness-110 active:scale-[0.99] text-white font-bold text-[14px] sm:text-[15px] rounded-md shadow-md border border-[#DFA43B]/40 flex items-center justify-center gap-2 cursor-pointer transition-all"
-                  >
-                    <Search className="w-4 h-4 text-white shrink-0" />
-                    <span>సరిపడే జీవిత భాగస్వాములను వెతకండి</span>
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================================
-          3. EXACT POSTER BOTTOM 5-COLUMN TRUST STRIP + ORNATE FREE CTA BUTTON
-      ===================================================================== */}
-      <section className="relative z-20 w-full bg-[#FAF0DC] pt-6 pb-8 px-4 sm:px-8 border-b border-[#DFC086]">
-        <div className="max-w-[1300px] mx-auto">
-          {/* 5-Column Trust Feature Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-y-6 lg:gap-y-0 lg:divide-x lg:divide-[#D7B26A]">
-            {/* Item 1 */}
-            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
-              <Users className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
-              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
-                తెలుగు బ్రాహ్మణులకు
-                <br />
-                ప్రత్యేక మ్యాట్రిమోనీ
-              </p>
-            </div>
-
-            {/* Item 2 */}
-            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
-              {/* Traditional Sacred Kalasam / Diya Icon */}
-              <svg viewBox="0 0 40 40" className="w-9 h-9 mb-2 text-[#821318]" aria-hidden="true">
-                <path
-                  d="M20 5c-2.5 4.2-4 7-4 9.5 0 2.4 1.8 4 4 4s4-1.6 4-4c0-2.5-1.5-5.3-4-9.5Z"
-                  fill="#E89B22"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
-                <path
-                  d="M11 21h18c0 6.5-3.8 11-9 11s-9-4.5-9-11Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                />
-                <path d="M13 18c-2-1-4-3-4.5-5M27 18c2-1 4-3 4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M14 35h12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <p className="font-telugu-serif text-[13px] sm:text-[14px] font-bold text-[#6E1115] leading-snug">
-                సంప్రదాయం • సంస్కారం • కుటుంబ విలువలు
-              </p>
-            </div>
-
-            {/* Item 3 */}
-            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
-              <ShieldCheck className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
-              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
-                ధృవీకరించిన ప్రొఫైల్స్
-                <br />
-                (గోత్రం సహితంగా)
-              </p>
-            </div>
-
-            {/* Item 4 */}
-            <div className="px-3 sm:px-4 flex flex-col items-center text-center">
-              <Lock className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
-              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
-                పూర్తి గోప్యత &amp;
-                <br />
-                డేటా భద్రత
-              </p>
-            </div>
-
-            {/* Item 5 */}
-            <div className="px-3 sm:px-4 col-span-2 sm:col-span-1 flex flex-col items-center text-center">
-              <HeartHandshake className="w-9 h-9 text-[#821318] stroke-[1.7] mb-2" />
-              <p className="font-telugu-serif text-[14px] sm:text-[15px] font-bold text-[#6E1115] leading-snug">
-                వివాహం వరకు
-                <br />
-                విశ్వసనీయ సహాయం
-              </p>
-            </div>
+          {/* Sub-descriptor */}
+          <div className="shubha-descriptor">
+            <strong className="shubha-telugu">తెలుగు బ్రాహ్మణ వివాహ వేదిక</strong>
+            <small>A Matrimonial Platform for Telugu Brahmins</small>
           </div>
 
-          {/* Centered Ornate Primary CTA Button flanked by golden filigree */}
-          <div className="mt-6 flex items-center justify-center gap-3 sm:gap-5">
-            <div className="hidden sm:flex items-center gap-2 w-28 md:w-44" aria-hidden="true">
-              <div className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent to-[#D4942A]" />
-              <svg viewBox="0 0 44 16" className="w-10 h-4 text-[#D4942A] shrink-0">
-                <path
-                  d="M2 8h24m0 0c3-5 9-5 11-1s-2 6-6 2m-5-1c3 5 9 5 11 1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+          {/* Navigation Links with Icons */}
+          <nav className="shubha-nav" aria-label="Main navigation">
+            <button
+              type="button"
+              onClick={() => scrollToSection("home", "home")}
+              className={`shubha-nav-link ${activeNav === "home" ? "active" : ""}`}
+            >
+              <span className="nav-icon">⌂</span>
+              <span>Home</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav("search");
+                const el = document.getElementById("search-panels");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className={`shubha-nav-link ${activeNav === "search" ? "active" : ""}`}
+            >
+              <span className="nav-icon">⌕</span>
+              <span>Search Matches</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("membership-plans", "plans")}
+              className={`shubha-nav-link ${activeNav === "plans" ? "active" : ""}`}
+            >
+              <span className="nav-icon">♛</span>
+              <span>Member Plans</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("vedic-pandits", "stories")}
+              className={`shubha-nav-link ${activeNav === "stories" ? "active" : ""}`}
+            >
+              <span className="nav-icon">☆</span>
+              <span>Success Stories</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("about-shubhamastu", "about")}
+              className={`shubha-nav-link ${activeNav === "about" ? "active" : ""}`}
+            >
+              <span className="nav-icon">ⓘ</span>
+              <span>About Us</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowContactModal(true)}
+              className="shubha-nav-link"
+            >
+              <span className="nav-icon">♧</span>
+              <span>Contact</span>
+            </button>
+          </nav>
 
+          {/* Header Action Buttons */}
+          <div className="shubha-nav-actions">
             <button
               type="button"
               onClick={() => setShowRegisterModal(true)}
-              className="inline-flex items-center justify-center gap-2.5 px-7 sm:px-12 py-3 bg-gradient-to-b from-[#91151C] via-[#7A1015] to-[#58080C] hover:brightness-110 active:scale-[0.99] text-white font-telugu-serif font-bold text-base sm:text-lg lg:text-[20px] rounded-xl border-2 border-[#DFA43B] ring-1 ring-[#F4CE78]/70 shadow-[0_6px_18px_rgba(88,8,12,0.32)] transition-all cursor-pointer whitespace-nowrap"
+              className="shubha-nav-btn outline"
             >
-              <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-white shrink-0" />
-              <span>ఇప్పుడే ఉచితంగా నమోదు చేసుకోండి</span>
+              <span>♙ Register</span>
             </button>
-
-            <div className="hidden sm:flex items-center gap-2 w-28 md:w-44" aria-hidden="true">
-              <svg viewBox="0 0 44 16" className="w-10 h-4 text-[#D4942A] shrink-0 scale-x-[-1]">
-                <path
-                  d="M2 8h24m0 0c3-5 9-5 11-1s-2 6-6 2m-5-1c3 5 9 5 11 1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent to-[#D4942A]" />
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowUserLoginModal(true)}
+              className="shubha-nav-btn solid"
+            >
+              <span>♙ Login</span>
+            </button>
           </div>
-        </div>
-      </section>
+        </header>
+
+        {/* 3. HERO MANDAPAM BANNER */}
+        <main>
+          <section className="shubha-hero" aria-labelledby="hero-title">
+            <div className="shubha-corner shubha-top-left" aria-hidden="true">❧</div>
+            <div className="shubha-corner shubha-top-right" aria-hidden="true">❧</div>
+            <div className="shubha-corner shubha-bottom-left" aria-hidden="true">❧</div>
+            <div className="shubha-corner shubha-bottom-right" aria-hidden="true">❧</div>
+
+            <div className="shubha-hero-art">
+              <img
+                src={weddingImg}
+                alt="Traditional Telugu Brahmin wedding ceremony with bride, groom and homam"
+              />
+            </div>
+
+            <div className="shubha-hero-center">
+              <div className="shubha-lotus-mark" aria-hidden="true">❀</div>
+              <h1 id="hero-title" className="shubha-telugu">శుభమస్తు</h1>
+              <div className="shubha-flourish" aria-hidden="true">❧ ───── ❖ ───── ❧</div>
+              <h2 className="shubha-telugu">సంప్రదాయాలు కలిపే మధురబంధం</h2>
+              <p>Where Traditions Unite Hearts</p>
+              <div className="shubha-flourish small" aria-hidden="true">── ❖ ──</div>
+            </div>
+
+            <div className="shubha-hero-art">
+              <img
+                src={kalashImg}
+                alt="Traditional auspicious kalash with coconut, mango leaves and lamps"
+              />
+            </div>
+          </section>
+
+          {/* 3 Slide Dots */}
+          <div className="shubha-slide-dots" aria-hidden="true">
+            <i className="active" />
+            <i />
+            <i />
+          </div>
+
+          {/* 4. TWO SYMMETRIC SEARCH PANELS */}
+          <div className="shubha-search-panels" id="search-panels">
+            {/* Panel 1: Quick Search */}
+            <section className="shubha-panel">
+              <h2 className="shubha-panel-title">
+                <span>❀</span>Quick Search<span>❀</span>
+              </h2>
+              <form className="shubha-quick-search-form" onSubmit={handleHeroSearchSubmit}>
+                <fieldset className="shubha-looking-group">
+                  <legend>I am looking for</legend>
+                  <div className="shubha-radios">
+                    <label>
+                      <input
+                        type="radio"
+                        name="looking"
+                        value="Bride"
+                        checked={searchLookingFor !== "Groom"}
+                        onChange={() => setSearchLookingFor("Bride")}
+                      />
+                      <span>Bride</span>
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="looking"
+                        value="Groom"
+                        checked={searchLookingFor === "Groom"}
+                        onChange={() => setSearchLookingFor("Groom")}
+                      />
+                      <span>Groom</span>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <div className="shubha-search-field">
+                  <label htmlFor="quick-age-select">Age Ranges</label>
+                  <select
+                    id="quick-age-select"
+                    value={searchAgeFrom ? `${searchAgeFrom} – ${searchAgeTo || '32'}` : "23 – 32"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const parts = val.replace(/[–—]/g, "-").split("-").map((p) => p.trim());
+                      if (parts.length === 2) {
+                        setSearchAgeFrom(parts[0]);
+                        setSearchAgeTo(parts[1]);
+                      }
+                    }}
+                  >
+                    <option value="23 – 32">23 – 32</option>
+                    <option value="18 – 25">18 – 25</option>
+                    <option value="26 – 35">26 – 35</option>
+                    <option value="36 – 45">36 – 45</option>
+                    <option value="46 – 60">46 – 60</option>
+                  </select>
+                </div>
+
+                <div className="shubha-search-field">
+                  <label htmlFor="quick-gotram-select">Gothram</label>
+                  <select
+                    id="quick-gotram-select"
+                    value={searchGotram}
+                    onChange={(e) => setSearchGotram(e.target.value)}
+                  >
+                    <option value="">Select Gothram</option>
+                    {BRAHMIN_GOTRAMS.map((g) => (
+                      <option key={g.id} value={g.labelEn.split(" ")[0]}>
+                        {g.labelEn.split(" ")[0]} ({g.labelTe})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button className="shubha-search-submit-btn" type="submit">
+                  <span>⌕</span>
+                  <span>Search Matches</span>
+                </button>
+              </form>
+            </section>
+
+            {/* Panel 2: Regional Wise Search */}
+            <section className="shubha-panel">
+              <h2 className="shubha-panel-title">
+                <span>❀</span>Regional Wise Search<span>❀</span>
+              </h2>
+              <div className="shubha-regions-grid">
+                <button
+                  type="button"
+                  className="shubha-region-card"
+                  onClick={() => handleRegionClick("Rayalaseema")}
+                >
+                  <span className="shubha-region-icon">🏰</span>
+                  <strong>Rayalaseema <span>⌄</span></strong>
+                </button>
+                <button
+                  type="button"
+                  className="shubha-region-card"
+                  onClick={() => handleRegionClick("Godavari")}
+                >
+                  <span className="shubha-region-icon">🌴</span>
+                  <strong>Godavari <span>⌄</span></strong>
+                  <small>(East &amp; West)</small>
+                </button>
+                <button
+                  type="button"
+                  className="shubha-region-card"
+                  onClick={() => handleRegionClick("Coastal Andhra")}
+                >
+                  <span className="shubha-region-icon">⛵</span>
+                  <strong>Coastal Andhra <span>⌄</span></strong>
+                </button>
+                <button
+                  type="button"
+                  className="shubha-region-card"
+                  onClick={() => handleRegionClick("Telangana")}
+                >
+                  <span className="shubha-region-icon">🏛</span>
+                  <strong>Telangana <span>⌄</span></strong>
+                </button>
+              </div>
+            </section>
+          </div>
+
+          {statusMessage && (
+            <p className="shubha-interaction-status" role="status" aria-live="polite">
+              {statusMessage}
+            </p>
+          )}
+
+          {/* 5. THE SHUBHAMASTU ADVANTAGE SECTION */}
+          <section className="shubha-advantage-section" aria-labelledby="advantage-title">
+            <h2 id="advantage-title" className="shubha-section-ribbon">
+              The Shubhamastu Advantage
+            </h2>
+            <div className="shubha-advantage-items">
+              <div className="shubha-advantage-card" onClick={() => setShowRegisterModal(true)}>
+                <span className="adv-icon">♧</span>
+                <strong>Family Consensus<br />Matching</strong>
+              </div>
+              <div className="shubha-advantage-card" onClick={() => setShowRegisterModal(true)}>
+                <span className="adv-icon">❀</span>
+                <strong>Gothra &amp; Pravara<br />Compatibility</strong>
+              </div>
+              <div
+                className="shubha-advantage-card"
+                onClick={() => {
+                  try {
+                    downloadAstrologyPdf({
+                      name: "Sample Candidate",
+                      surname: "Sharma",
+                      gothram: "Bharadwaja",
+                      nakshatram: "Uttara Phalguni",
+                      dob: "1997-05-15",
+                      sub_caste: "Vaidiki Velanadu",
+                      profession: "Software Architect",
+                      salary_lpa: 18,
+                      id: "sample-preview",
+                      gender: "Male",
+                      height_feet: 5.10,
+                      status: "Verified",
+                      subscription_status: "free",
+                      astrology: {
+                        nakshatra: "Uttara Phalguni",
+                        nakshatraLord: "Sun",
+                        pada: 2,
+                        rashi: "Simha (Leo)",
+                        tithi: "Shukla Dashami",
+                        deity: "Aryaman",
+                        spiritualAnalysis: "Generous, high state of spiritual readiness, aligned with social upliftment and Brahminical values.",
+                        compatibilityTraits: ["Very kindhearted", "Passionate about Vedic literature", "Harmonious relationship indicator"],
+                        spiritualScore: 88
+                      }
+                    } as any);
+                  } catch (e) {
+                    setShowRegisterModal(true);
+                  }
+                }}
+              >
+                <span className="adv-icon">▤</span>
+                <strong>Traditional<br />Biodata Download</strong>
+              </div>
+              <div
+                className="shubha-advantage-card highlight"
+                onClick={() => {
+                  setStatusMessage("Upcoming Matrimony Meets: Hyderabad, Vijayawada & Tirupati offline sammelanams planned! Register now to receive invitations.");
+                  setShowRegisterModal(true);
+                }}
+              >
+                <span className="adv-icon">▦</span>
+                <strong>Upcoming<br />Matrimony Meets</strong>
+              </div>
+              <div className="shubha-advantage-card" onClick={() => setShowRegisterModal(true)}>
+                <span className="adv-icon">♧</span>
+                <strong>Match Journey<br />Tracker</strong>
+              </div>
+              <div className="shubha-advantage-card" onClick={() => setActiveLegalDoc("privacy")}>
+                <span className="adv-icon">♢</span>
+                <strong>Privacy by<br />Design</strong>
+              </div>
+            </div>
+          </section>
+
+          {/* 6. WEDDING SERVICES SECTION */}
+          <section className="shubha-services-section" aria-labelledby="services-title">
+            <h2 id="services-title" className="shubha-section-ribbon">
+              Wedding Services
+            </h2>
+            <div className="shubha-service-items">
+              <div
+                className="shubha-service-card"
+                onClick={() => {
+                  setContactMsg("Inquiry for Marriage Catering Services (సంప్రదాయ బ్రాహ్మణ వంటలు)");
+                  setShowContactModal(true);
+                }}
+              >
+                <span className="srv-icon">🔔</span>
+                <strong>Marriage Caterers</strong>
+              </div>
+              <div
+                className="shubha-service-card"
+                onClick={() => {
+                  setContactMsg("Inquiry for Budget Decors (Traditional Mandapam & Modern Floral Arrangements)");
+                  setShowContactModal(true);
+                }}
+              >
+                <span className="srv-icon">🎪</span>
+                <div>
+                  <strong>Budget Decors</strong>
+                  <small>(Traditional &amp; Modern)</small>
+                </div>
+              </div>
+              <div
+                className="shubha-service-card"
+                onClick={() => scrollToSection("vedic-pandits", "stories")}
+              >
+                <span className="srv-icon">🙏</span>
+                <div>
+                  <strong>Pellila Purohitulu</strong>
+                  <small>(Vedic &amp; Traditional)</small>
+                </div>
+              </div>
+              <div
+                className="shubha-service-card"
+                onClick={() => {
+                  setContactMsg("Inquiry for Traditional Marriage Items (Panchadara Chilakalu, Endukobbari, Ginnela Designs)");
+                  setShowContactModal(true);
+                }}
+              >
+                <span className="srv-icon">🪔</span>
+                <div>
+                  <strong>Traditional Marriage Items</strong>
+                  <small>(Panchadara Chilakalu, Endukobbari, Ginnela Designs &amp; More)</small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      {/* 7. ORNATE CONTINUOUS FOOTER BORDER */}
+      <footer className="shubha-ornate-footer" aria-label="Decorative border">
+        ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿ ❀ ✿
+      </footer>
 
       {/* =====================================================================
           4. MEMBERSHIP PLANS (సభ్యత్వ పథకాలు) — FREE REGISTRATION + ₹10/MONTH PHONEPE
@@ -1778,7 +1645,7 @@ export default function LandingPage({
                   </div>
                   <div className="text-right">
                     <span className="font-mono text-2xl font-black text-[#7E1216] tabular-nums">₹10</span>
-                    <span className="block text-[11px] text-[#6B4533] font-semibold">ప్రతి నెలకు / month</span>
+                    <span className="block text-[11px] text-[#6B4533] font-semibold">31 రోజులు / 31 Days Testing</span>
                   </div>
                 </div>
 
@@ -1793,7 +1660,7 @@ export default function LandingPage({
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>సురక్షిత PhonePe గేట్‌వే ద్వారా తక్షణ యాక్టివేషన్</span>
+                    <span>సురక్షిత PhonePe గేట్‌వే ద్వారా తక్షణ యాక్టివేషన్ (31 రోజుల యాక్సెస్)</span>
                   </li>
                 </ul>
               </div>
@@ -1803,7 +1670,7 @@ export default function LandingPage({
                 className="w-full py-2.5 px-4 bg-gradient-to-b from-[#8F151B] to-[#650A0E] hover:brightness-110 text-white rounded-lg text-sm font-bold text-center transition-all border border-[#DFA43B]/60 shadow-sm flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>PhonePe ద్వారా ₹10 సభ్యత్వం పొందండి</span>
+                <span>PhonePe ద్వారా ₹10 సభ్యత్వం (31 రోజులు)</span>
               </a>
             </div>
           </div>
@@ -1813,7 +1680,7 @@ export default function LandingPage({
       {/* =====================================================================
           5. DISTRICT-WISE SEARCH (AP & TELANGANA) — COHESIVE CREAM & MAROON THEME
       ===================================================================== */}
-      <section className="relative z-20 w-full bg-[#FAF0DC] py-12 px-4 sm:px-8 border-b border-[#DFC086]">
+      <section id="regional-districts" className="relative z-20 w-full bg-[#FAF0DC] py-12 px-4 sm:px-8 border-b border-[#DFC086]">
         <div className="max-w-[1240px] mx-auto space-y-7">
           <div className="text-center space-y-2">
             <h2 className="font-telugu-serif text-2xl sm:text-3xl font-black text-[#7E1216]">

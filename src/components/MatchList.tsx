@@ -583,7 +583,11 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
 
   const handleUnlockContact = (matchId: string) => {
     const subStatus = currentProfile.subscription_status || "free";
-    const isPaidMember = subStatus === "paid_900" || subStatus === "paid_1599";
+    const isPaidMember =
+      subStatus === "paid_10" ||
+      subStatus === "paid_100" ||
+      subStatus === "paid_900" ||
+      subStatus === "paid_1599";
     if (!isPaidMember) {
       setShowUpgradeModal(true);
       return;
@@ -607,8 +611,8 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan: "paid_900",
-          orderAmount: 900,
+          plan: "paid_10",
+          orderAmount: 10,
           customerId: currentProfile.id,
           customerPhone: currentProfile.contact_number,
           customerEmail: currentProfile.email,
@@ -883,7 +887,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
         </div>
       </div>
 
-      {currentProfile.subscription_status !== "paid_900" && currentProfile.subscription_status !== "paid_1599" && (
+      {currentProfile.subscription_status !== "paid_10" && currentProfile.subscription_status !== "paid_100" && currentProfile.subscription_status !== "paid_900" && currentProfile.subscription_status !== "paid_1599" && (
         <div className="bg-amber-50 border border-amber-200 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-amber-100 text-amber-800 rounded-2xl shrink-0">
@@ -897,7 +901,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 </span>
               </p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Only <span className="font-bold">Paid Premium (₹1,599 / ₹900)</span> members can retrieve verified phone numbers and sacred Kundali attachments. Upgrade now to unlock immediate access.
+                Only <span className="font-bold">Paid Members (₹10 • 31 Days Testing Access)</span> can retrieve verified phone numbers and sacred Kundali attachments. Upgrade now to unlock immediate access.
               </p>
             </div>
           </div>
@@ -905,19 +909,19 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             onClick={() => setShowUpgradeModal(true)}
             className="w-full sm:w-auto bg-[#C2242C] text-white hover:bg-opacity-95 active:scale-95 transition-all font-bold text-xs py-2.5 px-5 rounded-xl uppercase tracking-wider cursor-pointer shrink-0 shadow-sm"
           >
-            Upgrade to Full Access
+            Upgrade to Full Access (₹10)
           </button>
         </div>
       )}
 
-      {(currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599") && (
+      {(currentProfile.subscription_status === "paid_10" || currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599") && (
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-3xl flex items-center gap-3">
           <div className="p-2 bg-emerald-100 text-emerald-800 rounded-2xl shrink-0">
             <CheckCircle2 className="w-5 h-5 text-emerald-700" />
           </div>
           <div className="text-left">
             <p className="text-sm font-bold text-emerald-900">
-              Supreme Alignment Active ({currentProfile.subscription_status === "paid_1599" ? "Paid ₹1,599 • 31 Days" : "Paid ₹900"})
+              Supreme Alignment Active ({currentProfile.subscription_status === "paid_10" ? "Paid ₹10 • 31 Days Testing Access" : currentProfile.subscription_status === "paid_1599" ? "Paid ₹10 • 31 Days" : "Paid ₹10 • 31 Days"})
             </p>
             <p className="text-xs text-emerald-700 mt-0.5">
               You have full, unrestricted access to unlock contact details, initiate calls, and establish divine matrimonial connection lines.
@@ -1753,7 +1757,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                   <span className="text-[10px] text-amber-600 font-extrabold tracking-widest uppercase block font-mono">OM NAMAH SHIVAYA</span>
                   <h3 className="text-xl sm:text-2xl font-black text-[#362B5A]">Payment Submission Received!</h3>
                   <p className="text-xs text-gray-500 leading-relaxed px-2">
-                    మనం పంపిన లావాదేవీ వివరాలు అందాయి! We have recorded your ₹900 payment transaction reference.
+                    మనం పంపిన లావాదేవీ వివరాలు అందాయి! We have recorded your ₹10 payment transaction reference.
                   </p>
                 </div>
 
@@ -1771,7 +1775,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                   {/* Whatsapp Launcher to share screenshot */}
                   <a
                     href={`https://api.whatsapp.com/send?phone=919347359489&text=${encodeURIComponent(
-                      `Hi Admin, I am verifying my ₹900 gateway payment for my Bramhana Vivaha Vedika profile.\n\nName: ${currentProfile.name}\nRegistered Mobile: ${currentProfile.contact_number}\nGateway Transaction: ${currentProfile.upgrade_transaction_id || "Pending gateway confirmation"}\n\nPlease verify and activate my premium access.`
+                      `Hi Admin, I am verifying my ₹10 gateway payment for my Bramhana Vivaha Vedika profile.\n\nName: ${currentProfile.name}\nRegistered Mobile: ${currentProfile.contact_number}\nGateway Transaction: ${currentProfile.upgrade_transaction_id || "Pending gateway confirmation"}\n\nPlease verify and activate my premium access.`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
@@ -1807,7 +1811,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                   </div>
                   <h3 className="text-xl font-extrabold text-[#362B5A]">Secure Premium Upgrade</h3>
                   <p className="text-xs text-gray-500 leading-relaxed px-2">
-                    Viewing candidate mobile numbers and downloading Kundali attachments requires verified premium access of <span className="font-bold text-[#C2242C]">₹900</span>.
+                    Viewing candidate mobile numbers and downloading Kundali attachments requires verified access of <span className="font-bold text-[#C2242C]">₹10 (31 Days Testing Access)</span>.
                   </p>
                 </div>
 
@@ -1815,7 +1819,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                 <div className="border border-amber-200 bg-gradient-to-br from-amber-50/20 to-amber-50/60 rounded-3xl p-4 text-center space-y-4">
                   <span className="text-[9px] uppercase tracking-widest text-amber-800 font-extrabold block">Bramhana Vivaha Vedika Payments</span>
                   
-                  <PhonePeQRCode amount={900} className="my-2 shadow-xl" />
+                  <PhonePeQRCode amount={10} className="my-2 shadow-xl" />
 
                   {/* UPI Copy Options */}
                   <div className="grid grid-cols-1 gap-2 pt-1 text-xs">
@@ -1890,7 +1894,7 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 text-orange-300" />
-                          <span>Submit Transaction & Notify Admin</span>
+                          <span>Pay ₹10 via PhonePe Gateway (31 Days)</span>
                         </>
                       )}
                     </button>
