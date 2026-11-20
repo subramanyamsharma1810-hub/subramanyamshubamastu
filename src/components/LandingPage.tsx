@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Profile, Pandit } from "../types";
 import { databaseService, generateRandomPassword, adminNotificationService } from "../lib/databaseService";
-import { verifyPassword } from "../lib/passwordSecurity";
+import { verifyPassword, hashPassword } from "../lib/passwordSecurity";
 import { KundaliChart } from "./KundaliChart";
 import { calculatePanchangam, lookupByStartingLetter, TELUGU_PHONETIC_MAPPINGS } from "../lib/panchangam";
 import { ensureAuth, auth, googleProvider } from "../lib/firebase";
@@ -50,7 +50,9 @@ import {
   Search,
   Home,
   UserPlus,
-  Users
+  Users,
+  ArrowLeft,
+  KeyRound
 } from "lucide-react";
 import { downloadAstrologyPdf } from "../lib/astrologyPdfGenerator";
 import toranamImg from "../assets/toranam.png";
@@ -298,11 +300,39 @@ export default function LandingPage({
     }
   };
 
-  // Forgot Password States & Handlers
+  // Forgot Password Wizard States & Handlers (Mobile Number -> OTP to Registered Email -> Salted PBKDF2 Reset)
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotStep, setForgotStep] = useState<"mobile" | "otp" | "reset" | "success">("mobile");
+  const [forgotMobile, setForgotMobile] = useState("");
+  const [forgotMatchedProfile, setForgotMatchedProfile] = useState<Profile | null>(null);
+  const [forgotMaskedEmail, setForgotMaskedEmail] = useState("");
+  const [forgotOtpSent, setForgotOtpSent] = useState("");
+  const [forgotOtpInput, setForgotOtpInput] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [forgotShowPassword, setForgotShowPassword] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotCooldown, setForgotCooldown] = useState(0);
+
+  // Helper to mask email address for security and user reassurance (e.g. "su****am@gmail.com")
+  const maskEmailAddress = (email: string) => {
+    if (!email || !email.includes("@")) return email;
+    const [user, domain] = email.split("@");
+    if (user.length <= 2) return `${user}***@${domain}`;
+    return `${user.slice(0, 2)}${"*".repeat(Math.max(2, Math.min(user.length - 3, 5)))}${user.slice(-1)}@${domain}`;
+  };
+
+  // Cooldown countdown for resending OTP
+  useEffect(() => {
+    if (forgotCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setForgotCooldown(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [forgotCooldown]);
+
+  // Backward compatibility: Handle reset token from email URL link if present
   const [resetTokenFromUrl, setResetTokenFromUrl] = useState<string | null>(null);
   const [newPasswordValue, setNewPasswordValue] = useState("");
   const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
@@ -315,48 +345,204 @@ export default function LandingPage({
     }
   }, []);
 
-  const handleSendPasswordReset = async (e: React.FormEvent) => {
+  // Step 1: Submit Mobile Number -> Match Profile -> Dispatch 6-Digit OTP to Registered Email
+  const handleForgotMobileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotEmail || !forgotEmail.includes("@")) {
-      alert("Please enter a valid registered email address.");
+    setForgotError("");
+    const cleanPhone = forgotMobile.trim().replace(/\D/g, "");
+
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setForgotError(
+        lang === "te"
+          ? "దయచేసి సరైన 10 అంకెల రిజిస్టర్డ్ మొబైల్ నంబర్ నమోదు చేయండి."
+          : "Please enter a valid 10-digit registered mobile number."
+      );
       return;
     }
 
     setForgotLoading(true);
     try {
-      const profiles = await databaseService.getProfiles(true);
-      const matched = profiles.find(p => p.email && p.email.toLowerCase() === forgotEmail.trim().toLowerCase());
-      
-      const resetToken = "vivah_reset_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      const resetLink = `${window.location.origin}/?reset_token=${resetToken}`;
-
-      localStorage.setItem(`pwd_reset_${resetToken}`, forgotEmail.trim().toLowerCase());
-
-      const res = await fetch("/api/send-password-reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: forgotEmail,
-          resetLink,
-          candidateName: matched ? `${matched.name} ${matched.surname}` : "Valued Member"
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setForgotSuccess(true);
-        alert(`🔐 Password reset email successfully sent from subramanyamghadiyaram@gmail.com to ${forgotEmail}!\n\nPlease check your email inbox for the secure password reset link.`);
-      } else {
-        alert("Failed to send reset link: " + (data.error || "Unknown error"));
+      // 1. Search candidate profile via databaseService
+      let match = await databaseService.getProfileByPhone(cleanPhone);
+      if (!match) {
+        const allProfiles = await databaseService.getProfiles(true);
+        match = allProfiles.find(p => {
+          const ph = p.contact_number ? p.contact_number.replace(/\D/g, "") : "";
+          return (ph && ph.endsWith(cleanPhone)) || (cleanPhone && cleanPhone.endsWith(ph));
+        }) || null;
       }
-    } catch (err) {
-      console.error("Error sending password reset:", err);
-      alert("Failed to dispatch password reset email. Please try again.");
+
+      if (!match) {
+        setForgotError(
+          lang === "te"
+            ? `ఈ మొబైల్ నంబర్ (${cleanPhone}) తో ఏ అభ్యర్థి ప్రొఫైల్ నమోదు కాలేదు. దయచేసి తనిఖీ చేయండి.`
+            : `No registered profile found matching mobile number (${cleanPhone}). Please verify your number or register.`
+        );
+        return;
+      }
+
+      if (!match.email || !match.email.includes("@")) {
+        setForgotError(
+          lang === "te"
+            ? "ఈ ఖాతాకు ఈమెయిల్ అడ్రస్ లింక్ కాలేదు. దయచేసి అడ్మిన్ సహాయం (9347359489) ని సంప్రదించండి."
+            : "No registered email address found on this account. Please contact Admin at 9347359489 for manual reset assistance."
+        );
+        return;
+      }
+
+      // 2. Generate 6-digit OTP
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setForgotOtpSent(generatedOtp);
+      setForgotMatchedProfile(match);
+      setForgotMaskedEmail(maskEmailAddress(match.email));
+
+      // 3. Dispatch OTP to candidate's registered email via /api/send-email-otp
+      const fullName = `${match.name || ""} ${match.surname || ""}`.trim();
+      try {
+        await fetch("/api/send-email-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: match.email,
+            otp: generatedOtp,
+            purpose: "password_reset",
+            candidateName: fullName || "Valued Member"
+          })
+        });
+      } catch (postErr) {
+        console.warn("Background OTP dispatch warning:", postErr);
+      }
+
+      // Advance to Step 2: OTP Verification
+      setForgotStep("otp");
+      setForgotOtpInput("");
+      setForgotCooldown(60);
+    } catch (err: any) {
+      console.error("Forgot password mobile search error:", err);
+      setForgotError(err?.message || "Failed to look up account. Please try again.");
     } finally {
       setForgotLoading(false);
     }
   };
 
+  // Step 2 (Resend): Resend 6-Digit OTP to Registered Email
+  const handleForgotResendOtp = async () => {
+    if (forgotCooldown > 0 || !forgotMatchedProfile || !forgotMatchedProfile.email) return;
+    setForgotLoading(true);
+    setForgotError("");
+    try {
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setForgotOtpSent(generatedOtp);
+      const fullName = `${forgotMatchedProfile.name || ""} ${forgotMatchedProfile.surname || ""}`.trim();
+      await fetch("/api/send-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: forgotMatchedProfile.email,
+          otp: generatedOtp,
+          purpose: "password_reset",
+          candidateName: fullName || "Valued Member"
+        })
+      });
+      setForgotCooldown(60);
+    } catch (err) {
+      console.error("Resend OTP error:", err);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Step 2: Verify Entered OTP
+  const handleForgotVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    const entered = forgotOtpInput.trim();
+
+    if (!entered || entered.length !== 6) {
+      setForgotError(
+        lang === "te"
+          ? "దయచేసి మీ ఈమెయిల్‌కు వచ్చిన 6 అంకెల OTP కోడ్‌ని నమోదు చేయండి."
+          : "Please enter the 6-digit OTP code sent to your email."
+      );
+      return;
+    }
+
+    if (entered !== forgotOtpSent) {
+      setForgotError(
+        lang === "te"
+          ? "తప్పు OTP కోడ్. దయచేసి మీ ఈమెయిల్ ఇన్‌బాక్స్ చెక్ చేసి సరైన OTP ని నమోదు చేయండి."
+          : "Invalid OTP code. Please check your email inbox and enter the correct 6-digit OTP."
+      );
+      return;
+    }
+
+    // Advance to Step 3: Set New Password
+    setForgotStep("reset");
+    setForgotNewPassword("");
+    setForgotConfirmPassword("");
+  };
+
+  // Step 3: Save New Encrypted Password (PBKDF2-SHA256)
+  const handleForgotSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+
+    if (!forgotNewPassword || forgotNewPassword.length < 8) {
+      setForgotError(
+        lang === "te"
+          ? "పాస్‌వర్డ్ కనీసం 8 అక్షరాలు ఉండాలి."
+          : "Password must be at least 8 characters long."
+      );
+      return;
+    }
+
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError(
+        lang === "te"
+          ? "పాస్‌వర్డ్‌లు సరిపోలడం లేదు. దయచేసి సరిచూసుకోండి."
+          : "Passwords do not match. Please verify and re-type."
+      );
+      return;
+    }
+
+    if (!forgotMatchedProfile) {
+      setForgotError("Session expired. Please restart password recovery.");
+      setForgotStep("mobile");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      // Generate one-way PBKDF2-SHA256 salted hash
+      const hashed = await hashPassword(forgotNewPassword.trim());
+
+      const updatedProfile: Profile = {
+        ...forgotMatchedProfile,
+        password_hash: hashed,
+      };
+      delete (updatedProfile as any).password; // Never store plaintext passwords
+
+      await databaseService.saveProfile(updatedProfile);
+      if (updatedProfile.id) {
+        await databaseService.updateProfile(updatedProfile.id, updatedProfile);
+      }
+
+      setForgotMatchedProfile(updatedProfile);
+      // Pre-fill user login modal credentials
+      const cleanPhone = updatedProfile.contact_number ? updatedProfile.contact_number.replace(/\D/g, "") : forgotMobile;
+      setMobileNumber(cleanPhone);
+      setPassword(forgotNewPassword);
+
+      setForgotStep("success");
+    } catch (err: any) {
+      console.error("Password reset save error:", err);
+      setForgotError(err?.message || "Failed to save new password. Please try again.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Legacy reset token link handler
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPasswordValue || newPasswordValue.length < 8) {
@@ -379,10 +565,13 @@ export default function LandingPage({
       const profiles = await databaseService.getProfiles(true);
       const matched = profiles.find(p => p.email && p.email.toLowerCase() === targetEmail);
       if (matched) {
-        await databaseService.saveProfile({
+        const hashed = await hashPassword(newPasswordValue.trim());
+        const updated = {
           ...matched,
-          password: newPasswordValue
-        });
+          password_hash: hashed
+        };
+        delete (updated as any).password;
+        await databaseService.saveProfile(updated);
         localStorage.removeItem(`pwd_reset_${resetTokenFromUrl}`);
         setShowResetSuccessModal(true);
         setResetTokenFromUrl(null);
@@ -772,11 +961,18 @@ export default function LandingPage({
           ? [normalizedDob, `${dobParts[3]}${dobParts[2]}${dobParts[1]}`, `${dobParts[3]}${dobParts[2]}${dobParts[1].slice(2)}`]
           : [normalizedDob];
         const isLegacyDobPassword = legacyDobPasswords.includes(normalizedEntered);
-        const passwordMatches = Boolean(
-          match.password_hash &&
-          !isLegacyDobPassword &&
-          await verifyPassword(passClean, match.password_hash)
-        );
+        let passwordMatches = false;
+        if (match.password_hash) {
+          passwordMatches = !isLegacyDobPassword && (await verifyPassword(passClean, match.password_hash));
+        } else if (match.password && match.password === passClean) {
+          passwordMatches = true;
+          try {
+            const hashed = await hashPassword(passClean);
+            match.password_hash = hashed;
+            delete match.password;
+            await databaseService.saveProfile(match);
+          } catch (_) {}
+        }
 
         if (passwordMatches) {
           const cleanNum = match.contact_number ? match.contact_number.replace(/\D/g, "") : "";
@@ -1228,11 +1424,11 @@ export default function LandingPage({
             </button>
             <button
               type="button"
-              onClick={() => scrollToSection("membership-plans", "plans")}
-              className={`shubha-nav-link ${activeNav === "plans" ? "active" : ""}`}
+              onClick={() => scrollToSection("regional-districts", "districts")}
+              className={`shubha-nav-link ${activeNav === "districts" ? "active" : ""}`}
             >
               <span className="nav-icon">♛</span>
-              <span>Member Plans</span>
+              <span>Regional Matches</span>
             </button>
             <button
               type="button"
@@ -1582,97 +1778,28 @@ export default function LandingPage({
       </footer>
 
       {/* =====================================================================
-          4. MEMBERSHIP PLANS (సభ్యత్వ పథకాలు) — FREE REGISTRATION + ₹10/MONTH PHONEPE
+          4. SACRED REGISTRATION (పవిత్ర నమోదు) — 100% COMMUNITY MATRIMONY
       ===================================================================== */}
-      <section id="membership-plans" className="relative z-20 w-full bg-[#FDF6E8] py-12 px-4 sm:px-8 border-b border-[#DFC086]">
-        <div className="max-w-5xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="font-telugu-serif text-2xl sm:text-3xl font-black text-[#7E1216]">
-              సభ్యత్వ పథకాలు • Membership Plans
-            </h2>
-            <p className="text-sm text-[#5C3426] max-w-2xl mx-auto font-medium">
-              ప్రొఫైల్ నమోదు పూర్తిగా ఉచితం. ధృవీకరించిన ప్రొఫైల్స్ మరియు ప్రత్యక్ష సంప్రదింపుల కోసం నెలకు కేవలం ₹10 సభ్యత్వం — PhonePe ద్వారా సురక్షిత చెల్లింపు.
-            </p>
+      <section id="community-welcome" className="relative z-20 w-full bg-[#FDF6E8] py-10 px-4 sm:px-8 border-b border-[#DFC086]">
+        <div className="max-w-4xl mx-auto text-center space-y-5">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#8F151B]/10 border border-[#DFA43B]/40 text-[#7E1216] font-bold text-xs uppercase tracking-widest font-mono">
+            <span>శుభమస్తు వేదిక • Shubhamastu Matrimony</span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-            {/* Free Registration Card */}
-            <div className="bg-[#FFFDF8] border border-[#D8B572] rounded-2xl p-6 sm:p-7 flex flex-col justify-between space-y-5 shadow-xs">
-              <div className="space-y-3 text-left">
-                <div className="flex items-baseline justify-between gap-4 border-b border-[#EFE0C0] pb-3">
-                  <div>
-                    <h3 className="font-telugu-serif text-xl font-extrabold text-[#7E1216]">ఉచిత నమోదు</h3>
-                    <p className="text-xs text-[#6B4533]">Free Candidate Registration</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-mono text-2xl font-black text-[#1E6B2B]">₹0</span>
-                    <span className="block text-[11px] text-[#6B4533] font-semibold">శాశ్వతంగా ఉచితం</span>
-                  </div>
-                </div>
-
-                <ul className="space-y-2 text-sm text-[#4A1C15] font-medium">
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>వధూవరుల ప్రొఫైల్ మరియు గోత్రం నమోదు</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>ఉపవర్గం &amp; జన్మ నక్షత్రం / పంచాంగం వివరాలు</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>పూర్తి గోప్యత మరియు డేటా భద్రత</span>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowRegisterModal(true)}
-                className="w-full py-2.5 px-4 bg-[#FFFDF8] hover:bg-[#FAF0DC] text-[#7E1216] border-2 border-[#8B1A1F] rounded-lg text-sm font-bold transition-all cursor-pointer"
-              >
-                ఉచితంగా నమోదు చేసుకోండి
-              </button>
-            </div>
-
-            {/* ₹10/Month Subscription Card */}
-            <div className="bg-[#FFFDF8] border-2 border-[#D49B3E] rounded-2xl p-6 sm:p-7 flex flex-col justify-between space-y-5 shadow-md">
-              <div className="space-y-3 text-left">
-                <div className="flex items-baseline justify-between gap-4 border-b border-[#EFE0C0] pb-3">
-                  <div>
-                    <h3 className="font-telugu-serif text-xl font-extrabold text-[#7E1216]">నెలవారీ సభ్యత్వం</h3>
-                    <p className="text-xs text-[#6B4533]">Monthly Subscription • PhonePe Gateway</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-mono text-2xl font-black text-[#7E1216] tabular-nums">₹10</span>
-                    <span className="block text-[11px] text-[#6B4533] font-semibold">31 రోజులు / 31 Days Testing</span>
-                  </div>
-                </div>
-
-                <ul className="space-y-2 text-sm text-[#4A1C15] font-medium">
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>గోత్రం &amp; ఉపవర్గం ఆధారిత పూర్తి మ్యాచ్ శోధన</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>ధృవీకరించిన కుటుంబాల ప్రత్యక్ష సంప్రదింపు యాక్సెస్</span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-[#C6861C] shrink-0" />
-                    <span>సురక్షిత PhonePe గేట్‌వే ద్వారా తక్షణ యాక్టివేషన్ (31 రోజుల యాక్సెస్)</span>
-                  </li>
-                </ul>
-              </div>
-
-              <a
-                href="/payment"
-                className="w-full py-2.5 px-4 bg-gradient-to-b from-[#8F151B] to-[#650A0E] hover:brightness-110 text-white rounded-lg text-sm font-bold text-center transition-all border border-[#DFA43B]/60 shadow-sm flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>PhonePe ద్వారా ₹10 సభ్యత్వం (31 రోజులు)</span>
-              </a>
-            </div>
+          <h2 className="font-telugu-serif text-2xl sm:text-3xl font-black text-[#7E1216]">
+            పవిత్ర బ్రాహ్మణ వివాహ వేదిక
+          </h2>
+          <p className="text-sm text-[#5C3426] max-w-2xl mx-auto leading-relaxed font-medium">
+            గోత్ర ప్రవరలు, జాతక పొంతనలు మరియు సంప్రదాయ విలువల ఆధారంగా అనుకూలమైన వధూవరులను కనుగొనండి.
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowRegisterModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-b from-[#8F151B] to-[#650A0E] hover:brightness-110 text-white rounded-xl text-sm font-bold shadow-md transition-all border border-[#DFA43B]/60 cursor-pointer active:scale-95"
+            >
+              <UserPlus className="w-4 h-4 text-amber-300" />
+              <span>ఉచితంగా నమోదు చేసుకోండి • Register Free</span>
+            </button>
           </div>
         </div>
       </section>
@@ -1874,7 +2001,7 @@ export default function LandingPage({
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-[#7E1216] pt-2">
             <a href="/register" className="hover:underline">ప్రత్యక్ష నమోదు (/register)</a>
             <span aria-hidden="true">·</span>
-            <a href="/payment" className="hover:underline">PhonePe ₹10 సభ్యత్వం (/payment)</a>
+            <a href="/pay" className="hover:underline">సభ్యత్వ పోర్టల్ (/pay)</a>
             <span aria-hidden="true">·</span>
             <button type="button" onClick={() => setShowContactModal(true)} className="hover:underline cursor-pointer">
               సంప్రదించండి (Contact)
@@ -2985,9 +3112,28 @@ export default function LandingPage({
                 </button>
               </div>
             </label>
+
+            <div className="flex justify-end -mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUserLoginModal(false);
+                  const clean = mobileNumber ? mobileNumber.replace(/\D/g, "") : "";
+                  if (clean) setForgotMobile(clean);
+                  setForgotStep("mobile");
+                  setForgotError("");
+                  setShowForgotPasswordModal(true);
+                }}
+                className="text-xs text-[#C2242C] hover:underline font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-[#C2242C]" />
+                <span>{lang === "te" ? "పాస్‌వర్డ్ మర్చిపోయారా? (Forgot Password?)" : "Forgot Password?"}</span>
+              </button>
+            </div>
+
             <button
               type="submit"
-              className="w-full py-3 bg-[#C2242C] hover:bg-[#99151B] text-white rounded-xl font-black text-sm cursor-pointer"
+              className="w-full py-3 bg-[#C2242C] hover:bg-[#99151B] text-white rounded-xl font-black text-sm cursor-pointer shadow-md transition-all active:scale-[0.99]"
             >
               {lang === "te" ? "లాగిన్" : "Login"}
             </button>
@@ -3194,73 +3340,328 @@ export default function LandingPage({
         </div>
       )}
 
-      {/* FORGOT PASSWORD MODAL */}
+      {/* FORGOT PASSWORD MODAL (Mobile Number -> OTP to Registered Email -> Salted PBKDF2 Reset) */}
       {showForgotPasswordModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-amber-500/40 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-left space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[120] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-zinc-900 border-2 border-amber-500/60 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-left space-y-4 animate-in fade-in zoom-in-95 my-auto">
+            {/* Close button */}
             <button
               type="button"
               onClick={() => {
                 setShowForgotPasswordModal(false);
-                setForgotEmail("");
-                setForgotSuccess(false);
+                setForgotStep("mobile");
+                setForgotMobile("");
+                setForgotOtpInput("");
+                setForgotNewPassword("");
+                setForgotConfirmPassword("");
+                setForgotError("");
+                setForgotMatchedProfile(null);
               }}
               className="absolute top-4 right-4 p-1.5 bg-zinc-800 text-amber-300 hover:bg-[#C2242C] hover:text-white rounded-full transition-all cursor-pointer border border-zinc-700"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <div className="text-center space-y-1.5 pb-2 border-b border-zinc-800">
-              <h3 className="text-lg font-black text-amber-300 uppercase tracking-tight">Forgot Password Recovery</h3>
-              <p className="text-xs text-gray-400">Enter your registered email ID. We will send a secure password reset link directly from subramanyamghadiyaram@gmail.com.</p>
+            {/* Header with Vedic emblem & multi-step indicator */}
+            <div className="text-center space-y-2 pb-3 border-b border-zinc-800">
+              <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-2xl">
+                🪷
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-400 font-mono tracking-widest uppercase font-bold block">
+                  ACCOUNT SECURITY • పాస్‌వర్డ్ పునరుద్ధరణ
+                </span>
+                <h3 className="text-lg font-black text-amber-300 uppercase tracking-tight">
+                  {forgotStep === "success"
+                    ? "Password Reset Complete"
+                    : lang === "te"
+                    ? "పాస్‌వర్డ్ పునరుద్ధరణ (Forgot Password)"
+                    : "Forgot Password Recovery"}
+                </h3>
+              </div>
+
+              {/* Progress Steps Indicator */}
+              {forgotStep !== "success" && (
+                <div className="flex items-center justify-center gap-2 pt-1 text-[11px] font-bold">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full transition-all ${
+                      forgotStep === "mobile"
+                        ? "bg-amber-400 text-black font-extrabold"
+                        : "bg-zinc-800 text-gray-400"
+                    }`}
+                  >
+                    1. Mobile
+                  </span>
+                  <span className="text-zinc-600">➔</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full transition-all ${
+                      forgotStep === "otp"
+                        ? "bg-amber-400 text-black font-extrabold"
+                        : "bg-zinc-800 text-gray-400"
+                    }`}
+                  >
+                    2. Email OTP
+                  </span>
+                  <span className="text-zinc-600">➔</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full transition-all ${
+                      forgotStep === "reset"
+                        ? "bg-amber-400 text-black font-extrabold"
+                        : "bg-zinc-800 text-gray-400"
+                    }`}
+                  >
+                    3. New Password
+                  </span>
+                </div>
+              )}
             </div>
 
-            {forgotSuccess ? (
-              <div className="space-y-4 text-center py-4">
-                <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold border border-emerald-500/30">
-                  ✓
-                </div>
-                <h4 className="text-white font-bold text-sm">Reset Link Sent Successfully!</h4>
-                <p className="text-xs text-gray-300">
-                  We have dispatched a password reset link to <strong className="text-amber-300">{forgotEmail}</strong>. Please check your inbox and click the secure link to set your new password.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForgotPasswordModal(false);
-                    setForgotEmail("");
-                    setForgotSuccess(false);
-                  }}
-                  className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl uppercase transition-all cursor-pointer"
-                >
-                  Close & Return to Login
-                </button>
+            {/* Error Banner */}
+            {forgotError && (
+              <div className="p-3 bg-red-950/80 border border-red-500/60 text-red-200 text-xs rounded-xl font-medium leading-relaxed">
+                ⚠️ {forgotError}
               </div>
-            ) : (
-              <form onSubmit={handleSendPasswordReset} className="space-y-4 pt-2">
+            )}
+
+            {/* STEP 1: MOBILE NUMBER INPUT */}
+            {forgotStep === "mobile" && (
+              <form onSubmit={handleForgotMobileSubmit} className="space-y-4 pt-1">
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  {lang === "te"
+                    ? "మీ నమోదిత 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి. మీ రిజిస్టర్డ్ ఈమెయిల్ ఐడీకి 6 అంకెల OTP పంపబడుతుంది."
+                    : "Enter your registered 10-digit mobile number. We will look up your profile and send a 6-digit OTP to your registered email address."}
+                </p>
+
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300 block">Registered Email Address *</label>
+                  <label className="text-xs font-bold text-amber-200 block">
+                    {lang === "te" ? "రిజిస్టర్డ్ మొబైల్ నంబర్ *" : "Registered Mobile Number *"}
+                  </label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">✉️</span>
+                    <span className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs font-mono font-bold">
+                      +91
+                    </span>
                     <input
-                      type="email"
+                      type="tel"
                       required
-                      placeholder="e.g. user@gmail.com"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-mono"
+                      maxLength={10}
+                      placeholder="e.g. 9848012345"
+                      value={forgotMobile}
+                      onChange={(e) => setForgotMobile(e.target.value.replace(/\D/g, ""))}
+                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-14 pr-3 text-sm text-white focus:outline-none font-mono tracking-wider"
+                      autoFocus
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={forgotLoading}
-                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={forgotLoading || !forgotMobile}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {forgotLoading ? "Sending Reset Email..." : "Send Password Reset Link"}
+                  {forgotLoading ? (
+                    <span>Verifying Profile & Sending OTP...</span>
+                  ) : (
+                    <span>{lang === "te" ? "మొబైల్ ధృవీకరించి OTP పంపండి ➔" : "Verify Mobile & Send OTP ➔"}</span>
+                  )}
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPasswordModal(false);
+                      setShowUserLoginModal(true);
+                    }}
+                    className="text-xs text-gray-400 hover:text-amber-300 underline font-semibold cursor-pointer"
+                  >
+                    {lang === "te" ? "పాస్‌వర్డ్ గుర్తుకు వచ్చిందా? లాగిన్ అవ్వండి" : "Remember your password? Back to Login"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 2: ENTER OTP */}
+            {forgotStep === "otp" && (
+              <form onSubmit={handleForgotVerifyOtp} className="space-y-4 pt-1">
+                {/* Matched profile summary */}
+                <div className="p-3 bg-zinc-800/80 border border-amber-500/30 rounded-xl space-y-1 text-xs">
+                  <div className="text-amber-300 font-bold flex items-center justify-between">
+                    <span>👤 {forgotMatchedProfile?.name} {forgotMatchedProfile?.surname}</span>
+                    <span className="font-mono text-[10px] text-gray-400">{forgotMatchedProfile?.reg_number || forgotMobile}</span>
+                  </div>
+                  <p className="text-gray-300 text-[11px] leading-relaxed">
+                    📧 6-Digit OTP sent to: <strong className="text-amber-300 font-mono">{forgotMaskedEmail}</strong>
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-amber-200 block">
+                    {lang === "te" ? "ఈమెయిల్‌కు వచ్చిన 6 అంకెల OTP *" : "Enter 6-Digit OTP from Email *"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="• • • • • •"
+                    value={forgotOtpInput}
+                    onChange={(e) => setForgotOtpInput(e.target.value.replace(/\D/g, ""))}
+                    className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-3 px-4 text-center text-xl text-amber-300 tracking-[0.5em] font-mono focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={forgotOtpInput.length !== 6}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {lang === "te" ? "OTP ని ధృవీకరించండి ➔" : "Verify OTP & Continue ➔"}
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-1 text-gray-400">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotStep("mobile");
+                      setForgotError("");
+                    }}
+                    className="hover:text-amber-300 underline cursor-pointer"
+                  >
+                    ← Change Mobile
+                  </button>
+
+                  {forgotCooldown > 0 ? (
+                    <span className="text-gray-500 font-mono text-[11px]">Resend OTP in {forgotCooldown}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleForgotResendOtp}
+                      disabled={forgotLoading}
+                      className="text-amber-400 hover:underline font-bold cursor-pointer"
+                    >
+                      Resend OTP Code
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: SET NEW PASSWORD */}
+            {forgotStep === "reset" && (
+              <form onSubmit={handleForgotSavePassword} className="space-y-4 pt-1">
+                <div className="p-3 bg-zinc-800/80 border border-emerald-500/30 rounded-xl text-xs space-y-1">
+                  <span className="text-emerald-400 font-bold">✓ OTP Verified</span>
+                  <p className="text-gray-300 text-[11px]">
+                    Create a new secure password for <strong>{forgotMatchedProfile?.name}</strong>.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-amber-200 block">
+                    {lang === "te" ? "కొత్త పాస్‌వర్డ్ (కనీసం 8 అక్షరాలు) *" : "New Password (min 8 chars) *"}
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-amber-400/60 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                    <input
+                      type={forgotShowPassword ? "text" : "password"}
+                      required
+                      placeholder="Enter new password (min 8 chars)"
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-10 text-sm text-white focus:outline-none font-mono"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForgotShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white cursor-pointer"
+                    >
+                      {forgotShowPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-amber-200 block">
+                    {lang === "te" ? "కొత్త పాస్‌వర్డ్ పునశ్చరణ (Confirm Password) *" : "Confirm New Password *"}
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-amber-400/60 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                    <input
+                      type={forgotShowPassword ? "text" : "password"}
+                      required
+                      placeholder="Re-enter new password"
+                      value={forgotConfirmPassword}
+                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                      className="w-full bg-black border border-zinc-700 focus:border-amber-400 rounded-xl py-2.5 pl-10 pr-10 text-sm text-white focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-gray-400 space-y-0.5 pt-1">
+                  <p>🔒 Stored with one-way salted PBKDF2-SHA256 encryption.</p>
+                  <p>🔒 Plaintext passwords or numbers are never saved.</p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading || forgotNewPassword.length < 8 || forgotNewPassword !== forgotConfirmPassword}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {forgotLoading ? "Encrypting & Saving..." : (lang === "te" ? "కొత్త పాస్‌వర్డ్ సేవ్ చేయండి ➔" : "Save New Password ➔")}
                 </button>
               </form>
+            )}
+
+            {/* STEP 4: SUCCESS */}
+            {forgotStep === "success" && (
+              <div className="space-y-4 text-center py-4">
+                <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-2xl font-bold border border-emerald-500/40">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="text-white font-extrabold text-base">
+                    {lang === "te" ? "పాస్‌వర్డ్ విజయవంతంగా మార్చబడింది!" : "Password Reset Successfully!"}
+                  </h4>
+                  <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                    Your password for account <strong className="text-amber-300">{forgotMatchedProfile?.name}</strong> has been updated and securely hashed.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setShowForgotPasswordModal(false);
+                      if (forgotMatchedProfile) {
+                        try {
+                          await ensureAuth();
+                          localStorage.setItem("bramhana_logged_in_user_id", forgotMatchedProfile.id);
+                          onLoginSuccess(forgotMatchedProfile);
+                        } catch {
+                          setShowUserLoginModal(true);
+                        }
+                      } else {
+                        setShowUserLoginModal(true);
+                      }
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:brightness-110 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer"
+                  >
+                    {lang === "te" ? "ఖాతాలోకి ప్రవేశించండి (Enter Dashboard) ➔" : "Enter Platform Immediately ➔"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPasswordModal(false);
+                      setShowUserLoginModal(true);
+                    }}
+                    className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white font-bold text-xs rounded-xl uppercase transition-all cursor-pointer border border-zinc-700"
+                  >
+                    Return to Login Form
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

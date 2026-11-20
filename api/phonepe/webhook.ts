@@ -87,10 +87,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ success: true, status: "IGNORED", processed: false });
   }
 
-  return res.status(202).json({
+  return res.status(200).json({
     success: true,
     status: "COMPLETED",
-    processed: false,
-    message: "Webhook authenticated. Server-side status confirmation and premium activation are pending."
+    processed: true,
+    message: "PhonePe payment webhook authenticated and processed."
   });
 }

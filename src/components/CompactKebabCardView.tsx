@@ -306,7 +306,12 @@ export default function CompactKebabCardView({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="text-sm font-bold text-white truncate">{match.name}</h3>
+                        <h3 className="text-sm font-bold text-white truncate flex items-center gap-1">
+                          <span>{match.name}</span>
+                          {(match.subscription_status === "paid_10" || match.subscription_status === "paid_100" || match.subscription_status === "paid_900" || match.subscription_status === "paid_1599" || match.status === "Premium") && (
+                            <span title="Paid Subscribed Member" className="text-amber-400 font-bold shrink-0">⭐</span>
+                          )}
+                        </h3>
                         <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono shrink-0">Shoorveer</span>
                       </div>
                       <p className="text-xs text-slate-400 truncate mt-0.5">{match.profession || "Brahmin Professional"}</p>

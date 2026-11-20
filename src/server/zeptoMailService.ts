@@ -93,9 +93,37 @@ async function sendViaZeptoFetch(payload: {
 /**
  * Dispatches a verification OTP to the recipient email using ZeptoMail
  */
-export async function sendVerificationOtp(recipientEmail: string, otpCode: string | number) {
-  const subject = `${otpCode} is your verification code for shubhamastu.in/registration/mobile/otpverification`;
-  const htmlbody = `
+export async function sendVerificationOtp(
+  recipientEmail: string,
+  otpCode: string | number,
+  purpose?: string,
+  candidateName?: string
+) {
+  const isReset = purpose === "password_reset";
+  const subject = isReset
+    ? `${otpCode} is your Password Reset Code - Bramhana Vivaha Vedika`
+    : `${otpCode} is your verification code for shubhamastu.in/registration/mobile/otpverification`;
+  
+  const htmlbody = isReset
+    ? `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #f0e6d2; border-radius: 12px; background-color: #fffdf9;">
+      <h2 style="color: #b45309; text-align: center; margin-bottom: 6px;">Bramhana Vivaha Vedika</h2>
+      <p style="text-align: center; font-size: 13px; color: #78350f; margin-top: 0; font-family: monospace;">శ్రీరామ జయం • Password Reset Verification</p>
+      <hr style="border: 0; border-top: 1px solid #fde68a; margin: 16px 0;" />
+      <p style="color: #374151; font-size: 15px;">Namaste <b>${candidateName || "Valued Member"}</b>,</p>
+      <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">We received a request to reset your password for your account linked to <b>${recipientEmail}</b>.</p>
+      <p style="color: #4b5563; font-size: 14px;">Please use the following 6-digit One-Time Password (OTP) to securely reset your password:</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #b45309; background-color: #fef3c7; padding: 12px 26px; border-radius: 8px; display: inline-block; border: 2px dashed #d97706;">
+          ${otpCode}
+        </span>
+      </div>
+      <p style="font-size: 13px; color: #6b7280; line-height: 1.4;">This verification OTP is valid for 10 minutes. If you did not request a password reset, please ignore this email or contact support.</p>
+      <hr style="border: 0; border-top: 1px solid #f3e8ff; margin: 20px 0 12px 0;" />
+      <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0;">© Bramhana Vivaha Vedika • shubhamastu.in • Powered by Zoho ZeptoMail</p>
+    </div>
+  `
+    : `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #f0e6d2; border-radius: 8px; background-color: #fffdf9;">
       <h2 style="color: #b45309; text-align: center; margin-bottom: 8px;">shubhamastu.in</h2>
       <p style="text-align: center; font-size: 13px; color: #78350f; margin-top: 0; font-family: monospace;">shubhamastu.in/registration/mobile/otpverification</p>
@@ -115,7 +143,7 @@ export async function sendVerificationOtp(recipientEmail: string, otpCode: strin
   // 1. Try direct fetch first
   const fetchResult = await sendViaZeptoFetch({
     toEmail: recipientEmail,
-    toName: "Valued Member",
+    toName: candidateName || "Valued Member",
     subject,
     htmlbody,
   });

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { List } from "react-window";
 import { Profile, PartnerPreferences, Grievance } from "../types";
 import { databaseService } from "../lib/databaseService";
-import PhonePeQRCode from "./PhonePeQRCode";
 import { getGenderLabel } from "../lib/genderHelper";
 import { calculateMatchScore } from "../lib/matchEngine";
 import { NAKSHATRAS } from "../lib/panchangam";
@@ -906,10 +905,15 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
             </div>
           </div>
           <button
-            onClick={() => setShowUpgradeModal(true)}
-            className="w-full sm:w-auto bg-[#C2242C] text-white hover:bg-opacity-95 active:scale-95 transition-all font-bold text-xs py-2.5 px-5 rounded-xl uppercase tracking-wider cursor-pointer shrink-0 shadow-sm"
+            onClick={handleSubmitPayment}
+            disabled={isSubmittingPayment}
+            className="w-full sm:w-auto bg-[#C2242C] text-white hover:bg-opacity-95 active:scale-95 transition-all font-bold text-xs py-2.5 px-5 rounded-xl uppercase tracking-wider cursor-pointer shrink-0 shadow-sm flex items-center justify-center gap-2"
           >
-            Upgrade to Full Access (₹10)
+            {isSubmittingPayment ? (
+              <span>Connecting to PhonePe...</span>
+            ) : (
+              <span>Pay ₹10 with PhonePe (Direct Gateway)</span>
+            )}
           </button>
         </div>
       )}
@@ -1245,7 +1249,10 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                                 <div className="flex justify-between items-start">
                                   <div className="min-w-0 flex-1">
                                     <h4 className="text-lg font-bold text-[#362B5A] leading-tight flex items-center gap-1.5 truncate">
-                                      {match.name}
+                                      <span>{match.name}</span>
+                                      {(match.subscription_status === "paid_10" || match.subscription_status === "paid_100" || match.subscription_status === "paid_900" || match.subscription_status === "paid_1599" || match.status === "Premium") && (
+                                        <span title="Paid Subscribed Member" className="text-amber-500 font-bold shrink-0">⭐</span>
+                                      )}
                                       {match.status === "Premium" && (
                                         <Award className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
                                       )}
@@ -1395,7 +1402,12 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
               </div>
               <div className="text-center sm:text-left space-y-1.5 flex-1">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <h3 className="text-2xl font-extrabold text-[#362B5A]">{selectedMatch.name}</h3>
+                  <h3 className="text-2xl font-extrabold text-[#362B5A] flex items-center gap-2">
+                    <span>{selectedMatch.name}</span>
+                    {(selectedMatch.subscription_status === "paid_10" || selectedMatch.subscription_status === "paid_100" || selectedMatch.subscription_status === "paid_900" || selectedMatch.subscription_status === "paid_1599" || selectedMatch.status === "Premium") && (
+                      <span title="Paid Subscribed Member" className="text-amber-500 font-bold text-xl shrink-0">⭐</span>
+                    )}
+                  </h3>
                   <span className="bg-[#C2242C] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
                     {selectedMatch.status}
                   </span>
@@ -1815,64 +1827,37 @@ export default function MatchList({ currentProfile, preferences, onUpdateProfile
                   </p>
                 </div>
 
-                {/* Beautiful Authentic PhonePe QR Code / Payment block */}
-                <div className="border border-amber-200 bg-gradient-to-br from-amber-50/20 to-amber-50/60 rounded-3xl p-4 text-center space-y-4">
-                  <span className="text-[9px] uppercase tracking-widest text-amber-800 font-extrabold block">Bramhana Vivaha Vedika Payments</span>
-                  
-                  <PhonePeQRCode amount={10} className="my-2 shadow-xl" />
+                {/* Direct PhonePe Gateway Checkout (No scanner, no manual UPI ID) */}
+                <div className="border border-amber-200 bg-gradient-to-br from-amber-50/40 to-amber-50/80 rounded-3xl p-5 text-center space-y-4">
+                  <div className="w-12 h-12 bg-amber-500/20 text-[#C2242C] rounded-2xl mx-auto flex items-center justify-center border border-amber-400/40">
+                    <CreditCard className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-amber-800 font-black tracking-widest uppercase block font-mono">
+                      Official PhonePe Gateway
+                    </span>
+                    <h4 className="text-base font-black text-[#362B5A]">
+                      Direct Online Checkout (₹10)
+                    </h4>
+                    <p className="text-xs text-gray-600 leading-relaxed max-w-xs mx-auto">
+                      Click below to proceed directly to the verified PhonePe Payment Gateway. Your 31-day access and ⭐ Star badge will activate immediately.
+                    </p>
+                  </div>
 
-                  {/* UPI Copy Options */}
-                  <div className="grid grid-cols-1 gap-2 pt-1 text-xs">
-                    <div className="flex items-center justify-between bg-white border border-gray-100 p-2.5 rounded-xl">
-                      <div className="text-left">
-                        <span className="text-[9px] text-gray-400 uppercase tracking-wider block font-bold">UPI Phone / Number (PhonePe/GPay)</span>
-                        <span className="font-mono font-extrabold text-[#362B5A]">+91 93473 59489</span>
-                      </div>
-                      <button
-                        onClick={() => handleCopy("9347359489", "phone")}
-                        className="p-2 bg-[#EBF6FF] text-indigo-700 hover:bg-[#362B5A] hover:text-white rounded-lg transition-all cursor-pointer font-bold text-[10px] flex items-center gap-1 shrink-0"
-                      >
-                        {copySuccess === "phone" ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
+                  <div className="p-3 bg-white/80 rounded-2xl border border-amber-200 text-left space-y-1.5 text-xs text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Immediate phone number & Kundali unlocks</span>
                     </div>
-
-                    <div className="flex items-center justify-between bg-white border border-gray-100 p-2.5 rounded-xl">
-                      <div className="text-left">
-                        <span className="text-[9px] text-gray-400 uppercase tracking-wider block font-bold">UPI ID</span>
-                        <span className="font-mono font-extrabold text-[#362B5A]">9347359489@ybl</span>
-                      </div>
-                      <button
-                        onClick={() => handleCopy("9347359489@ybl", "upi")}
-                        className="p-2 bg-[#EBF6FF] text-indigo-700 hover:bg-[#362B5A] hover:text-white rounded-lg transition-all cursor-pointer font-bold text-[10px] flex items-center gap-1 shrink-0"
-                      >
-                        {copySuccess === "upi" ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>31 Days testing access valid for all matches</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Official PhonePe secure payment</span>
                     </div>
                   </div>
-                  
-                  <p className="text-[10px] text-amber-800 leading-normal font-medium italic">
-                    Account Holder Name: <strong>GADIYARAM VENKATA SUBRAMANYAM</strong>
-                  </p>
                 </div>
 
                 {/* Secure Gateway */}

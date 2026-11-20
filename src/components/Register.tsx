@@ -323,8 +323,11 @@ export default function Register() {
               <span className="text-xs font-mono font-bold uppercase text-amber-400 tracking-widest">
                 విజయవంతంగా నమోదు చేయబడింది • Registration Successful
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                Welcome, {registeredProfile.name}
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center justify-center gap-2">
+                <span>Welcome, {registeredProfile.name}</span>
+                {(registeredProfile.subscription_status === "paid_10" || registeredProfile.subscription_status === "paid_100" || registeredProfile.subscription_status === "paid_900" || registeredProfile.subscription_status === "paid_1599") && (
+                  <span title="Paid Subscribed Member" className="text-amber-400">⭐</span>
+                )}
               </h2>
               <p className="text-sm text-gray-300 max-w-md mx-auto">
                 Your sacred profile has been registered in the Shubhamastu Brahmin Registry.

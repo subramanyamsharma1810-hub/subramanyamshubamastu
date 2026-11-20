@@ -16,8 +16,8 @@ function fromBase64Url(value: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  const cleanPassword = password.trim();
+export async function hashPassword(password: string | number): Promise<string> {
+  const cleanPassword = String(password ?? "").trim();
   if (cleanPassword.length < 8) {
     throw new Error("Password must contain at least 8 characters.");
   }
@@ -44,8 +44,9 @@ export async function hashPassword(password: string): Promise<string> {
   ].join("$");
 }
 
-export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+export async function verifyPassword(password: string | number, storedHash: string): Promise<boolean> {
   try {
+    const cleanPassword = String(password ?? "").trim();
     const [version, iterationsText, saltText, expectedText] = storedHash.split("$");
     const iterations = Number(iterationsText);
     if (version !== HASH_VERSION || !Number.isSafeInteger(iterations) || !saltText || !expectedText) {
@@ -54,7 +55,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
-      new TextEncoder().encode(password.trim()),
+      new TextEncoder().encode(cleanPassword),
       "PBKDF2",
       false,
       ["deriveBits"]

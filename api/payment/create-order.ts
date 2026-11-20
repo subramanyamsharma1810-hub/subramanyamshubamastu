@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const host = req.headers.host || "www.shubhamastu.in";
     const proto = req.headers["x-forwarded-proto"] || "https";
-    const redirectUrl = `${proto}://${host}/checkout?order_id=${encodeURIComponent(orderId)}&status=success`;
+    const redirectUrl = `${proto}://${host}/checkout?order_id=${encodeURIComponent(orderId)}&user_id=${encodeURIComponent(cleanCustomerId)}&status=success`;
 
     const accessToken = await getPhonePeAccessToken();
 

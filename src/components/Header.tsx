@@ -96,6 +96,25 @@ export default function Header({ currentTab, setCurrentTab, isAdmin, setIsAdmin,
 
             {/* Clean Right Controls: Admin Switch, Admin Cross-Audit Bell, Notification Bell, Menu, & Sign Out */}
             <div className="flex items-center gap-1.5 sm:gap-2.5">
+              {currentProfile && (
+                <div
+                  onClick={() => setCurrentTab("profile")}
+                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl cursor-pointer select-none"
+                  title="View Sacred Profile"
+                >
+                  <div className="w-6 h-6 rounded-full overflow-hidden border border-amber-300 shrink-0">
+                    <img
+                      src={currentProfile.photo_url || "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=100"}
+                      alt={currentProfile.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-white max-w-[120px] truncate">{currentProfile.name}</span>
+                  {(currentProfile.subscription_status === "paid_10" || currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599" || currentProfile.status === "Premium") && (
+                    <span title="Paid Subscribed Member" className="text-amber-400 font-bold shrink-0">⭐</span>
+                  )}
+                </div>
+              )}
               {isUserAdmin && (
                 <button
                   onClick={() => setIsAdmin(!isAdmin)}

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { databaseService } from "../lib/databaseService";
 import { Profile } from "../types";
-import PhonePeQRCode from "./PhonePeQRCode";
 import { getPaymentAmount, isPaymentTestMode } from "../lib/paymentTestMode";
 import { 
   CreditCard, 
@@ -356,38 +355,45 @@ export default function Payment() {
               </div>
             </div>
 
-            {/* QR Code & Payment Details */}
-            <div className="p-5 bg-zinc-950 border border-amber-500/25 rounded-2xl space-y-5 text-center">
+            {/* Direct PhonePe Gateway Checkout (No scanner, no manual UPI ID) */}
+            <div className="p-6 bg-zinc-950 border border-amber-500/25 rounded-2xl space-y-6 text-center">
+              <div className="w-14 h-14 bg-amber-500/10 text-amber-400 rounded-2xl mx-auto flex items-center justify-center border border-amber-500/30">
+                <CreditCard className="w-7 h-7" />
+              </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-amber-400 font-mono tracking-widest uppercase block font-bold">
-                  Official PhonePe / UPI QR Code
+                  Official PhonePe Payment Gateway
                 </span>
-                <p className="text-xs text-zinc-300">
-                  Pay <strong className="text-amber-300 text-sm">₹{getPaymentAmount(selectedPlan)}</strong> to <strong className="text-white">Sri G.V. Subramanyam</strong> (UPI: <strong className="font-mono text-amber-300">9347359489@ybl</strong>)
+                <h3 className="text-xl font-black text-white">
+                  Direct Online Checkout (₹{getPaymentAmount(selectedPlan)})
+                </h3>
+                <p className="text-xs text-zinc-300 max-w-md mx-auto">
+                  Click the button below to be redirected directly to PhonePe. Subscription for 31 days testing access and your ⭐ Star Member badge will be activated immediately.
                 </p>
               </div>
 
-              <div className="max-w-xs mx-auto">
-                <PhonePeQRCode amount={getPaymentAmount(selectedPlan)} className="w-full shadow-lg" />
-              </div>
-
-              {/* Secure Gateway Checkout */}
-              <div className="max-w-md mx-auto space-y-3 pt-2 text-left">
-                <label className="text-[11px] font-bold text-gray-300 uppercase tracking-wider block text-center">
-                  Complete the verified payment in the secure gateway
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAutomatedPayment}
-                    disabled={isProcessing || !candidateProfile}
-                    className="w-full px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    {isProcessing ? "Activating..." : "Automate & Activate"}
-                  </button>
-                </div>
+              {/* Secure Gateway Checkout Button */}
+              <div className="max-w-md mx-auto space-y-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleAutomatedPayment}
+                  disabled={isProcessing || !candidateProfile}
+                  className="w-full px-5 py-4 bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 active:scale-[0.99] text-black font-black text-sm uppercase tracking-wider rounded-xl disabled:opacity-50 transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
+                >
+                  {isProcessing ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      <span>Redirecting to PhonePe...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Pay ₹{getPaymentAmount(selectedPlan)} via PhonePe Gateway</span>
+                    </>
+                  )}
+                </button>
                 {!candidateProfile && (
-                  <p className="text-[10px] text-amber-400/90 text-center">
+                  <p className="text-[11px] text-amber-400/90 text-center font-semibold">
                     💡 Please search and link your mobile number above first so the system can activate your account!
                   </p>
                 )}

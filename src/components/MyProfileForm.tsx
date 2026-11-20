@@ -1085,7 +1085,12 @@ export default function MyProfileForm({ currentProfile, onSaveProfile }: MyProfi
               </div>
               
               <div className="space-y-1">
-                <h4 className="text-base font-black text-white">{currentProfile.name}</h4>
+                <h4 className="text-base font-black text-white flex items-center justify-center gap-1.5">
+                  <span>{currentProfile.name}</span>
+                  {(currentProfile.subscription_status === "paid_10" || currentProfile.subscription_status === "paid_100" || currentProfile.subscription_status === "paid_900" || currentProfile.subscription_status === "paid_1599" || currentProfile.status === "Premium") && (
+                    <span title="Paid Subscribed Member" className="text-amber-400 font-bold shrink-0">⭐</span>
+                  )}
+                </h4>
                 <p className="text-[10px] text-amber-300/80 font-mono">Registered Mobile: {currentProfile.contact_number}</p>
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider">{currentProfile.gender} • {currentProfile.sub_caste} Brahmin</p>
               </div>
