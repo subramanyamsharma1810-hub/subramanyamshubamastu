@@ -194,7 +194,9 @@ export default function CallRoom({
 
         // 3. Join channel
         addLog(`[DIAGNOSTIC] Attempting to join Agora channel: ${callSessionId}`);
-        await rtcClient.join(AGORA_APP_ID, callSessionId, token || null, uid);
+        const rtcToken = (!token || token === "mock_token_agora_rtc_configured") ? null : token;
+        addLog(`[DIAGNOSTIC] Joining channel with ${rtcToken ? 'authenticated Agora token' : 'App-ID testing mode (null token)'}`);
+        await rtcClient.join(AGORA_APP_ID, callSessionId, rtcToken, uid);
         addLog("[DIAGNOSTIC] Connection Result: SUCCESSFULLY JOINED Agora channel.");
 
         // 4. Create local tracks

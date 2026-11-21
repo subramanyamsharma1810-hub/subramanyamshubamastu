@@ -2248,15 +2248,15 @@ export default function LandingPage({
                     )}
                   </div>
 
-                  {/* Email Input with right-side 'Verify using OTP' button */}
-                  <div className="flex flex-row items-center gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="w-4 h-4 text-amber-400/70 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  {/* Email Input with right-side 'Verify using OTP' button - Fully mobile-friendly with enlarged touch-friendly box */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="relative flex-1 w-full">
+                      <Mail className="w-5 h-5 text-amber-400/80 absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none" />
                       <input
                         type="email"
                         required
                         disabled={isEmailVerified}
-                        placeholder="e.g. candidate@example.com"
+                        placeholder="Enter candidate email address (ఈమెయిల్ చిరునామా)"
                         value={regEmail}
                         onChange={(e) => {
                           setRegEmail(e.target.value);
@@ -2265,8 +2265,8 @@ export default function LandingPage({
                           setOtpErrorMsg("");
                           setOtpSuccessMsg("");
                         }}
-                        className={`w-full bg-black border rounded-xl py-2.5 pl-10 pr-3 text-sm text-white focus:outline-none font-bold transition-all ${
-                          isEmailVerified ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-200" : "border-zinc-700 focus:border-amber-400"
+                        className={`w-full min-h-[52px] bg-black border-2 rounded-xl pl-12 pr-4 py-3.5 text-base text-white focus:outline-none font-bold transition-all shadow-inner ${
+                          isEmailVerified ? "border-emerald-500/70 bg-emerald-950/30 text-emerald-200" : "border-zinc-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
                         }`}
                       />
                     </div>
@@ -2276,7 +2276,7 @@ export default function LandingPage({
                         onClick={handleSendEmailOtp}
                         disabled={isSendingOtp}
                         title="Click to trigger and verify OTP via your email"
-                        className={`px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap shadow-md ${
+                        className={`w-full sm:w-auto min-h-[52px] px-5 py-3.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shrink-0 shadow-lg ${
                           isSendingOtp
                             ? "bg-zinc-800 text-zinc-400 cursor-wait border border-zinc-700"
                             : "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-black font-extrabold cursor-pointer border border-yellow-300 active:scale-[0.98]"
@@ -2284,17 +2284,17 @@ export default function LandingPage({
                       >
                         {isSendingOtp ? (
                           <>
-                            <span className="w-3 h-3 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
+                            <span className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin"></span>
                             <span>Sending OTP...</span>
                           </>
                         ) : isOtpSent ? (
                           <>
-                            <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                            <Zap className="w-4 h-4 text-black fill-black" />
                             <span>Resend OTP to Mail</span>
                           </>
                         ) : (
                           <>
-                            <Zap className="w-3.5 h-3.5 text-black fill-black" />
+                            <Zap className="w-4 h-4 text-black fill-black" />
                             <span>Send OTP to Mail (ఓటీపీ)</span>
                           </>
                         )}
@@ -2328,28 +2328,28 @@ export default function LandingPage({
                         </button>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2.5">
                         <input
                           type="text"
                           maxLength={6}
                           autoFocus
-                          placeholder="e.g. 123456"
+                          placeholder="• • • • • •"
                           value={regOtp}
                           onChange={(e) => setRegOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-                          className="flex-1 bg-black border border-amber-400 rounded-xl py-2 px-3 text-center text-lg font-mono font-black text-amber-300 tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                          className="w-full sm:flex-1 bg-black border border-amber-400 rounded-xl py-3 px-3 text-center text-xl font-mono font-black text-amber-300 tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                         />
                         <button
                           type="button"
                           onClick={handleVerifyOtp}
                           disabled={!regOtp || regOtp.length < 6}
-                          className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
+                          className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shrink-0 ${
                             !regOtp || regOtp.length < 6
                               ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                               : "bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold cursor-pointer shadow-md active:scale-95"
                           }`}
                         >
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>Confirm & Verify</span>
+                          <span>Confirm & Verify OTP</span>
                         </button>
                       </div>
                     </div>

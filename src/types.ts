@@ -105,6 +105,32 @@ export interface Profile {
   liked_profiles?: string[];  // Array of profile IDs this user has liked (swiped right)
   disliked_profiles?: string[]; // Array of profile IDs this user has skipped (swiped left)
   otp_code?: string; // OTP code sent for verification
+  height_cm?: number;
+  community?: string;
+  marital_status?: string;
+  mother_tongue?: string;
+  religion?: string;
+  state?: string;
+  hometown?: string;
+  diet?: string;
+  family_type?: string;
+  rashi?: string;
+  nakshatra?: string;
+  target_match_id?: string;
+  partner_preferences?: {
+    pref_age_min?: number;
+    pref_age_max?: number;
+    pref_height_min_cm?: number;
+    pref_height_max_cm?: number;
+    pref_community?: string;
+    pref_gothram_rule?: string;
+    pref_education?: string;
+    pref_min_income_lpa?: number;
+    pref_city?: string;
+    pref_diet?: string;
+    target_match_id?: string;
+    compatibility_summary?: string;
+  };
 }
 
 export interface CalendarReminder {
@@ -124,9 +150,21 @@ export interface CalendarReminder {
 export interface PartnerPreferences {
   id?: string;
   user_id: string;
-  age_gap: number; // Max allowed age gap (e.g. 5 means +/- 5 years)
-  height_range: string; // e.g., "5.0 - 5.8" or "5.5 - 6.2"
-  preferred_sub_caste: string; // e.g., "Iyer", "Iyengar", "Smartha", "Any"
+  age_gap?: number; // Max allowed age gap (e.g. 5 means +/- 5 years)
+  height_range?: string; // e.g., "5.0 - 5.8" or "5.5 - 6.2"
+  preferred_sub_caste?: string; // e.g., "Iyer", "Iyengar", "Smartha", "Any"
+  pref_age_min?: number;
+  pref_age_max?: number;
+  pref_height_min_cm?: number;
+  pref_height_max_cm?: number;
+  pref_community?: string;
+  pref_gothram_rule?: string;
+  pref_education?: string;
+  pref_min_income_lpa?: number;
+  pref_city?: string;
+  pref_diet?: string;
+  target_match_id?: string;
+  compatibility_summary?: string;
 }
 
 export interface AdminSettings {

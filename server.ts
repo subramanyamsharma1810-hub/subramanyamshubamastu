@@ -244,10 +244,18 @@ app.get("/api/system/health-check", async (req, res) => {
   res.json(results);
 });
 
-// Call initiation endpoint
-app.post("/api/calls/initiate", (req, res) => {
+// Call initiation endpoint (supports flat parameters and nested caller/receiver objects, audio & video)
+app.post(["/api/calls/initiate", "/api/calls/request", "/initiate"], (req, res) => {
   try {
-    const { callerId, callerName, callerRegNumber, receiverId, receiverEmail, receiverName, callType } = req.body || {};
+    const body = req.body || {};
+    const callerId = body.callerId || body.caller?.id;
+    const callerName = body.callerName || body.caller?.name || "Member";
+    const callerRegNumber = body.callerRegNumber || body.caller?.reg_number || "SHUBH";
+    const receiverId = body.receiverId || body.receiver?.id;
+    const receiverEmail = body.receiverEmail || body.receiver?.email;
+    const receiverName = body.receiverName || body.receiver?.name;
+    const callType = (body.callType === "audio" ? "audio" : "video") as "audio" | "video";
+
     if (!callerId || !receiverId) {
       res.status(400).json({ success: false, error: "callerId and receiverId are required" });
       return;
@@ -255,17 +263,18 @@ app.post("/api/calls/initiate", (req, res) => {
 
     const session = callSessionEngine.createSession({
       callerId,
-      callerName: callerName || "Member",
-      callerRegNumber: callerRegNumber || "SHUBH",
+      callerName,
+      callerRegNumber,
       receiverId,
       receiverEmail,
       receiverName,
-      callType: callType || "video"
+      callType
     });
 
     res.json({
       success: true,
       sessionId: session.callSessionId,
+      callSessionId: session.callSessionId,
       session
     });
   } catch (err: any) {
@@ -274,7 +283,7 @@ app.post("/api/calls/initiate", (req, res) => {
 });
 
 // Check active incoming calls for a user
-app.get(["/api/calls/active", "/api/calls/active/", "/api/calls/active/:userId?"], (req, res) => {
+app.get(["/api/calls/active", "/api/calls/active/", "/api/calls/active/:userId?", "/api/calls/incoming", "/api/calls/incoming/:userId?"], (req, res) => {
   try {
     const userId = req.params.userId || (req.query.userId as string);
     if (!userId || userId === "undefined" || userId === "null") {
@@ -312,7 +321,10 @@ app.post("/api/calls/respond", (req, res) => {
     }
 
     const result = callSessionEngine.respondSession(callSessionId, userId, action);
-    res.json(result);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json({ success: true, session: result.session, ...result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -333,7 +345,7 @@ app.post("/api/calls/end", (req, res) => {
       reportReason
     });
 
-    res.json({ success: true, result });
+    res.json({ success: true, message: "Call session ended successfully", result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1080,10 +1092,10 @@ app.post("/api/agora/token", (req, res) => {
     if (!channelName) {
       return res.status(400).json({ success: false, message: "channelName is required" });
     }
-    const appID = process.env.AGORA_APP_ID || "";
+    const appID = process.env.AGORA_APP_ID || "58b929a373224fd693defde48656648b";
     const appCertificate = process.env.AGORA_APP_CERTIFICATE || "";
     const numericUid = uid || Math.floor(Math.random() * 100000);
-    if (!appID || !appCertificate) {
+    if (!appCertificate) {
       return res.json({ success: true, token: "mock_token_agora_rtc_configured", uid: numericUid });
     }
     const rtcRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
@@ -1161,66 +1173,8 @@ app.post("/api/calls/request", async (req, res) => {
   }
 });
 
-app.post("/api/calls/end", (req, res) => {
-  try {
-    const { callSessionId, durationSeconds, status, reportReason } = req.body;
-    console.log(`Call session ${callSessionId} ended. Status: ${status}, Duration: ${durationSeconds}s, Reason: ${reportReason || "Normal hangup"}`);
-    return res.json({ success: true, message: "Call session logged and closed successfully." });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message || "Failed to end call" });
-  }
-});
+// Call session endpoints are unified above at /api/calls/*
 
-// Real-Time Fast-Ring Call Session Endpoints
-app.post(["/api/calls/initiate", "/api/calls/request", "/initiate", "initiate", "api/calls/initiate"], (req, res) => {
-  try {
-    const { caller, receiver, callType } = req.body;
-    if (!caller || !receiver) {
-      return res.status(400).json({ success: false, message: "Caller and receiver details are required" });
-    }
-    const session = callSessionEngine.createSession({
-      callerId: caller.id,
-      callerName: caller.name,
-      callerRegNumber: caller.reg_number || "SHUBH",
-      receiverId: receiver.id,
-      receiverEmail: receiver.email,
-      receiverName: receiver.name,
-      callType: callType || "video"
-    });
-    return res.json({ success: true, session, callSessionId: session.callSessionId });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message || "Failed to initiate call session" });
-  }
-});
-
-app.post("/api/calls/respond", (req, res) => {
-  try {
-    const { callSessionId, userId, action } = req.body;
-    if (!callSessionId || !userId || !action) {
-      return res.status(400).json({ success: false, message: "callSessionId, userId, and action are required" });
-    }
-    const result = callSessionEngine.respondSession(callSessionId, userId, action);
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-    return res.json({ success: true, session: result.session });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message || "Failed to respond to call session" });
-  }
-});
-
-app.get(["/api/calls/incoming", "/api/calls/incoming/", "/api/calls/incoming/:userId?"], (req, res) => {
-  try {
-    const userId = req.params.userId || (req.query.userId as string);
-    if (!userId || userId === "undefined" || userId === "null") {
-      return res.json({ success: true, sessions: [] });
-    }
-    const incomingSessions = callSessionEngine.getActiveSessionsForUser(userId);
-    return res.json({ success: true, sessions: incomingSessions || [] });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message || "Failed to fetch incoming calls" });
-  }
-});
 
 // --- Contact Number Masking & Mutual Approval Endpoints ---
 

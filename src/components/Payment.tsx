@@ -205,6 +205,20 @@ export default function Payment() {
                 <span className="font-bold text-white">{receiptDetails.plan}</span>
               </div>
               <div className="flex justify-between border-b border-zinc-800/80 pb-2">
+                <span className="text-gray-400">Subscription Access:</span>
+                <span className="font-bold text-amber-300">31 Days Full Access (వరకు చెల్లుబాటు)</span>
+              </div>
+              <div className="flex justify-between border-b border-zinc-800/80 pb-2">
+                <span className="text-gray-400">Valid Until:</span>
+                <span className="font-bold text-emerald-400">
+                  {new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric"
+                  })}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-zinc-800/80 pb-2">
                 <span className="text-gray-400">Timestamp:</span>
                 <span className="text-zinc-300">{receiptDetails.timestamp}</span>
               </div>
