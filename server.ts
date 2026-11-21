@@ -1325,7 +1325,8 @@ const handleCreatePhonePeOrder = async (req: express.Request, res: express.Respo
 
     const cleanCustomerId = customerId.trim();
     const orderId = `ORD_SHUBH_${Date.now()}_${cleanCustomerId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-12)}`;
-    const redirectUrl = `${req.protocol}://${req.get("host")}/checkout?order_id=${encodeURIComponent(orderId)}&user_id=${encodeURIComponent(cleanCustomerId)}&status=success`;
+    const appDomain = (process.env.APP_URL || "https://shubhamastu.in").replace(/\/$/, "");
+    const redirectUrl = `${appDomain}/checkout?order_id=${encodeURIComponent(orderId)}&user_id=${encodeURIComponent(cleanCustomerId)}&status=success`;
     const accessToken = await getPhonePeAccessToken();
 
     const phonePeResponse = await fetch(`${phonePeBaseUrl}/pg/checkout/v2/pay`, {
