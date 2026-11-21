@@ -1476,7 +1476,7 @@ export default function LandingPage({
           </div>
         </header>
 
-        {/* 3. HERO MANDAPAM BANNER */}
+        {/* 3. HERO MANDAPAM BANNER — 3 integrated panels in one unified section */}
         <main>
           <section className="shubha-hero" aria-labelledby="hero-title">
             <div className="shubha-corner shubha-top-left" aria-hidden="true">❧</div>
@@ -1484,7 +1484,9 @@ export default function LandingPage({
             <div className="shubha-corner shubha-bottom-left" aria-hidden="true">❧</div>
             <div className="shubha-corner shubha-bottom-right" aria-hidden="true">❧</div>
 
-            <div className="shubha-hero-art">
+            {/* On desktop: left image | center | right image (grid order: DOM order = left, center, right) */}
+            {/* On tablet/mobile: center moves to row-1 spanning full width; images stay in row-2 side by side */}
+            <div className="shubha-hero-art shubha-hero-art--left">
               <img
                 src={weddingImg}
                 alt="Traditional Telugu Brahmin wedding ceremony with bride, groom and homam"
@@ -1500,7 +1502,7 @@ export default function LandingPage({
               <div className="shubha-flourish small" aria-hidden="true">── ❖ ──</div>
             </div>
 
-            <div className="shubha-hero-art">
+            <div className="shubha-hero-art shubha-hero-art--right">
               <img
                 src={kalashImg}
                 alt="Traditional auspicious kalash with coconut, mango leaves and lamps"

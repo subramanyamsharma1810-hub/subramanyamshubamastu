@@ -239,14 +239,21 @@
   margin-top: 10px;
   height: 255px;
   display: grid;
-  grid-template-columns: 40% 29% 31%;
+  /* Desktop: left-image | center-text | right-image */
+  grid-template-columns: 38% 24% 38%;
+  grid-template-rows: 1fr;
   align-items: stretch;
   overflow: hidden;
-  border-top: 1px solid #e5b76d;
-  border-bottom: 1px solid #e5b76d;
+  border: 1.5px solid #d4a04a;
+  border-radius: 16px;
   background: linear-gradient(90deg, #ffe7c4 0%, #fff3df 45%, #ffe5bd 100%);
-  box-shadow: 0 4px 14px rgba(180, 109, 40, 0.12);
+  box-shadow: 0 4px 18px rgba(180, 109, 40, 0.14);
 }
+
+/* Desktop grid placement — explicit so reordering on mobile works cleanly */
+.shubha-hero-art--left  { grid-column: 1; grid-row: 1; }
+.shubha-hero-center     { grid-column: 2; grid-row: 1; }
+.shubha-hero-art--right { grid-column: 3; grid-row: 1; }
 
 .shubha-hero-art {
   overflow: hidden;
@@ -795,8 +802,13 @@
   }
   .shubha-hero {
     height: 230px;
-    grid-template-columns: 38% 30% 32%;
+    grid-template-columns: 36% 28% 36%;
+    grid-template-rows: 1fr;
+    border-radius: 12px;
   }
+  .shubha-hero-art--left  { grid-column: 1; grid-row: 1; }
+  .shubha-hero-center     { grid-column: 2; grid-row: 1; }
+  .shubha-hero-art--right { grid-column: 3; grid-row: 1; }
   .shubha-hero-center h1 {
     font-size: 40px;
   }
@@ -851,20 +863,44 @@
     grid-template-columns: 1fr;
     gap: 36px;
   }
+  /* Hero: 3 integrated — center on top row, images side-by-side below */
   .shubha-hero {
     height: auto;
+    display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
     border-radius: 20px;
     margin-top: 8px;
+    overflow: hidden;
+    /* Single unified background across all 3 cells */
+    background: linear-gradient(135deg, #fff3df 0%, #ffe7c4 50%, #fff3df 100%);
+    border: 2px solid #d4a04a;
+    box-shadow: 0 6px 24px rgba(180, 109, 40, 0.18);
   }
+  /* Center: full top row */
   .shubha-hero-center {
     grid-column: 1 / -1;
     grid-row: 1;
     min-height: 180px;
-    padding: 16px 8px 10px;
+    padding: 18px 12px 12px;
+    background: transparent;
+    border-bottom: 1px solid rgba(212, 160, 74, 0.4);
   }
-  .shubha-hero-art {
+  /* Left image: bottom-left cell */
+  .shubha-hero-art--left {
+    grid-column: 1;
+    grid-row: 2;
     height: 170px;
+  }
+  /* Right image: bottom-right cell */
+  .shubha-hero-art--right {
+    grid-column: 2;
+    grid-row: 2;
+    height: 170px;
+  }
+  /* Thin divider between the two images */
+  .shubha-hero-art--left {
+    border-right: 1px solid rgba(212, 160, 74, 0.35);
   }
   .shubha-corner {
     font-size: 36px;
@@ -932,27 +968,35 @@
     padding: 9px 12px;
   }
   .shubha-hero-center {
-    min-height: 165px;
-    padding: 14px 4px 6px;
+    min-height: 160px;
+    padding: 14px 6px 10px;
+    background: transparent;
+    /* Thin golden divider separating center text from images below */
+    border-bottom: 1px solid rgba(212, 160, 74, 0.5);
   }
   .shubha-lotus-mark {
     font-size: 36px;
   }
   .shubha-hero-center h1 {
-    font-size: 38px;
+    font-size: 36px;
   }
   .shubha-flourish {
     font-size: 13px;
   }
   .shubha-hero-center h2 {
-    font-size: 15px;
-    white-space: normal;
-  }
-  .shubha-hero-center p {
     font-size: 14px;
     white-space: normal;
   }
+  .shubha-hero-center p {
+    font-size: 13px;
+    white-space: normal;
+  }
   .shubha-hero-art {
+    height: 130px;
+  }
+  /* Named art classes keep the same sizing on mobile */
+  .shubha-hero-art--left,
+  .shubha-hero-art--right {
     height: 130px;
   }
   .shubha-panel {
