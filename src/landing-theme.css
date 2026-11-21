@@ -234,36 +234,29 @@
 }
 
 /* 3. Hero Section (Approved 3-Column Mandapam Banner) */
+/* ═══════════════════════════════════════════════
+   HERO MANDAPAM BANNER — Exact BA approved spec
+   3 items in one seamless grid: img | center | img
+   ═══════════════════════════════════════════════ */
 .shubha-hero {
   position: relative;
-  margin-top: 10px;
-  height: 255px;
+  margin-top: 14px;
+  min-height: 285px;
   display: grid;
-  /* Desktop: left-image | center-text | right-image */
-  grid-template-columns: 38% 24% 38%;
-  grid-template-rows: 1fr;
-  align-items: stretch;
+  grid-template-columns: 38% 30% 32%;
+  align-items: center;
   overflow: hidden;
-  border: 1.5px solid #d4a04a;
-  border-radius: 16px;
-  background: linear-gradient(90deg, #ffe7c4 0%, #fff3df 45%, #ffe5bd 100%);
-  box-shadow: 0 4px 18px rgba(180, 109, 40, 0.14);
+  border: 2px solid #e7b65e;
+  border-radius: 25px;
+  /* Warm gradient that merges seamlessly with images — exact BA spec */
+  background: linear-gradient(90deg, #ffe2b3, #fff6e9 50%, #ffe2b3);
+  box-shadow: 0 8px 25px rgba(180, 109, 40, 0.16);
 }
 
-/* Desktop grid placement — explicit so reordering on mobile works cleanly */
-.shubha-hero-art--left  { grid-column: 1; grid-row: 1; }
-.shubha-hero-center     { grid-column: 2; grid-row: 1; }
-.shubha-hero-art--right { grid-column: 3; grid-row: 1; }
-
-.shubha-hero-art {
-  overflow: hidden;
-  min-width: 0;
-  height: 100%;
-}
-
-.shubha-hero-art img {
+/* Images sit DIRECTLY in the grid — no wrapper divs (exact BA spec) */
+.shubha-hero-img {
   width: 100%;
-  height: 100%;
+  height: 285px;
   object-fit: cover;
   object-position: center;
   display: block;
@@ -272,56 +265,52 @@
 .shubha-hero-center {
   z-index: 1;
   text-align: center;
+  padding: 10px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px 4px;
 }
 
 .shubha-lotus-mark {
-  font-size: 52px;
+  font-size: 42px;
   line-height: 1;
-  color: #d89318;
-  text-shadow: 0 2px #fff0c6;
-  margin-bottom: -4px;
+  color: #cb8c13;
+  margin-bottom: 2px;
 }
 
 .shubha-hero-center h1 {
-  font-size: 52px;
+  font-family: 'Tiro Telugu', 'Noto Sans Telugu', serif;
+  font-size: 55px;
   color: var(--shubha-wine);
-  margin: 0;
-  line-height: 1.25;
-  text-shadow: 1px 2px #d4a276;
+  margin: 5px 0;
+  line-height: 1.2;
   font-weight: 800;
-  letter-spacing: -0.5px;
 }
 
-.shubha-flourish {
-  font-size: 16px;
-  color: #c77812;
-  letter-spacing: 1.5px;
-  white-space: nowrap;
-}
-
-.shubha-flourish.small {
-  font-size: 12px;
-  margin-top: 8px;
+/* Gradient ornament line — exact BA spec (replaces text flourishes) */
+.shubha-ornament {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c78217, transparent);
+  margin: 9px auto;
+  width: 80%;
+  border: none;
 }
 
 .shubha-hero-center h2 {
-  font-size: 19px;
+  font-family: 'Tiro Telugu', 'Noto Sans Telugu', serif;
+  font-size: 21px;
   color: var(--shubha-wine);
-  margin: 10px 0 2px;
-  white-space: nowrap;
+  margin: 15px 0 5px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .shubha-hero-center p {
   color: var(--shubha-wine);
-  font-weight: 800;
-  font-size: 18px;
-  margin: 0;
+  font-weight: 700;
+  font-size: 16px;
+  margin: 4px 0;
   white-space: nowrap;
 }
 
@@ -768,7 +757,12 @@
   .shubha-nav {
     gap: 12px;
   }
+  /* ≤1250px: hero stays 3-column side-by-side, slightly smaller */
   .shubha-hero {
+    height: 240px;
+    min-height: 0;
+  }
+  .shubha-hero-img {
     height: 240px;
   }
   .shubha-hero-center h1 {
@@ -802,15 +796,14 @@
   }
   .shubha-hero {
     height: 230px;
+    min-height: 0;
     grid-template-columns: 36% 28% 36%;
-    grid-template-rows: 1fr;
-    border-radius: 12px;
   }
-  .shubha-hero-art--left  { grid-column: 1; grid-row: 1; }
-  .shubha-hero-center     { grid-column: 2; grid-row: 1; }
-  .shubha-hero-art--right { grid-column: 3; grid-row: 1; }
+  .shubha-hero-img {
+    height: 230px;
+  }
   .shubha-hero-center h1 {
-    font-size: 40px;
+    font-size: 43px;
   }
   .shubha-hero-center h2 {
     font-size: 16px;
@@ -863,44 +856,48 @@
     grid-template-columns: 1fr;
     gap: 36px;
   }
-  /* Hero: 3 integrated — center on top row, images side-by-side below */
+  /* ═══════════════════════════════════════════
+     Tablet/Mobile hero — EXACT BA approved spec
+     grid: 2-col, center spans full top row,
+     images sit side-by-side below — seamless
+     ═══════════════════════════════════════════ */
   .shubha-hero {
     height: auto;
-    display: grid;
+    min-height: 0;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
     border-radius: 20px;
     margin-top: 8px;
-    overflow: hidden;
-    /* Single unified background across all 3 cells */
-    background: linear-gradient(135deg, #fff3df 0%, #ffe7c4 50%, #fff3df 100%);
-    border: 2px solid #d4a04a;
-    box-shadow: 0 6px 24px rgba(180, 109, 40, 0.18);
+    /* Keep same warm gradient — images blend into it */
+    background: linear-gradient(90deg, #ffe2b3, #fff6e9 50%, #ffe2b3);
   }
-  /* Center: full top row */
+  /* Center: full-width top row */
   .shubha-hero-center {
     grid-column: 1 / -1;
     grid-row: 1;
     min-height: 180px;
-    padding: 18px 12px 12px;
-    background: transparent;
-    border-bottom: 1px solid rgba(212, 160, 74, 0.4);
+    padding: 16px 8px 10px;
   }
-  /* Left image: bottom-left cell */
-  .shubha-hero-art--left {
+  /* Left img: row 2, col 1 */
+  .shubha-hero-img:first-of-type {
     grid-column: 1;
     grid-row: 2;
     height: 170px;
   }
-  /* Right image: bottom-right cell */
-  .shubha-hero-art--right {
+  /* Right img: row 2, col 2 */
+  .shubha-hero-img:last-of-type {
     grid-column: 2;
     grid-row: 2;
     height: 170px;
   }
-  /* Thin divider between the two images */
-  .shubha-hero-art--left {
-    border-right: 1px solid rgba(212, 160, 74, 0.35);
+  .shubha-hero-center h1 {
+    font-size: 43px;
+  }
+  .shubha-hero-center h2 {
+    font-size: 17px;
+  }
+  .shubha-hero-center p {
+    font-size: 13px;
   }
   .shubha-corner {
     font-size: 36px;
@@ -970,9 +967,6 @@
   .shubha-hero-center {
     min-height: 160px;
     padding: 14px 6px 10px;
-    background: transparent;
-    /* Thin golden divider separating center text from images below */
-    border-bottom: 1px solid rgba(212, 160, 74, 0.5);
   }
   .shubha-lotus-mark {
     font-size: 36px;
@@ -980,23 +974,22 @@
   .shubha-hero-center h1 {
     font-size: 36px;
   }
-  .shubha-flourish {
-    font-size: 13px;
+  .shubha-ornament {
+    margin: 6px auto;
+    width: 70%;
   }
   .shubha-hero-center h2 {
     font-size: 14px;
     white-space: normal;
+    margin: 10px 0 4px;
   }
   .shubha-hero-center p {
     font-size: 13px;
     white-space: normal;
   }
-  .shubha-hero-art {
-    height: 130px;
-  }
-  /* Named art classes keep the same sizing on mobile */
-  .shubha-hero-art--left,
-  .shubha-hero-art--right {
+  /* Images on mobile: row 2, 130px tall */
+  .shubha-hero-img:first-of-type,
+  .shubha-hero-img:last-of-type {
     height: 130px;
   }
   .shubha-panel {

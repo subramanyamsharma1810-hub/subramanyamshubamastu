@@ -1476,38 +1476,39 @@ export default function LandingPage({
           </div>
         </header>
 
-        {/* 3. HERO MANDAPAM BANNER — 3 integrated panels in one unified section */}
+        {/* 3. HERO MANDAPAM BANNER — Exact BA approved spec
+              Images sit DIRECTLY in the CSS grid (no wrapper divs) so they
+              merge seamlessly into the warm gradient background — one unified banner */}
         <main>
-          <section className="shubha-hero" aria-labelledby="hero-title">
+          <section className="shubha-hero" aria-label="Shubhamastu matrimonial homepage banner">
             <div className="shubha-corner shubha-top-left" aria-hidden="true">❧</div>
             <div className="shubha-corner shubha-top-right" aria-hidden="true">❧</div>
             <div className="shubha-corner shubha-bottom-left" aria-hidden="true">❧</div>
             <div className="shubha-corner shubha-bottom-right" aria-hidden="true">❧</div>
 
-            {/* On desktop: left image | center | right image (grid order: DOM order = left, center, right) */}
-            {/* On tablet/mobile: center moves to row-1 spanning full width; images stay in row-2 side by side */}
-            <div className="shubha-hero-art shubha-hero-art--left">
-              <img
-                src={weddingImg}
-                alt="Traditional Telugu Brahmin wedding ceremony with bride, groom and homam"
-              />
-            </div>
+            {/* Left image — direct grid child (col 1 on desktop, row 2 col 1 on mobile) */}
+            <img
+              className="shubha-hero-img"
+              src={weddingImg}
+              alt="Traditional Telugu Brahmin wedding ceremony"
+            />
 
+            {/* Center text — full-width top row on mobile, middle col on desktop */}
             <div className="shubha-hero-center">
               <div className="shubha-lotus-mark" aria-hidden="true">❀</div>
               <h1 id="hero-title" className="shubha-telugu">శుభమస్తు</h1>
-              <div className="shubha-flourish" aria-hidden="true">❧ ───── ❖ ───── ❧</div>
+              <hr className="shubha-ornament" aria-hidden="true" />
               <h2 className="shubha-telugu">సంప్రదాయాలు కలిపే మధురబంధం</h2>
               <p>Where Traditions Unite Hearts</p>
-              <div className="shubha-flourish small" aria-hidden="true">── ❖ ──</div>
+              <hr className="shubha-ornament" aria-hidden="true" />
             </div>
 
-            <div className="shubha-hero-art shubha-hero-art--right">
-              <img
-                src={kalashImg}
-                alt="Traditional auspicious kalash with coconut, mango leaves and lamps"
-              />
-            </div>
+            {/* Right image — direct grid child (col 3 on desktop, row 2 col 2 on mobile) */}
+            <img
+              className="shubha-hero-img"
+              src={kalashImg}
+              alt="Auspicious kalash with traditional wedding offerings"
+            />
           </section>
 
           {/* 3 Slide Dots */}
